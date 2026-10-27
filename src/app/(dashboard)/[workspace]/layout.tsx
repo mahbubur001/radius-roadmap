@@ -31,7 +31,7 @@ export default function WorkspaceLayout({
           <SidebarNav />
         </Suspense>
       </aside>
-      <div className="flex flex-1 flex-col">
+      <div className="flex min-w-0 flex-1 flex-col">
         <header className="flex h-14 items-center justify-between border-b px-6">
           <Suspense fallback={<Skeleton className="h-5 w-40" />}>
             <WorkspaceName slug={slug} />

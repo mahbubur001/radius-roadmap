@@ -1,6 +1,6 @@
 # 19 — Phase 2 plan: Roadmap, voting, public roadmap page & embed
 
-Status: **DRAFT, waiting for approval.** Nothing here gets built until the owner approves it, including the decisions in §2.
+Status: **APPROVED 2026-10-27** (all recommendations in §2: D1 account subdomain, D2 anonymous + guest + magic link, D3 visitor cookie + rate limits + Turnstile, D4 LoopedIn import in Phase 2, D5 several roadmaps, D6 Home analytics v1). Building.
 
 Phase 2 is the phase that lets Radius **replace LoopedIn**. Doc 15 §3 showed what Radius actually uses:
 - a public, voteable roadmap
@@ -243,11 +243,24 @@ The embed iframe is third-party on the customer's site, so its cookies are set `
 10. LoopedIn roadmap import (once the owner's export file is in `docs/samples/` or attached).
 11. Playwright flows; update CLAUDE.md, doc 14 (new deps: `@dnd-kit/*`, `@tiptap/*`, `fractional-indexing`, `papaparse`; new env vars) and PROGRESS.md.
 
+## As built (2026-10-27, steps 1–9)
+Deviations from the plan above:
+- **Card slugs are unique per workspace**, not per roadmap. Card pages live at `/<workspace>/roadmap/<card-slug>`; a non-default roadmap is chosen with `?board=<roadmap-slug>`.
+- **The public card drawer is client-side** (a real link opened in a Sheet with `history.pushState`) instead of an intercepting route. The full card page stays server-rendered and crawlable.
+- `roadmap_cards.column_id` uses `ON DELETE NO ACTION` so deleting a roadmap cascades; a column that still has cards can't be deleted (ConflictError).
+- New workspaces are seeded with one roadmap ("Roadmap"), four columns (In progress, Up next, Future, Done) and four categories. Workspaces created before Phase 2 have no categories until an admin adds them.
+- Server actions under `[workspace]` use the new `workspaceAction(schema, (ctx, input) => …)` wrapper in `src/server/action.ts`.
+- Public data is cached with `"use cache"`: per workspace (`ws:<id>`, dropped by `invalidatePublic`) and per account (`site:<id>`, dropped by `invalidateSite` when workspaces, the account or a roadmap's public state change).
+- Shared form components were added for every rich value: `DatePicker` / `DateRangePicker`, `ColorPicker`, `RichTextEditor` (`src/components/form/`), plus `ColumnChart` (`src/components/charts/`).
+- Home dashboard v1: 7D/1M/3M range (`?range=`), stat tiles (page views, unique visitors, votes), page views per day (with a table view), recent votes, most voted.
+
+Still to do: step 10 (LoopedIn import, waiting for the export file), a rate-limit test, Playwright flows 1–6.
+
 ## Done when
-- [ ] Admins and members (with access) manage a roadmap on a drag-and-drop board; cards autosave; columns, categories, tags and display settings work.
-- [ ] The public roadmap at `<account>.<root>/<workspace>/roadmap` is server-rendered, indexable (when allowed) and shows only public content.
-- [ ] Anonymous, guest and magic-link voters can vote once per card, with abuse limits; "require sign-in" works; admins see named voters + the anonymous count.
+- [x] Admins and members (with access) manage a roadmap on a drag-and-drop board; cards autosave; columns, categories, tags and display settings work.
+- [x] The public roadmap at `<account>.<root>/<workspace>/roadmap` is server-rendered, indexable (when allowed) and shows only public content.
+- [x] Anonymous, guest and magic-link voters can vote once per card, with abuse limits; "require sign-in" works; admins see named voters + the anonymous count.
 - [ ] `embed.js` embeds the roadmap with automatic height, and voting works inside it.
 - [ ] Radius's LoopedIn roadmap export imports with its columns, cards and vote totals.
-- [ ] Home shows views, recent votes and top cards.
+- [x] Home shows views, recent votes and top cards.
 - [ ] `pnpm lint`, `typecheck`, `test`, `test:e2e` and `build` pass.

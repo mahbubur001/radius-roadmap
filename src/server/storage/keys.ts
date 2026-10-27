@@ -12,6 +12,9 @@ export const prefixes = {
   accountLogo: (accountId: string) => `accounts/${accountId}/logo`,
   workspaceLogo: (accountId: string, workspaceId: string) =>
     `accounts/${accountId}/workspaces/${workspaceId}/logo`,
+  /** Images inside roadmap card descriptions. */
+  cardImages: (accountId: string, workspaceId: string) =>
+    `accounts/${accountId}/workspaces/${workspaceId}/cards`,
 };
 
 export function newKey(prefix: string, contentType: ImageType) {

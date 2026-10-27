@@ -13,6 +13,7 @@ import {
 import { action } from "@/server/action";
 import { auth } from "@/server/auth";
 import { db } from "@/server/db/client";
+import { invalidateSite } from "@/server/public-cache";
 import { updateAccount } from "@/server/services/accounts";
 import {
   createWorkspace,
@@ -26,6 +27,7 @@ export const createWorkspaceAction = action(
   async (input) => {
     const ctx = await requireAccount();
     const ws = await createWorkspace(db, ctx, input);
+    invalidateSite(ctx.accountId);
     return { slug: ws.slug };
   },
 );
@@ -35,6 +37,7 @@ export const updateWorkspaceAction = action(
   async ({ id, ...input }) => {
     const ctx = await requireAccount();
     const ws = await updateWorkspace(db, ctx, id, input);
+    invalidateSite(ctx.accountId);
     return { slug: ws.slug };
   },
 );
@@ -44,6 +47,7 @@ export const deleteWorkspaceAction = action(
   async ({ id }) => {
     const ctx = await requireAccount();
     await deleteWorkspace(db, ctx, id);
+    invalidateSite(ctx.accountId);
   },
 );
 
@@ -52,6 +56,7 @@ export const updateAccountAction = action(
   async (input) => {
     const ctx = await requireAccount();
     await updateAccount(db, ctx, input);
+    invalidateSite(ctx.accountId);
   },
 );
 

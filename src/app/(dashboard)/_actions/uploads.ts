@@ -45,6 +45,18 @@ async function resolveTarget(
   }
 
   const ctx = await requireAccount();
+
+  // Anyone who can open the workspace can add images to card descriptions.
+  // Nothing is "replaced": the URL goes into the card's rich text.
+  if (purpose === "card-image") {
+    if (!workspaceId) throw new ForbiddenError("Missing workspace.");
+    const ws = await getWorkspaceById(db, ctx, workspaceId);
+    return {
+      prefix: prefixes.cardImages(ctx.accountId, ws.id),
+      save: async () => null,
+    };
+  }
+
   assertRole(ctx, "admin");
 
   if (purpose === "account-logo") {

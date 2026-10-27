@@ -30,9 +30,20 @@ export const env = createEnv({
     S3_BUCKET: z.string().optional(),
     // Public base URL for stored files (bucket URL or CloudFront)
     S3_PUBLIC_URL: z.url().optional(),
+
+    // Public sites live at <account-slug>.<PUBLIC_ROOT_DOMAIN> (doc 19 D1).
+    // Locally "localhost:3000" → http://acme.localhost:3000
+    PUBLIC_ROOT_DOMAIN: z.string().default("localhost:3000"),
+    // Signs the anonymous visitor cookie and hashes voter IPs. Falls back to
+    // a key derived from BETTER_AUTH_SECRET when unset.
+    VISITOR_SECRET: z.string().min(32).optional(),
+    // Cloudflare Turnstile (invisible) on anonymous and guest votes. Unset =
+    // no check (dev); the .env.example values are Cloudflare's test keys.
+    TURNSTILE_SECRET_KEY: z.string().optional(),
   },
   client: {
     NEXT_PUBLIC_APP_URL: z.url(),
+    NEXT_PUBLIC_TURNSTILE_SITE_KEY: z.string().optional(),
   },
   runtimeEnv: {
     NODE_ENV: process.env.NODE_ENV,
@@ -53,7 +64,11 @@ export const env = createEnv({
     UPLOAD_DIR: process.env.UPLOAD_DIR,
     S3_BUCKET: process.env.S3_BUCKET,
     S3_PUBLIC_URL: process.env.S3_PUBLIC_URL,
+    PUBLIC_ROOT_DOMAIN: process.env.PUBLIC_ROOT_DOMAIN,
+    VISITOR_SECRET: process.env.VISITOR_SECRET,
+    TURNSTILE_SECRET_KEY: process.env.TURNSTILE_SECRET_KEY,
     NEXT_PUBLIC_APP_URL: process.env.NEXT_PUBLIC_APP_URL,
+    NEXT_PUBLIC_TURNSTILE_SITE_KEY: process.env.NEXT_PUBLIC_TURNSTILE_SITE_KEY,
   },
   emptyStringAsUndefined: true,
   skipValidation: !!process.env.SKIP_ENV_VALIDATION,

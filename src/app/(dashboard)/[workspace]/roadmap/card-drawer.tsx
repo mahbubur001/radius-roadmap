@@ -1,0 +1,769 @@
+"use client";
+
+import {
+  Archive,
+  ArchiveRestore,
+  CheckCircle2,
+  Circle,
+  Link as LinkIcon,
+  MoreHorizontal,
+  Plus,
+  Tags,
+  Trash2,
+  X,
+} from "lucide-react";
+import { useCallback, useEffect, useRef, useState } from "react";
+import { toast } from "sonner";
+import {
+  addFeatureAction,
+  createTagAction,
+  deleteCardAction,
+  deleteFeatureAction,
+  getCardAction,
+  setCardArchivedAction,
+  setCardCompletedAction,
+  updateCardAction,
+  updateFeatureAction,
+} from "@/app/(dashboard)/_actions/roadmap";
+import { DatePicker } from "@/components/form/date-picker";
+import {
+  RichTextEditor,
+  type RichTextValue,
+} from "@/components/form/rich-text-editor";
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from "@/components/ui/alert-dialog";
+import { Badge } from "@/components/ui/badge";
+import { Button } from "@/components/ui/button";
+import { Checkbox } from "@/components/ui/checkbox";
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuSeparator,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
+import {
+  Popover,
+  PopoverContent,
+  PopoverTrigger,
+} from "@/components/ui/popover";
+import { Progress } from "@/components/ui/progress";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
+import {
+  Sheet,
+  SheetContent,
+  SheetDescription,
+  SheetHeader,
+  SheetTitle,
+} from "@/components/ui/sheet";
+import { Skeleton } from "@/components/ui/skeleton";
+import { Switch } from "@/components/ui/switch";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import type { UpdateCardInput } from "@/lib/schemas/roadmap";
+import type { BoardCard, CategoryOption, TagOption } from "./types";
+
+type Detail = Extract<
+  Awaited<ReturnType<typeof getCardAction>>,
+  { ok: true }
+>["data"];
+type Patch = Omit<UpdateCardInput, "id">;
+type Status = "idle" | "saving" | "saved" | "error";
+
+const NO_CATEGORY = "none";
+
+/**
+ * Debounced autosave. Patches merge until 600 ms of quiet, then go out one
+ * request at a time (so a slow save can't land after a newer one).
+ */
+function useAutosave(save: (patch: Patch) => Promise<boolean>) {
+  const pending = useRef<Patch>({});
+  const timer = useRef<ReturnType<typeof setTimeout>>(undefined);
+  const queue = useRef(Promise.resolve());
+  const [status, setStatus] = useState<Status>("idle");
+
+  const flush = useCallback(() => {
+    clearTimeout(timer.current);
+    const patch = pending.current;
+    pending.current = {};
+    if (!Object.keys(patch).length) return queue.current;
+    setStatus("saving");
+    queue.current = queue.current.then(async () => {
+      setStatus((await save(patch)) ? "saved" : "error");
+    });
+    return queue.current;
+  }, [save]);
+
+  const schedule = useCallback(
+    (patch: Patch) => {
+      Object.assign(pending.current, patch);
+      setStatus("saving");
+      clearTimeout(timer.current);
+      timer.current = setTimeout(() => void flush(), 600);
+    },
+    [flush],
+  );
+
+  return { schedule, flush, status };
+}
+
+export function CardDrawer({
+  workspace,
+  workspaceId,
+  cardId,
+  publicUrl,
+  categories,
+  tags,
+  onClose,
+  onChanged,
+  onRemoved,
+  onTagCreated,
+}: {
+  workspace: string;
+  workspaceId: string;
+  cardId: string | null;
+  publicUrl: string;
+  categories: CategoryOption[];
+  tags: TagOption[];
+  onClose: () => void;
+  onChanged: (id: string, change: Partial<BoardCard>) => void;
+  onRemoved: (id: string) => void;
+  onTagCreated: (tag: TagOption) => void;
+}) {
+  const [detail, setDetail] = useState<Detail | null>(null);
+
+  useEffect(() => {
+    setDetail(null);
+    if (!cardId) return;
+    let live = true;
+    getCardAction({ workspace, id: cardId }).then((result) => {
+      if (!live) return;
+      if (result.ok) setDetail(result.data);
+      else {
+        toast.error(result.error);
+        onClose();
+      }
+    });
+    return () => {
+      live = false;
+    };
+  }, [workspace, cardId, onClose]);
+
+  return (
+    <Sheet open={!!cardId} onOpenChange={(open) => !open && onClose()}>
+      <SheetContent className="gap-0 overflow-y-auto data-[side=right]:w-full data-[side=right]:sm:max-w-2xl">
+        {detail ? (
+          <CardEditor
+            key={detail.card.id}
+            detail={detail}
+            workspace={workspace}
+            workspaceId={workspaceId}
+            publicUrl={publicUrl}
+            categories={categories}
+            tags={tags}
+            onClose={onClose}
+            onChanged={onChanged}
+            onRemoved={onRemoved}
+            onTagCreated={onTagCreated}
+          />
+        ) : (
+          <div className="flex flex-col gap-4 p-6">
+            <SheetHeader className="p-0">
+              <SheetTitle>Loading card…</SheetTitle>
+              <SheetDescription className="sr-only">Loading</SheetDescription>
+            </SheetHeader>
+            <Skeleton className="h-9 w-full" />
+            <Skeleton className="h-40 w-full" />
+          </div>
+        )}
+      </SheetContent>
+    </Sheet>
+  );
+}
+
+function CardEditor({
+  detail,
+  workspace,
+  workspaceId,
+  publicUrl,
+  categories,
+  tags,
+  onClose,
+  onChanged,
+  onRemoved,
+  onTagCreated,
+}: {
+  detail: Detail;
+  workspace: string;
+  workspaceId: string;
+  publicUrl: string;
+  categories: CategoryOption[];
+  tags: TagOption[];
+  onClose: () => void;
+  onChanged: (id: string, change: Partial<BoardCard>) => void;
+  onRemoved: (id: string) => void;
+  onTagCreated: (tag: TagOption) => void;
+}) {
+  const { card } = detail;
+  const [title, setTitle] = useState(card.title);
+  const [publicTitle, setPublicTitle] = useState(card.publicTitle ?? "");
+  const [categoryId, setCategoryId] = useState(card.categoryId);
+  const [plannedFor, setPlannedFor] = useState(card.plannedFor);
+  const [isPublic, setIsPublic] = useState(card.isPublic);
+  const [tagIds, setTagIds] = useState(card.tagIds);
+  const [completed, setCompleted] = useState(!!card.completedAt);
+  const [archived, setArchived] = useState(!!card.archivedAt);
+  const [features, setFeatures] = useState(card.features);
+  const [confirmDelete, setConfirmDelete] = useState(false);
+
+  const save = useCallback(
+    async (patch: Patch) => {
+      const result = await updateCardAction({
+        workspace,
+        id: card.id,
+        ...patch,
+      });
+      if (!result.ok) toast.error(result.error);
+      return result.ok;
+    },
+    [workspace, card.id],
+  );
+  const { schedule, flush, status } = useAutosave(save);
+
+  // Save whatever is pending when the drawer closes.
+  useEffect(() => () => void flush(), [flush]);
+
+  function change(patch: Patch, board?: Partial<BoardCard>) {
+    schedule(patch);
+    if (board) onChanged(card.id, board);
+  }
+
+  const doneCount = features.filter((f) => f.done).length;
+  const cardUrl = `${publicUrl}/${card.slug}`;
+
+  async function flag(
+    run: typeof setCardCompletedAction,
+    value: boolean,
+    apply: () => void,
+  ) {
+    const result = await run({ workspace, id: card.id, value });
+    if (!result.ok) return toast.error(result.error);
+    apply();
+  }
+
+  return (
+    <div className="flex flex-col">
+      <SheetHeader className="flex-row items-center gap-2 border-b pr-12">
+        <SheetTitle className="sr-only">Edit card</SheetTitle>
+        <SheetDescription className="sr-only">
+          Changes save automatically.
+        </SheetDescription>
+        <span className="text-xs text-muted-foreground" aria-live="polite">
+          {status === "saving"
+            ? "Saving…"
+            : status === "saved"
+              ? "Saved"
+              : status === "error"
+                ? "Not saved"
+                : ""}
+        </span>
+        {completed ? <Badge variant="secondary">Completed</Badge> : null}
+        {archived ? <Badge variant="outline">Archived</Badge> : null}
+        <DropdownMenu>
+          <DropdownMenuTrigger asChild>
+            <Button
+              variant="ghost"
+              size="icon"
+              className="ml-auto"
+              aria-label="Card actions"
+            >
+              <MoreHorizontal />
+            </Button>
+          </DropdownMenuTrigger>
+          <DropdownMenuContent align="end">
+            <DropdownMenuItem
+              onSelect={() =>
+                flag(setCardCompletedAction, !completed, () => {
+                  setCompleted(!completed);
+                  onChanged(card.id, { completed: !completed });
+                })
+              }
+            >
+              {completed ? <Circle /> : <CheckCircle2 />}
+              {completed ? "Reopen" : "Mark complete"}
+            </DropdownMenuItem>
+            <DropdownMenuItem
+              onSelect={() =>
+                flag(setCardArchivedAction, !archived, () => {
+                  setArchived(!archived);
+                  if (!archived) {
+                    onRemoved(card.id);
+                    toast.success("Card archived.");
+                    onClose();
+                  }
+                })
+              }
+            >
+              {archived ? <ArchiveRestore /> : <Archive />}
+              {archived ? "Restore" : "Archive"}
+            </DropdownMenuItem>
+            <DropdownMenuItem
+              onSelect={() => {
+                void navigator.clipboard.writeText(cardUrl);
+                toast.success("Public link copied.");
+              }}
+            >
+              <LinkIcon />
+              Copy public link
+            </DropdownMenuItem>
+            <DropdownMenuSeparator />
+            <DropdownMenuItem
+              variant="destructive"
+              onSelect={() => setConfirmDelete(true)}
+            >
+              <Trash2 />
+              Delete
+            </DropdownMenuItem>
+          </DropdownMenuContent>
+        </DropdownMenu>
+      </SheetHeader>
+
+      <div className="flex flex-col gap-4 p-4">
+        <Input
+          aria-label="Title"
+          className="h-auto border-none px-0 text-lg font-semibold shadow-none focus-visible:ring-0"
+          value={title}
+          onChange={(e) => {
+            setTitle(e.target.value);
+            if (e.target.value.trim()) {
+              change({ title: e.target.value }, { title: e.target.value });
+            }
+          }}
+        />
+
+        <Tabs defaultValue="general">
+          <TabsList>
+            <TabsTrigger value="general">General</TabsTrigger>
+            <TabsTrigger value="features">
+              Features{" "}
+              {features.length ? `(${doneCount}/${features.length})` : ""}
+            </TabsTrigger>
+            <TabsTrigger value="votes">
+              Votes ({card.voteCount + card.importedVotes})
+            </TabsTrigger>
+          </TabsList>
+
+          <TabsContent value="general" className="flex flex-col gap-4 pt-2">
+            <div className="flex flex-col gap-2">
+              <Label htmlFor="card-public-title">Public title</Label>
+              <Input
+                id="card-public-title"
+                placeholder="Same as the title"
+                value={publicTitle}
+                onChange={(e) => {
+                  setPublicTitle(e.target.value);
+                  change(
+                    { publicTitle: e.target.value },
+                    { publicTitle: e.target.value.trim() || null },
+                  );
+                }}
+              />
+            </div>
+
+            <div className="flex flex-col gap-2">
+              <Label>Description</Label>
+              <RichTextEditor
+                label="Description"
+                workspaceId={workspaceId}
+                value={card.summaryJson as RichTextValue}
+                onChange={(summaryJson) => change({ summaryJson })}
+              />
+            </div>
+
+            <div className="grid gap-4 sm:grid-cols-2">
+              <div className="flex flex-col gap-2">
+                <Label htmlFor="card-category">Category</Label>
+                <Select
+                  value={categoryId ?? NO_CATEGORY}
+                  onValueChange={(v) => {
+                    const next = v === NO_CATEGORY ? null : v;
+                    setCategoryId(next);
+                    change({ categoryId: next }, { categoryId: next });
+                  }}
+                >
+                  <SelectTrigger id="card-category" className="w-full">
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value={NO_CATEGORY}>No category</SelectItem>
+                    {categories.map((c) => (
+                      <SelectItem key={c.id} value={c.id}>
+                        <span
+                          className="size-2.5 rounded-full"
+                          style={{ backgroundColor: c.color }}
+                        />
+                        {c.name}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+
+              <div className="flex flex-col gap-2">
+                <Label htmlFor="card-planned">Planned for</Label>
+                <DatePicker
+                  id="card-planned"
+                  value={plannedFor}
+                  placeholder="No date"
+                  onChange={(next) => {
+                    setPlannedFor(next);
+                    change({ plannedFor: next }, { plannedFor: next });
+                  }}
+                />
+              </div>
+            </div>
+
+            <TagPicker
+              workspace={workspace}
+              tags={tags}
+              selected={tagIds}
+              onChange={(next) => {
+                setTagIds(next);
+                change({ tagIds: next }, { tagIds: next });
+              }}
+              onCreated={onTagCreated}
+            />
+
+            <div className="flex items-center justify-between rounded-md border p-3">
+              <div>
+                <Label htmlFor="card-public">Show on the public roadmap</Label>
+                <p className="text-xs text-muted-foreground">
+                  Private cards are visible to your team only.
+                </p>
+              </div>
+              <Switch
+                id="card-public"
+                checked={isPublic}
+                onCheckedChange={(v) => {
+                  setIsPublic(v);
+                  change({ isPublic: v }, { isPublic: v });
+                }}
+              />
+            </div>
+          </TabsContent>
+
+          <TabsContent value="features" className="pt-2">
+            <Features
+              workspace={workspace}
+              cardId={card.id}
+              features={features}
+              onChange={(next) => {
+                setFeatures(next);
+                onChanged(card.id, {
+                  features: {
+                    done: next.filter((f) => f.done).length,
+                    total: next.length,
+                  },
+                });
+              }}
+            />
+          </TabsContent>
+
+          <TabsContent value="votes" className="pt-2">
+            <Voters voters={detail.voters} />
+          </TabsContent>
+        </Tabs>
+      </div>
+
+      <AlertDialog open={confirmDelete} onOpenChange={setConfirmDelete}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Delete this card?</AlertDialogTitle>
+            <AlertDialogDescription>
+              The card, its features and its votes are deleted for good. Archive
+              it instead to keep its history.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>Cancel</AlertDialogCancel>
+            <AlertDialogAction
+              variant="destructive"
+              onClick={async () => {
+                const result = await deleteCardAction({
+                  workspace,
+                  id: card.id,
+                });
+                if (!result.ok) return toast.error(result.error);
+                onRemoved(card.id);
+                toast.success("Card deleted.");
+                onClose();
+              }}
+            >
+              Delete card
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
+    </div>
+  );
+}
+
+function TagPicker({
+  workspace,
+  tags,
+  selected,
+  onChange,
+  onCreated,
+}: {
+  workspace: string;
+  tags: TagOption[];
+  selected: string[];
+  onChange: (ids: string[]) => void;
+  onCreated: (tag: TagOption) => void;
+}) {
+  const [name, setName] = useState("");
+  const chosen = tags.filter((t) => selected.includes(t.id));
+
+  async function create() {
+    const value = name.trim();
+    if (!value) return;
+    const result = await createTagAction({ workspace, name: value });
+    if (!result.ok) return toast.error(result.error);
+    onCreated(result.data);
+    if (!selected.includes(result.data.id)) {
+      onChange([...selected, result.data.id]);
+    }
+    setName("");
+  }
+
+  return (
+    <div className="flex flex-col gap-2">
+      <Label>Tags</Label>
+      <div className="flex flex-wrap items-center gap-1.5">
+        {chosen.map((t) => (
+          <Badge key={t.id} variant="secondary" className="gap-1">
+            {t.name}
+            <button
+              type="button"
+              aria-label={`Remove tag ${t.name}`}
+              onClick={() => onChange(selected.filter((id) => id !== t.id))}
+            >
+              <X className="size-3" />
+            </button>
+          </Badge>
+        ))}
+        <Popover>
+          <PopoverTrigger asChild>
+            <Button type="button" variant="outline" size="sm">
+              <Tags />
+              Edit tags
+            </Button>
+          </PopoverTrigger>
+          <PopoverContent className="flex w-64 flex-col gap-2">
+            <div className="flex max-h-48 flex-col gap-1 overflow-y-auto">
+              {tags.length === 0 ? (
+                <p className="text-xs text-muted-foreground">No tags yet.</p>
+              ) : null}
+              {tags.map((t) => (
+                <Label
+                  key={t.id}
+                  className="flex items-center gap-2 font-normal"
+                >
+                  <Checkbox
+                    checked={selected.includes(t.id)}
+                    onCheckedChange={(on) =>
+                      onChange(
+                        on
+                          ? [...selected, t.id]
+                          : selected.filter((id) => id !== t.id),
+                      )
+                    }
+                  />
+                  {t.name}
+                </Label>
+              ))}
+            </div>
+            <form
+              className="flex gap-2"
+              onSubmit={(e) => {
+                e.preventDefault();
+                void create();
+              }}
+            >
+              <Input
+                aria-label="New tag"
+                placeholder="New tag"
+                value={name}
+                onChange={(e) => setName(e.target.value)}
+              />
+              <Button type="submit" size="icon" aria-label="Add tag">
+                <Plus />
+              </Button>
+            </form>
+          </PopoverContent>
+        </Popover>
+      </div>
+    </div>
+  );
+}
+
+type Feature = Detail["card"]["features"][number];
+
+function Features({
+  workspace,
+  cardId,
+  features,
+  onChange,
+}: {
+  workspace: string;
+  cardId: string;
+  features: Feature[];
+  onChange: (features: Feature[]) => void;
+}) {
+  const [title, setTitle] = useState("");
+  const done = features.filter((f) => f.done).length;
+
+  async function add() {
+    const value = title.trim();
+    if (!value) return;
+    const result = await addFeatureAction({ workspace, cardId, title: value });
+    if (!result.ok) return toast.error(result.error);
+    onChange([
+      ...features,
+      { id: result.data.id, title: value, done: false, position: "" },
+    ]);
+    setTitle("");
+  }
+
+  async function update(id: string, patch: { title?: string; done?: boolean }) {
+    onChange(features.map((f) => (f.id === id ? { ...f, ...patch } : f)));
+    const result = await updateFeatureAction({ workspace, id, ...patch });
+    if (!result.ok) toast.error(result.error);
+  }
+
+  async function remove(id: string) {
+    const result = await deleteFeatureAction({ workspace, id });
+    if (!result.ok) return toast.error(result.error);
+    onChange(features.filter((f) => f.id !== id));
+  }
+
+  return (
+    <div className="flex flex-col gap-3">
+      {features.length ? (
+        <div className="flex items-center gap-3">
+          <Progress
+            value={(done / features.length) * 100}
+            aria-label="Features done"
+          />
+          <span className="text-xs whitespace-nowrap text-muted-foreground">
+            {done} of {features.length}
+          </span>
+        </div>
+      ) : (
+        <p className="text-sm text-muted-foreground">
+          Break this card into features. Progress shows on the board and the
+          public roadmap.
+        </p>
+      )}
+      <ul className="flex flex-col gap-1">
+        {features.map((f) => (
+          <li key={f.id} className="group flex items-center gap-2">
+            <Checkbox
+              checked={f.done}
+              aria-label={`Done: ${f.title}`}
+              onCheckedChange={(on) => update(f.id, { done: on === true })}
+            />
+            <Input
+              defaultValue={f.title}
+              aria-label="Feature title"
+              className="h-8 border-transparent shadow-none hover:border-input"
+              onBlur={(e) => {
+                const value = e.target.value.trim();
+                if (value && value !== f.title) update(f.id, { title: value });
+              }}
+            />
+            <Button
+              variant="ghost"
+              size="icon"
+              className="size-8 opacity-0 group-hover:opacity-100 focus-visible:opacity-100"
+              aria-label={`Delete feature ${f.title}`}
+              onClick={() => remove(f.id)}
+            >
+              <Trash2 />
+            </Button>
+          </li>
+        ))}
+      </ul>
+      <form
+        className="flex gap-2"
+        onSubmit={(e) => {
+          e.preventDefault();
+          void add();
+        }}
+      >
+        <Input
+          aria-label="New feature"
+          placeholder="Add a feature"
+          value={title}
+          onChange={(e) => setTitle(e.target.value)}
+        />
+        <Button type="submit" variant="outline">
+          Add
+        </Button>
+      </form>
+    </div>
+  );
+}
+
+function Voters({ voters }: { voters: Detail["voters"] }) {
+  const total = voters.named.length + voters.anonymous + voters.imported;
+  if (!total) {
+    return <p className="text-sm text-muted-foreground">No votes yet.</p>;
+  }
+  return (
+    <div className="flex flex-col gap-3 text-sm">
+      <ul className="flex flex-col divide-y rounded-md border">
+        {voters.named.map((v) => (
+          <li key={v.id} className="flex items-center gap-2 px-3 py-2">
+            <div className="min-w-0 flex-1">
+              <p className="truncate font-medium">{v.name || v.email}</p>
+              <p className="truncate text-xs text-muted-foreground">
+                {v.email}
+                {v.kind === "guest" ? " · guest (unverified)" : ""}
+              </p>
+            </div>
+            <span className="text-xs text-muted-foreground">
+              {[v.city, v.country].filter(Boolean).join(", ")}
+            </span>
+          </li>
+        ))}
+        {voters.anonymous ? (
+          <li className="px-3 py-2 text-muted-foreground">
+            {voters.anonymous} anonymous{" "}
+            {voters.anonymous === 1 ? "vote" : "votes"}
+          </li>
+        ) : null}
+        {voters.imported ? (
+          <li className="px-3 py-2 text-muted-foreground">
+            {voters.imported} imported from LoopedIn
+          </li>
+        ) : null}
+      </ul>
+    </div>
+  );
+}

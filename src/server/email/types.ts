@@ -2,6 +2,8 @@ export type EmailTemplateProps = {
   "verify-email": { name: string; url: string };
   "reset-password": { name: string; url: string };
   "change-email": { name: string; newEmail: string; url: string };
+  /** Voter sign-in on a public site: 6-digit code + one-click link. */
+  "voter-code": { siteName: string; code: string; url: string };
   invitation: {
     inviterName: string;
     accountName: string;

@@ -17,6 +17,7 @@ import {
   seesAllWorkspaces,
 } from "./context";
 import { getPlanLimits } from "./plan-limits";
+import { seedWorkspace } from "./roadmaps";
 
 // Every query here is scoped by ctx.accountId. Never accept an accountId
 // from the client. Members only see workspaces granted in workspace_members.
@@ -102,12 +103,15 @@ export async function createWorkspace(
   }
 
   try {
-    const [row] = await db
-      .insert(workspaces)
-      .values({ accountId: ctx.accountId, name: data.name, slug: data.slug })
-      .returning();
-    if (!row) throw new Error("Failed to create workspace.");
-    return row;
+    return await db.transaction(async (tx) => {
+      const [row] = await tx
+        .insert(workspaces)
+        .values({ accountId: ctx.accountId, name: data.name, slug: data.slug })
+        .returning();
+      if (!row) throw new Error("Failed to create workspace.");
+      await seedWorkspace(tx, ctx.accountId, row.id);
+      return row;
+    });
   } catch (error) {
     if (isUniqueViolation(error)) {
       throw new ConflictError("That workspace URL is already used.");

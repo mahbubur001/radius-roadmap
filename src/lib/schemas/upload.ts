@@ -15,6 +15,7 @@ export const uploadPurposeSchema = z.enum([
   "avatar",
   "account-logo",
   "workspace-logo",
+  "card-image",
 ]);
 
 export type UploadPurpose = z.infer<typeof uploadPurposeSchema>;

@@ -201,3 +201,10 @@ Installed versions differ from the planning estimates above. These are the ones 
   - `@aws-sdk/client-s3` + `@aws-sdk/s3-presigned-post` (presigned **POST**, because it can cap file size)
   - env `STORAGE_DRIVER` (`local`|`s3`), `UPLOAD_DIR`, `S3_BUCKET`, `S3_PUBLIC_URL`
   - `dotenv-cli` removed: `dotenv` 18 ships its own CLI (`dotenv run -f .env.local -- …`)
+- Phase 2 additions:
+  - `@dnd-kit/core` 6, `@dnd-kit/sortable` 10, `@dnd-kit/utilities` 3 (board drag and drop)
+  - `@tiptap/react`, `@tiptap/pm`, `@tiptap/starter-kit`, `@tiptap/extension-image` 3 (card descriptions; stored as Tiptap JSON and rendered by our own allow-list renderer in `src/lib/rich-text.ts`)
+  - `fractional-indexing` 4 (column/card order; sort with `COLLATE "C"`)
+  - `papaparse` (LoopedIn CSV import)
+  - shadcn `calendar` (`react-day-picker` 10, `date-fns` 4), `popover`, `textarea`, `progress`
+  - env `PUBLIC_ROOT_DOMAIN` (public sites live at `<account-slug>.<PUBLIC_ROOT_DOMAIN>`; `localhost:3000` locally), `VISITOR_SECRET` (signs the visitor cookie), `TURNSTILE_SECRET_KEY` + `NEXT_PUBLIC_TURNSTILE_SITE_KEY` (optional; Turnstile is skipped when unset)

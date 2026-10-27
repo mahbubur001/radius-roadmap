@@ -22,27 +22,27 @@
 - Admin audit + approved changes: `docs/16-admin-ui-walkthrough.md` §8
 - Phase 0 scaffold plan (done): `docs/17-scaffold-plan.md`
 - Phase 1 plan (built): `docs/18-phase-1-plan.md`
-- Phase 2 plan (draft, awaiting approval): `docs/19-phase-2-plan.md`
+- Phase 2 plan (approved, being built; see its "As built" section): `docs/19-phase-2-plan.md`
 - Stack versions as built: `docs/14-dev-tools.md` → "Versions as built"
 
 ## Current status
-- **Phase:** Phase 0 done. **Phase 1 built 2026-10-27**; every item in doc 18's "Done when" list passes. Committed and pushed (`b546e7f`).
-- **Phase 1 delivered:**
-  - Workspace switcher with create, rename/re-slug and delete; account switcher; remembers the last workspace.
-  - Team page: invite with role and workspaces; resend/cancel invites; change role; edit workspace access; remove member; transfer ownership; leave account.
-  - Per-member workspace access.
-  - Profile (name, photo, change email with approval from the current address, password, sign out other devices); account and workspace settings with logo uploads.
-  - Storage layer (local + S3).
-  - `tracked_users` + voter sessions (service only).
-  - Migration `0001`.
-- **Checks:** `pnpm lint`, `typecheck`, `test` (57 tests), `test:e2e` (6 tests: smoke, invite → member sees only granted workspace, rename/delete, avatar upload, change email, disabled endpoints) and `build` all pass.
-- **Git:** Phases 0 and 1 are pushed to `origin/main` (latest `b546e7f`).
-- **This Mac:** Homebrew Postgres 18 + Redis, `EMAIL_TRANSPORT=console`, `STORAGE_DRIVER=local`. The local dev DB now also holds many `e2e-*`/`owner-*@example.test` accounts made by Playwright; they're harmless.
+- **Phase:** Phases 0 and 1 done and pushed. **Phase 2 approved 2026-10-27 (D1–D6, all recommendations); steps 1–9 of doc 19 §7 are built** and not yet committed.
+- **Phase 2 delivered so far:**
+  - Schema + migration `0002`: roadmaps, columns, cards (full-text search), features, categories, tags, votes, events, voter login codes. New workspaces are seeded with a roadmap, columns and categories.
+  - Admin board (dnd-kit, fractional ordering), roadmap settings, columns editor, categories/tags, card drawer (Tiptap with image upload, autosave, features, Votes tab).
+  - Public site at `<account>.localhost:3000/<workspace>/roadmap`: server-rendered, cached, card pages, search, SEO (metadata, sitemap.xml, robots.txt).
+  - Voting: anonymous (signed visitor cookie), guest, email code / magic link; rate limits; Turnstile (optional); visitor votes claimed on sign-in.
+  - Embed: `public/embed.js` + embed mode + Public settings page.
+  - Home dashboard v1 (stat tiles, views chart, recent votes, most voted).
+  - Shared form components: `DatePicker`/`DateRangePicker`, `ColorPicker`, `RichTextEditor`; chart: `ColumnChart`.
+- **Checks:** `pnpm lint`, `typecheck`, `test` (90 tests) and `build` pass. `test:e2e` was not re-run for Phase 2 and there are no Phase 2 Playwright flows yet.
+- **Git:** latest pushed commit `ff21550` (Phase 2 plan). All Phase 2 code is uncommitted.
+- **This Mac:** Homebrew Postgres 18 + Redis, `EMAIL_TRANSPORT=console`, `STORAGE_DRIVER=local`, `PUBLIC_ROOT_DOMAIN=localhost:3000` in `.env.local`. The dev workspace `demo-product` was renamed "Radius Roadmap" (slug unchanged). The local dev DB also holds many test accounts made by Playwright; they're harmless.
 
 ## Next step
-1. Owner: review **`docs/19-phase-2-plan.md`** and answer decisions D1–D6 in its §2.
-2. Owner: export the Radius roadmap from LoopedIn (Roadmap → More → Export) and put the file in `docs/samples/` (needed for the importer, D4).
-3. After approval, build Phase 2 in the order of doc 19 §7.
+1. Owner: export the Radius roadmap from LoopedIn (Roadmap → More → Export) and put the file in `docs/samples/`. Then build step 10 (import page at `/<workspace>/roadmap/import`).
+2. Write Playwright flows 1–6 (doc 19 §6) and a rate-limit test; run `pnpm test:e2e`.
+3. Tick the remaining "Done when" items in doc 19, then commit + push Phase 2.
 
 ## Decisions (approved)
 - Stack per doc 14:
@@ -82,7 +82,7 @@
 - [x] Live admin audit — doc 16
 - [x] Phase 0 — Scaffold (doc 17)
 - [x] Phase 1 — Accounts & workspaces (doc 18)
-- [ ] Phase 2 — Roadmap + voting + public page + embed
+- [ ] Phase 2 — Roadmap + voting + public page + embed (steps 1–9 built; import + e2e left)
 - [ ] Phase 3 — Feedback + triage + import
 - [ ] Phase 4 — Updates + email
 - [ ] Phase 5 — Knowledge base
@@ -100,3 +100,4 @@
 | 2026-10-27 | mahbubur (Mac) | Committed + pushed Phase 0; wrote the Phase 1 plan (doc 18) | Doc 18 approved (all recommendations) → build Phase 1 |
 | 2026-10-27 | mahbubur (Mac) | Phase 1 built and tested (doc 18): workspaces, team/invites, workspace access, settings, uploads, voter model | Owner reviews + commits → Phase 2 plan (doc 19) |
 | 2026-10-27 | mahbubur (Mac) | Committed + pushed Phase 1; wrote the Phase 2 plan (doc 19) | Owner approves doc 19 (D1–D6) + sends the LoopedIn export → build Phase 2 |
+| 2026-10-27 | mahbubur (Mac) | Committed + pushed doc 19; doc 19 approved; built Phase 2 steps 1–9 (schema, board, card drawer, public site, voting, voter sign-in, embed, Home dashboard), shared DatePicker/ColorPicker, 90 tests passing | LoopedIn export → import (step 10), Playwright flows, commit + push |

@@ -128,3 +128,46 @@
     @apply font-sans;
   }
 }
+
+/* Rich text: the card editor and server-rendered descriptions (src/lib/rich-text.ts). */
+@layer components {
+  .rich-text {
+    @apply text-sm leading-relaxed;
+  }
+  .rich-text > * + * {
+    @apply mt-2;
+  }
+  .rich-text h2 {
+    @apply text-lg font-semibold;
+  }
+  .rich-text h3 {
+    @apply text-base font-semibold;
+  }
+  .rich-text ul {
+    @apply list-disc pl-5;
+  }
+  .rich-text ol {
+    @apply list-decimal pl-5;
+  }
+  .rich-text a {
+    @apply text-primary underline underline-offset-2;
+  }
+  .rich-text blockquote {
+    @apply border-l-2 pl-3 text-muted-foreground;
+  }
+  .rich-text code {
+    @apply rounded bg-muted px-1 py-0.5 font-mono text-xs;
+  }
+  .rich-text pre {
+    @apply overflow-x-auto rounded-md bg-muted p-3;
+  }
+  .rich-text pre code {
+    @apply bg-transparent p-0;
+  }
+  .rich-text img {
+    @apply max-w-full rounded-md;
+  }
+  .rich-text hr {
+    @apply my-4;
+  }
+}

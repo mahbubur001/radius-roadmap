@@ -68,7 +68,7 @@ Keep this list in sync with `package.json`. Deploy files: `ecosystem.config.cjs`
 ### Next.js 16 specifics
 - Read `AGENTS.md`: Next's version-matched docs are in `node_modules/next/dist/docs/`.
 - **Cache Components is on.** Anything that reads runtime data (`cookies()`, `headers()`, `params`, `searchParams`, `useParams`, `useSearchParams`, the session) must render inside `<Suspense>`. Pattern: the page/layout passes `params.then(...)` into a small async child component (the "gate") wrapped in `<Suspense>`.
-- Server actions are wrapped with `action(schema, handler)` from `src/server/action.ts`: it re-validates with the form's Zod schema and maps service errors (`ForbiddenError`, `NotFoundError`, `ConflictError`) to `{ ok: false, error }`. Shared dashboard actions live in `src/app/(dashboard)/_actions/`.
+- Server actions are wrapped with `action(schema, handler)` from `src/server/action.ts` (or `workspaceAction(schema, (ctx, input) => …)`, which adds the `workspace` field and calls `requireWorkspace`): it re-validates with the form's Zod schema and maps service errors (`ForbiddenError`, `NotFoundError`, `ConflictError`) to `{ ok: false, error }`. Shared dashboard actions live in `src/app/(dashboard)/_actions/`.
 - Next keeps earlier pages mounted but hidden (Activity). In Playwright, prefer role queries or scope to the open `dialog`, because `getByLabel` also matches the hidden copies.
 - Every dashboard page and server action under `[workspace]` calls `requireWorkspace(slug)` (from `src/server/session.ts`) to get its tenant context. Never derive the account from anything else.
 
@@ -76,6 +76,13 @@ Keep this list in sync with `package.json`. Deploy files: `ecosystem.config.cjs`
 - Every tenant table has `account_id` (and `workspace_id` where it applies). **Every query must be scoped.** Go through `src/server/services/*`, which take a tenant context. Never import `db` in components, route handlers or server actions directly.
 - Public pages resolve the account from the hostname (`proxy.ts`). Never trust an `accountId` sent by the client.
 - Write a test for each service proving that data from another account can't be read.
+
+### Public sites and voting
+- A public site lives at `<account-slug>.<PUBLIC_ROOT_DOMAIN>` (`http://<slug>.localhost:3000` locally). `src/proxy.ts` rewrites it to `src/app/(public)/sites/[host]/…`; pages load data through the `"use cache"` loaders in `sites/[host]/data.ts`.
+- After any change that affects what a public site shows, call `invalidatePublic(workspaceId)` (roadmap data) and/or `invalidateSite(accountId)` (site name/logo, workspace list) from `src/server/public-cache.ts`. Dashboard roadmap actions do this through `mutate()`.
+- Public API routes (`src/app/api/public/*`) start with `publicRequest(request)` (`src/server/public-request.ts`): it resolves the site from the host, the visitor id (`rr_vid` cookie or `x-rr-visitor` header in embeds) and the voter session (`rr_vs`). Rate-limit with `hit()` from `src/server/rate-limit.ts`; check Turnstile with `verifyTurnstile`.
+- Never cache visitor-specific state (own votes, sign-in); the client loads it from `/api/public/me`.
+- Build links and redirects from `siteOrigin(request)`, not `request.nextUrl` (Caddy proxies the request).
 
 ### Team and roles
 - Owners and admins see every workspace; members only see workspaces granted in `workspace_members`. The rules are in `src/server/services/team.ts` and `invitations.ts`.
@@ -92,6 +99,7 @@ Keep this list in sync with `package.json`. Deploy files: `ecosystem.config.cjs`
 ### Validation and forms
 - One Zod schema per input in `src/lib/schemas`, used by React Hook Form (`zodResolver`) **and** re-checked on the server (server action / route handler).
 - Prefer `drizzle-zod` to derive schemas from tables.
+- **Never use bare browser inputs for rich values.** Dates use `DatePicker` / `DateRangePicker` from `src/components/form/date-picker.tsx` (shadcn Calendar in a Popover; values are ISO `YYYY-MM-DD` strings, with `RECENT_PRESETS` for analytics ranges). Colours use `ColorPicker`; rich text uses `RichTextEditor`. Reuse the shared components in `src/components/form/` before writing a new one.
 
 ### Data and migrations
 - Change the schema in `src/server/db/schema/*`, then run `pnpm db:generate`. Commit the SQL migration files. Never edit an applied migration.

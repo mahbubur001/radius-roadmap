@@ -57,6 +57,25 @@ export const templates: { [T in EmailTemplate]: TemplateDef<T> } = {
       </EmailLayout>
     ),
   },
+  "voter-code": {
+    subject: ({ code, siteName }) => `${code} is your ${siteName} sign-in code`,
+    render: ({ siteName, code, url }) => (
+      <EmailLayout
+        preview={`Your sign-in code is ${code}`}
+        heading={`Sign in to ${siteName}`}
+        action={{ label: "Sign in", url }}
+      >
+        <Text>Enter this code to sign in and vote:</Text>
+        <Text style={{ fontSize: 28, fontWeight: 700, letterSpacing: 6 }}>
+          {code}
+        </Text>
+        <Text>
+          Or use the button below. The code and link expire in 15 minutes. If
+          you didn't ask for this, you can ignore this email.
+        </Text>
+      </EmailLayout>
+    ),
+  },
   invitation: {
     subject: ({ accountName }) => `You're invited to ${accountName}`,
     render: ({ inviterName, accountName, role, workspaceNames, url }) => (

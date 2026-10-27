@@ -1,11 +1,13 @@
 import "server-only";
 import { unstable_rethrow } from "next/navigation";
-import type { z } from "zod";
+import { z } from "zod";
 import {
   ConflictError,
   ForbiddenError,
   NotFoundError,
+  type WorkspaceContext,
 } from "@/server/services/context";
+import { requireWorkspace } from "@/server/session";
 
 export type ActionResult<T = undefined> =
   | { ok: true; data: T }
@@ -44,4 +46,19 @@ export function action<S extends z.ZodType, T>(
       return { ok: false, error: "Something went wrong. Please try again." };
     }
   };
+}
+
+/**
+ * `action()` for pages under /[workspace]: the client also sends the
+ * workspace slug, and the handler receives the checked WorkspaceContext.
+ */
+export function workspaceAction<S extends z.ZodObject, T>(
+  schema: S,
+  handler: (ctx: WorkspaceContext, input: z.output<S>) => Promise<T>,
+) {
+  const withWorkspace = schema.extend({ workspace: z.string().min(1) });
+  return action(withWorkspace, async (parsed) => {
+    const { workspace, ...input } = parsed as { workspace: string };
+    return handler(await requireWorkspace(workspace), input as z.output<S>);
+  }) as (input: z.input<S> & { workspace: string }) => Promise<ActionResult<T>>;
 }

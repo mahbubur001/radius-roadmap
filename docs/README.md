@@ -28,7 +28,8 @@ Researched: 2026-10-27.
 | 15 | [15-public-site-audit.md](15-public-site-audit.md) | Live audit of Radius Theme public roadmap and proposed plan changes |
 | 16 | [16-admin-ui-walkthrough.md](16-admin-ui-walkthrough.md) | Logged-in admin walkthrough + plan impact |
 | 17 | [17-scaffold-plan.md](17-scaffold-plan.md) | Phase 0 scaffold plan (done) |
-| 18 | [18-phase-1-plan.md](18-phase-1-plan.md) | Phase 1 plan: accounts, workspaces, team, settings, uploads, voter model |
+| 18 | [18-phase-1-plan.md](18-phase-1-plan.md) | Phase 1 plan: accounts, workspaces, team, settings, uploads, voter model (built) |
+| 19 | [19-phase-2-plan.md](19-phase-2-plan.md) | Phase 2 plan: roadmap board, voting, public roadmap site, embed, LoopedIn import, analytics v1 |
 | — | [PROGRESS.md](PROGRESS.md) | **Start here each session**: status, next step, decisions, session log |
 
 ## Key URLs

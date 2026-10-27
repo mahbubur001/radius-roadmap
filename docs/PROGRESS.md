@@ -21,11 +21,12 @@
 - Public audit + approved changes: `docs/15-public-site-audit.md` §9
 - Admin audit + approved changes: `docs/16-admin-ui-walkthrough.md` §8
 - Phase 0 scaffold plan (done): `docs/17-scaffold-plan.md`
-- Phase 1 plan (approved): `docs/18-phase-1-plan.md`
+- Phase 1 plan (built): `docs/18-phase-1-plan.md`
+- Phase 2 plan (draft, awaiting approval): `docs/19-phase-2-plan.md`
 - Stack versions as built: `docs/14-dev-tools.md` → "Versions as built"
 
 ## Current status
-- **Phase:** Phase 0 done. **Phase 1 built 2026-10-27**; every item in doc 18's "Done when" list passes. It isn't committed yet (see Next step).
+- **Phase:** Phase 0 done. **Phase 1 built 2026-10-27**; every item in doc 18's "Done when" list passes. Committed and pushed (`b546e7f`).
 - **Phase 1 delivered:**
   - Workspace switcher with create, rename/re-slug and delete; account switcher; remembers the last workspace.
   - Team page: invite with role and workspaces; resend/cancel invites; change role; edit workspace access; remove member; transfer ownership; leave account.
@@ -35,12 +36,13 @@
   - `tracked_users` + voter sessions (service only).
   - Migration `0001`.
 - **Checks:** `pnpm lint`, `typecheck`, `test` (57 tests), `test:e2e` (6 tests: smoke, invite → member sees only granted workspace, rename/delete, avatar upload, change email, disabled endpoints) and `build` all pass.
-- **Git:** Phase 0 and the doc 18 plan are pushed to `origin/main`. The Phase 1 code is local only, until the owner says commit.
+- **Git:** Phases 0 and 1 are pushed to `origin/main` (latest `b546e7f`).
 - **This Mac:** Homebrew Postgres 18 + Redis, `EMAIL_TRANSPORT=console`, `STORAGE_DRIVER=local`. The local dev DB now also holds many `e2e-*`/`owner-*@example.test` accounts made by Playwright; they're harmless.
 
 ## Next step
-1. Owner: try Phase 1 locally (Settings → Team, Workspace, Account, Profile; the workspace switcher at the top-left), then commit + push.
-2. Write the **Phase 2 plan** (`docs/19-phase-2-plan.md`: roadmap, voting, public roadmap page, embed) and get it approved before coding. Decide the public URL scheme (subdomain vs path) there.
+1. Owner: review **`docs/19-phase-2-plan.md`** and answer decisions D1–D6 in its §2.
+2. Owner: export the Radius roadmap from LoopedIn (Roadmap → More → Export) and put the file in `docs/samples/` (needed for the importer, D4).
+3. After approval, build Phase 2 in the order of doc 19 §7.
 
 ## Decisions (approved)
 - Stack per doc 14:
@@ -97,3 +99,4 @@
 | 2026-10-27 | mahbubur (Mac) | Phase 0 scaffold built and verified: auth, onboarding, dashboard shell, queue/worker/email, widget, unit + e2e tests, deploy files, docs updated | First commit → write the Phase 1 plan (doc 18) for approval |
 | 2026-10-27 | mahbubur (Mac) | Committed + pushed Phase 0; wrote the Phase 1 plan (doc 18) | Doc 18 approved (all recommendations) → build Phase 1 |
 | 2026-10-27 | mahbubur (Mac) | Phase 1 built and tested (doc 18): workspaces, team/invites, workspace access, settings, uploads, voter model | Owner reviews + commits → Phase 2 plan (doc 19) |
+| 2026-10-27 | mahbubur (Mac) | Committed + pushed Phase 1; wrote the Phase 2 plan (doc 19) | Owner approves doc 19 (D1–D6) + sends the LoopedIn export → build Phase 2 |

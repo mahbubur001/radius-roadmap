@@ -35,14 +35,14 @@
   - Embed: `public/embed.js` + embed mode + Public settings page.
   - Home dashboard v1 (stat tiles, views chart, recent votes, most voted).
   - Shared form components: `DatePicker`/`DateRangePicker`, `ColorPicker`, `RichTextEditor`; chart: `ColumnChart`.
-- **Checks:** `pnpm lint`, `typecheck`, `test` (90 tests) and `build` pass. `test:e2e` was not re-run for Phase 2 and there are no Phase 2 Playwright flows yet.
-- **Git:** latest pushed commit `ff21550` (Phase 2 plan). All Phase 2 code is uncommitted.
+- **Checks:** `pnpm lint`, `typecheck`, `test` (91 tests), `test:e2e` (11 tests, incl. Phase 2 flows 1–5 in `e2e/roadmap.spec.ts`) and `build` pass.
+- **Git:** Phase 2 steps 1–9 pushed (`f7703a7`), then the Playwright flows, embed-height fix and proxy 404s.
 - **This Mac:** Homebrew Postgres 18 + Redis, `EMAIL_TRANSPORT=console`, `STORAGE_DRIVER=local`, `PUBLIC_ROOT_DOMAIN=localhost:3000` in `.env.local`. The dev workspace `demo-product` was renamed "Radius Roadmap" (slug unchanged). The local dev DB also holds many test accounts made by Playwright; they're harmless.
 
 ## Next step
 1. Owner: export the Radius roadmap from LoopedIn (Roadmap → More → Export) and put the file in `docs/samples/`. Then build step 10 (import page at `/<workspace>/roadmap/import`).
-2. Write Playwright flows 1–6 (doc 19 §6) and a rate-limit test; run `pnpm test:e2e`.
-3. Tick the remaining "Done when" items in doc 19, then commit + push Phase 2.
+2. Add Playwright flow 6 (import) once step 10 exists, and a rate-limit test.
+3. Tick the remaining "Done when" items in doc 19, then commit + push.
 
 ## Decisions (approved)
 - Stack per doc 14:
@@ -101,3 +101,4 @@
 | 2026-10-27 | mahbubur (Mac) | Phase 1 built and tested (doc 18): workspaces, team/invites, workspace access, settings, uploads, voter model | Owner reviews + commits → Phase 2 plan (doc 19) |
 | 2026-10-27 | mahbubur (Mac) | Committed + pushed Phase 1; wrote the Phase 2 plan (doc 19) | Owner approves doc 19 (D1–D6) + sends the LoopedIn export → build Phase 2 |
 | 2026-10-27 | mahbubur (Mac) | Committed + pushed doc 19; doc 19 approved; built Phase 2 steps 1–9 (schema, board, card drawer, public site, voting, voter sign-in, embed, Home dashboard), shared DatePicker/ColorPicker, 90 tests passing | LoopedIn export → import (step 10), Playwright flows, commit + push |
+| 2026-10-28 | mahbubur (Mac) | Pushed Phase 2 steps 1–9 (`f7703a7`); Playwright flows 1–5 (11 e2e passing); fixed embed iframe height ; real 404/308 for public pages via the proxy (owner approved) | LoopedIn export → step 10 |

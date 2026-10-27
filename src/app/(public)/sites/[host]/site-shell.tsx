@@ -30,6 +30,7 @@ export function SiteShell({
   return (
     <VoterProvider workspaceId={workspace.id} embed={embed}>
       <div
+        data-embed-root={embed ? "" : undefined}
         className={cn(
           "flex flex-col bg-background text-foreground",
           // In an iframe the height follows the content (see embed.js).

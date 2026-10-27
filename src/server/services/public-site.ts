@@ -443,3 +443,78 @@ export async function isSiteWorkspace(
     .limit(1);
   return !!row;
 }
+
+export type PublicPathStatus = "ok" | "missing" | { redirect: string };
+
+/**
+ * Cheap existence check for a public-site path, run by the proxy before the
+ * page streams, so missing pages get a real 404 and the `/` and
+ * `/<workspace>` shortcuts get real redirects. Same visibility rules as the
+ * page loaders above.
+ */
+export async function publicPathStatus(
+  db: Db,
+  ctx: PublicContext,
+  segments: string[],
+  board?: string,
+): Promise<PublicPathStatus> {
+  const [ws, module, cardSlug, ...rest] = segments;
+  if (!ws) {
+    const list = await listPublicWorkspaces(db, ctx);
+    const [only] = list;
+    return list.length === 1 && only
+      ? { redirect: `/${only.slug}/roadmap` }
+      : "ok";
+  }
+  if (segments.length === 1 && (ws === "sitemap.xml" || ws === "robots.txt")) {
+    return "ok";
+  }
+  if (rest.length || (module !== undefined && module !== "roadmap")) {
+    return "missing";
+  }
+
+  const roadmapScope = and(
+    eq(roadmaps.accountId, ctx.accountId),
+    eq(workspaces.slug, ws),
+    eq(roadmaps.isPublic, true),
+  );
+
+  if (!cardSlug) {
+    const [row] = await db
+      .select({ id: roadmaps.id })
+      .from(roadmaps)
+      .innerJoin(workspaces, eq(workspaces.id, roadmaps.workspaceId))
+      .where(
+        and(
+          roadmapScope,
+          module && board ? eq(roadmaps.slug, board) : undefined,
+        ),
+      )
+      .limit(1);
+    if (!row) return "missing";
+    return module ? "ok" : { redirect: `/${ws}/roadmap` };
+  }
+
+  const [card] = await db
+    .select({
+      completedAt: roadmapCards.completedAt,
+      display: roadmaps.display,
+    })
+    .from(roadmapCards)
+    .innerJoin(roadmaps, eq(roadmaps.id, roadmapCards.roadmapId))
+    .innerJoin(roadmapColumns, eq(roadmapColumns.id, roadmapCards.columnId))
+    .innerJoin(workspaces, eq(workspaces.id, roadmapCards.workspaceId))
+    .where(
+      and(
+        roadmapScope,
+        eq(roadmapCards.slug, cardSlug),
+        eq(roadmapCards.isPublic, true),
+        isNull(roadmapCards.archivedAt),
+        eq(roadmapColumns.isPublic, true),
+      ),
+    )
+    .limit(1);
+  if (!card) return "missing";
+  const display = { ...defaultDisplay, ...card.display };
+  return card.completedAt && !display.showCompleted ? "missing" : "ok";
+}

@@ -78,7 +78,7 @@ Keep this list in sync with `package.json`. Deploy files: `ecosystem.config.cjs`
 - Write a test for each service proving that data from another account can't be read.
 
 ### Public sites and voting
-- A public site lives at `<account-slug>.<PUBLIC_ROOT_DOMAIN>` (`http://<slug>.localhost:3000` locally). `src/proxy.ts` rewrites it to `src/app/(public)/sites/[host]/…`; pages load data through the `"use cache"` loaders in `sites/[host]/data.ts`.
+- A public site lives at `<account-slug>.<PUBLIC_ROOT_DOMAIN>` (`http://<slug>.localhost:3000` locally). `src/proxy.ts` rewrites it to `src/app/(public)/sites/[host]/…`; pages load data through the `"use cache"` loaders in `sites/[host]/data.ts`. Public pages stream, so their HTTP status is decided in the proxy by `publicPathStatus` (404 / 308); a new public route must be added there too.
 - After any change that affects what a public site shows, call `invalidatePublic(workspaceId)` (roadmap data) and/or `invalidateSite(accountId)` (site name/logo, workspace list) from `src/server/public-cache.ts`. Dashboard roadmap actions do this through `mutate()`.
 - Public API routes (`src/app/api/public/*`) start with `publicRequest(request)` (`src/server/public-request.ts`): it resolves the site from the host, the visitor id (`rr_vid` cookie or `x-rr-visitor` header in embeds) and the voter session (`rr_vs`). Rate-limit with `hit()` from `src/server/rate-limit.ts`; check Turnstile with `verifyTurnstile`.
 - Never cache visitor-specific state (own votes, sign-in); the client loads it from `/api/public/me`.

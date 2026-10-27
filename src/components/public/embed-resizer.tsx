@@ -9,16 +9,20 @@ import { useEffect } from "react";
 export function EmbedResizer() {
   useEffect(() => {
     if (window.parent === window) return;
+    // Measure the site shell, not the document: the document is never
+    // shorter than the iframe itself, so the frame could only ever grow.
+    const root = document.querySelector("[data-embed-root]");
+    if (!root) return;
     const post = () =>
       window.parent.postMessage(
         {
           type: "radius-roadmap:height",
-          height: document.documentElement.scrollHeight,
+          height: Math.ceil(root.getBoundingClientRect().height),
         },
         "*",
       );
     const observer = new ResizeObserver(post);
-    observer.observe(document.body);
+    observer.observe(root);
     post();
     return () => observer.disconnect();
   }, []);

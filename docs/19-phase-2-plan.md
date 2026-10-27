@@ -254,13 +254,17 @@ Deviations from the plan above:
 - Shared form components were added for every rich value: `DatePicker` / `DateRangePicker`, `ColorPicker`, `RichTextEditor` (`src/components/form/`), plus `ColumnChart` (`src/components/charts/`).
 - Home dashboard v1: 7D/1M/3M range (`?range=`), stat tiles (page views, unique visitors, votes), page views per day (with a table view), recent votes, most voted.
 
-Still to do: step 10 (LoopedIn import, waiting for the export file), a rate-limit test, Playwright flows 1–6.
+- Playwright flows 1–5 are in `e2e/roadmap.spec.ts` (flow 6 waits for the importer). Each test sends its own `x-forwarded-for` so vote rate limits don't collide between runs; the embed test serves the customer page from a local HTTP server, because Chrome blocks route-mocked (public) pages from loading loopback URLs.
+- The embed measures the site shell (`[data-embed-root]`), not the document, so the iframe can also shrink below its 600px default.
+- **Real 404s and redirects for public sites come from the proxy.** Public pages stream (Cache Components), so their status is fixed at 200 before they render. `src/proxy.ts` first runs `publicPathStatus` (one indexed query, same visibility rules as the loaders): missing site/workspace/roadmap/card → plain 404 page; `/` (one workspace) and `/<workspace>` → 308 to the roadmap. Approved by the owner 2026-10-28.
+
+Still to do: step 10 (LoopedIn import, waiting for the export file) and a rate-limit test.
 
 ## Done when
 - [x] Admins and members (with access) manage a roadmap on a drag-and-drop board; cards autosave; columns, categories, tags and display settings work.
 - [x] The public roadmap at `<account>.<root>/<workspace>/roadmap` is server-rendered, indexable (when allowed) and shows only public content.
 - [x] Anonymous, guest and magic-link voters can vote once per card, with abuse limits; "require sign-in" works; admins see named voters + the anonymous count.
-- [ ] `embed.js` embeds the roadmap with automatic height, and voting works inside it.
+- [x] `embed.js` embeds the roadmap with automatic height, and voting works inside it.
 - [ ] Radius's LoopedIn roadmap export imports with its columns, cards and vote totals.
 - [x] Home shows views, recent votes and top cards.
 - [ ] `pnpm lint`, `typecheck`, `test`, `test:e2e` and `build` pass.

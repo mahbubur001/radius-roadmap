@@ -9,5 +9,5 @@ test("sign up, verify email, create a workspace, see the dashboard", async ({
 
   await expect(page.getByRole("heading", { name: "Home" })).toBeVisible();
   await page.getByRole("link", { name: "Roadmap" }).click();
-  await expect(page.getByRole("heading", { name: "Roadmap" })).toBeVisible();
+  await expect(page.getByRole("region", { name: "Up next" })).toBeVisible();
 });

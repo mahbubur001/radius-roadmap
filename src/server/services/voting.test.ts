@@ -23,6 +23,7 @@ import {
   getPublicRoadmap,
   getVotableCard,
   isSiteWorkspace,
+  publicPathStatus,
   resolveSite,
 } from "./public-site";
 import {
@@ -194,6 +195,29 @@ describe("public site visibility", () => {
     expect(await getVotableCard(db, pubB, card.id)).toBeNull();
     expect(await isSiteWorkspace(db, pubB, wsA.workspaceId)).toBe(false);
     expect(await isSiteWorkspace(db, pubA, wsA.workspaceId)).toBe(true);
+  });
+});
+
+describe("public path status (proxy 404s)", () => {
+  it("finds real pages and rejects everything else", async () => {
+    const ws = wsA.workspaceSlug;
+    const check = (path: string, board?: string) =>
+      publicPathStatus(db, pubA, path.split("/").filter(Boolean), board);
+    expect(await check(`/${ws}/roadmap`)).toBe("ok");
+    expect(await check(`/${ws}/roadmap`, boardSlug)).toBe("ok");
+    expect(await check(`/${ws}/roadmap`, "nope")).toBe("missing");
+    expect(await check(`/${ws}/roadmap/${card.slug}`)).toBe("ok");
+    expect(await check(`/${ws}/roadmap/${hidden.slug}`)).toBe("missing");
+    expect(await check(`/${ws}/roadmap/nope`)).toBe("missing");
+    expect(await check(`/${ws}`)).toEqual({ redirect: `/${ws}/roadmap` });
+    expect(await check("/")).toEqual({ redirect: `/${ws}/roadmap` });
+    expect(await check("/nope/roadmap")).toBe("missing");
+    expect(await check(`/${ws}/other`)).toBe("missing");
+    expect(await check("/sitemap.xml")).toBe("ok");
+    // Another account's site never sees this workspace.
+    expect(await publicPathStatus(db, pubB, [ws, "roadmap", card.slug])).toBe(
+      "missing",
+    );
   });
 });
 

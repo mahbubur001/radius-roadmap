@@ -1,0 +1,7 @@
+onlyBuiltDependencies:
+  - esbuild
+  - lefthook
+  - msgpackr-extract
+ignoredBuiltDependencies:
+  - sharp
+  - unrs-resolver

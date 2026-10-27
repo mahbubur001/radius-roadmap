@@ -1,0 +1,22 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Widget test page</title>
+    <style>
+      body { font-family: Georgia, serif; padding: 40px; }
+      button { font-size: 18px; }
+    </style>
+  </head>
+  <body>
+    <h1>Host site</h1>
+    <p>Local test page for the embeddable widget (pnpm build:widget first).</p>
+    <button id="custom-launcher" type="button">Open via custom selector</button>
+
+    <script>
+      window.radiusRoadmapConfig = { workspaceId: "demo-workspace" };
+    </script>
+    <script src="/widget.js" defer></script>
+  </body>
+</html>

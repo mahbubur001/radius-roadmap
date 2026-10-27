@@ -12,6 +12,12 @@ export type WorkspaceContext = AccountContext & {
   workspaceSlug: string;
 };
 
+/**
+ * Public pages and the widget: the account comes from the hostname (or the
+ * widget's workspace id), never from the client. No team member involved.
+ */
+export type PublicContext = { accountId: string };
+
 const rank: Record<Role, number> = { member: 0, admin: 1, owner: 2 };
 
 export class ForbiddenError extends Error {
@@ -28,8 +34,30 @@ export class NotFoundError extends Error {
   }
 }
 
+/** A unique value (slug, email…) is already taken. */
+export class ConflictError extends Error {
+  constructor(message = "That is already taken.") {
+    super(message);
+    this.name = "ConflictError";
+  }
+}
+
+/** Postgres unique_violation, raw or wrapped by Drizzle. */
+export function isUniqueViolation(error: unknown): boolean {
+  for (let e = error; e instanceof Error || (e && typeof e === "object"); ) {
+    if ((e as { code?: unknown }).code === "23505") return true;
+    e = (e as { cause?: unknown }).cause;
+  }
+  return false;
+}
+
 export function assertRole(ctx: AccountContext, min: Role) {
   if (rank[ctx.role] < rank[min]) throw new ForbiddenError();
+}
+
+/** Owners and admins see every workspace; members only their granted ones. */
+export function seesAllWorkspaces(ctx: AccountContext) {
+  return ctx.role !== "member";
 }
 
 export function toRole(value: string): Role {

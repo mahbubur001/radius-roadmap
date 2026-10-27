@@ -40,9 +40,26 @@ export const templates: { [T in EmailTemplate]: TemplateDef<T> } = {
       </EmailLayout>
     ),
   },
+  "change-email": {
+    subject: () => "Confirm your new email address",
+    render: ({ name, newEmail, url }) => (
+      <EmailLayout
+        preview="Confirm your new email address"
+        heading="Confirm your new email"
+        action={{ label: "Confirm email change", url }}
+      >
+        <Text>Hi {name},</Text>
+        <Text>
+          Confirm that you want to change your Radius Roadmap email to{" "}
+          <strong>{newEmail}</strong>. If you didn't ask for this, ignore this
+          email and nothing will change.
+        </Text>
+      </EmailLayout>
+    ),
+  },
   invitation: {
     subject: ({ accountName }) => `You're invited to ${accountName}`,
-    render: ({ inviterName, accountName, url }) => (
+    render: ({ inviterName, accountName, role, workspaceNames, url }) => (
       <EmailLayout
         preview={`${inviterName} invited you to ${accountName}`}
         heading={`Join ${accountName}`}
@@ -50,8 +67,12 @@ export const templates: { [T in EmailTemplate]: TemplateDef<T> } = {
       >
         <Text>
           {inviterName} invited you to join <strong>{accountName}</strong> on
-          Radius Roadmap.
+          Radius Roadmap as {role === "admin" ? "an admin" : `a ${role}`}.
         </Text>
+        {role === "member" && workspaceNames.length ? (
+          <Text>You'll have access to: {workspaceNames.join(", ")}.</Text>
+        ) : null}
+        <Text>This invitation expires in 7 days.</Text>
       </EmailLayout>
     ),
   },

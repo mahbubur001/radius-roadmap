@@ -2,7 +2,7 @@
 
 import { zodResolver } from "@hookform/resolvers/zod";
 import Link from "next/link";
-import { useRouter } from "next/navigation";
+import { useRouter, useSearchParams } from "next/navigation";
 import { useState } from "react";
 import { useForm } from "react-hook-form";
 import { toast } from "sonner";
@@ -10,19 +10,25 @@ import { TextField } from "@/components/form/text-field";
 import { Button } from "@/components/ui/button";
 import { FieldGroup } from "@/components/ui/field";
 import { authClient } from "@/lib/auth-client";
+import { safeNext } from "@/lib/safe-next";
 import { type SignInInput, signInSchema } from "@/lib/schemas/auth";
 
 export function SignInForm() {
   const router = useRouter();
+  const params = useSearchParams();
+  const next = safeNext(params.get("next"), "/");
   const [pending, setPending] = useState(false);
   const form = useForm<SignInInput>({
     resolver: zodResolver(signInSchema),
-    defaultValues: { email: "", password: "" },
+    defaultValues: { email: params.get("email") ?? "", password: "" },
   });
 
   async function onSubmit(values: SignInInput) {
     setPending(true);
-    const { error } = await authClient.signIn.email(values);
+    const { error } = await authClient.signIn.email({
+      ...values,
+      callbackURL: next,
+    });
     setPending(false);
     if (error) {
       if (error.status === 403) {
@@ -32,7 +38,7 @@ export function SignInForm() {
       toast.error(error.message ?? "Couldn't sign in.");
       return;
     }
-    router.push("/");
+    router.push(next);
     router.refresh();
   }
 

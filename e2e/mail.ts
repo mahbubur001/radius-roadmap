@@ -6,22 +6,31 @@ const MAIL_DIR = ".dev-mail";
 
 type DevMail = { to: string; subject: string; text: string };
 
-// Waits for the console email transport to write a message to `to`.
-export async function waitForMail(to: string): Promise<DevMail> {
+/** Waits for the console email transport to write a message to `to`. */
+export async function waitForMail(
+  to: string,
+  subject?: string,
+): Promise<DevMail> {
   let mail: DevMail | undefined;
   await expect
     .poll(
       async () => {
-        const files = await readdir(MAIL_DIR).catch(() => []);
-        const match = files
+        const files = (await readdir(MAIL_DIR).catch(() => []))
           .filter((f) => f.endsWith(`-${to}.json`))
           .sort()
-          .at(-1);
-        if (!match) return false;
-        mail = JSON.parse(await readFile(join(MAIL_DIR, match), "utf8"));
-        return true;
+          .reverse();
+        for (const f of files) {
+          const m: DevMail = JSON.parse(
+            await readFile(join(MAIL_DIR, f), "utf8"),
+          );
+          if (!subject || m.subject.includes(subject)) {
+            mail = m;
+            return true;
+          }
+        }
+        return false;
       },
-      { timeout: 20_000, message: `no email for ${to}` },
+      { timeout: 20_000, message: `no email for ${to} (${subject ?? "any"})` },
     )
     .toBe(true);
   return mail as DevMail;

@@ -20,7 +20,10 @@ export const RESERVED_SLUGS = new Set([
   "www",
   "static",
   "_next",
+  "no-access",
 ]);
+
+export const LAST_WORKSPACE_COOKIE = "last_workspace";
 
 export const slugSchema = z
   .string()
@@ -36,6 +39,20 @@ export const createWorkspaceSchema = z.object({
 });
 
 export type CreateWorkspaceInput = z.infer<typeof createWorkspaceSchema>;
+
+export const workspaceSettingsSchema = z.object({
+  requireVoterLogin: z.boolean(),
+  darkModeDefault: z.boolean(),
+  indexPublicPages: z.boolean(),
+});
+
+export const updateWorkspaceSchema = createWorkspaceSchema.extend({
+  settings: workspaceSettingsSchema,
+});
+
+export type UpdateWorkspaceInput = z.infer<typeof updateWorkspaceSchema>;
+
+export const workspaceIdSchema = z.object({ id: z.uuid() });
 
 /** Onboarding: create the account (organization) and its first workspace. */
 export const onboardingSchema = z.object({

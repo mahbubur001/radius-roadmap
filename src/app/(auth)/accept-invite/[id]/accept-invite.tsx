@@ -2,31 +2,53 @@
 
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { use, useState } from "react";
+import { useState } from "react";
 import { toast } from "sonner";
+import { SignOutButton } from "@/components/auth/sign-out-button";
 import { Button } from "@/components/ui/button";
-import { authClient, useSession } from "@/lib/auth-client";
+import { authClient } from "@/lib/auth-client";
 
-export function AcceptInvite({ idPromise }: { idPromise: Promise<string> }) {
-  const invitationId = use(idPromise);
+export function AcceptInvite({
+  invitationId,
+  invitedEmail,
+  signedInEmail,
+}: {
+  invitationId: string;
+  invitedEmail: string;
+  signedInEmail: string | null;
+}) {
   const router = useRouter();
-  const { data: session, isPending } = useSession();
   const [busy, setBusy] = useState(false);
+  const back = encodeURIComponent(`/accept-invite/${invitationId}`);
+  const email = encodeURIComponent(invitedEmail);
 
-  if (isPending) return null;
-
-  if (!session) {
+  if (!signedInEmail) {
     return (
-      <p className="text-sm text-muted-foreground">
-        <Link href="/sign-in" className="text-foreground underline">
-          Sign in
-        </Link>{" "}
-        or{" "}
-        <Link href="/sign-up" className="text-foreground underline">
-          create an account
-        </Link>{" "}
-        with the invited email, then open this link again.
-      </p>
+      <div className="flex flex-col gap-3">
+        <Button asChild className="w-full">
+          <Link href={`/sign-up?next=${back}&email=${email}`}>
+            Create an account
+          </Link>
+        </Button>
+        <Button asChild variant="outline" className="w-full">
+          <Link href={`/sign-in?next=${back}&email=${email}`}>
+            I already have an account
+          </Link>
+        </Button>
+      </div>
+    );
+  }
+
+  if (signedInEmail.toLowerCase() !== invitedEmail.toLowerCase()) {
+    return (
+      <div className="flex flex-col gap-4">
+        <p className="text-sm text-muted-foreground">
+          You&apos;re signed in as <strong>{signedInEmail}</strong>, but this
+          invitation is for <strong>{invitedEmail}</strong>. Sign out to
+          continue with the right account.
+        </p>
+        <SignOutButton redirectTo={`/accept-invite/${invitationId}`} />
+      </div>
     );
   }
 
@@ -40,13 +62,14 @@ export function AcceptInvite({ idPromise }: { idPromise: Promise<string> }) {
       toast.error(error.message ?? "This invitation is invalid or expired.");
       return;
     }
+    // The accepted account is now active; "/" opens its first workspace.
     router.push("/");
     router.refresh();
   }
 
   return (
     <Button onClick={accept} disabled={busy} className="w-full">
-      Accept invitation
+      {busy ? "Joining…" : "Accept invitation"}
     </Button>
   );
 }

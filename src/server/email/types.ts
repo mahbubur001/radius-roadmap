@@ -1,9 +1,13 @@
 export type EmailTemplateProps = {
   "verify-email": { name: string; url: string };
   "reset-password": { name: string; url: string };
+  "change-email": { name: string; newEmail: string; url: string };
   invitation: {
     inviterName: string;
     accountName: string;
+    role: "owner" | "admin" | "member";
+    /** Workspaces a "member" gets; empty for owners and admins (all). */
+    workspaceNames: string[];
     url: string;
   };
 };

@@ -1,7 +1,7 @@
 "use client";
 
 import { zodResolver } from "@hookform/resolvers/zod";
-import { useRouter } from "next/navigation";
+import { useRouter, useSearchParams } from "next/navigation";
 import { useState } from "react";
 import { useForm } from "react-hook-form";
 import { toast } from "sonner";
@@ -9,21 +9,25 @@ import { TextField } from "@/components/form/text-field";
 import { Button } from "@/components/ui/button";
 import { FieldGroup } from "@/components/ui/field";
 import { authClient } from "@/lib/auth-client";
+import { safeNext } from "@/lib/safe-next";
 import { type SignUpInput, signUpSchema } from "@/lib/schemas/auth";
 
 export function SignUpForm() {
   const router = useRouter();
+  const params = useSearchParams();
+  // After verifying their email: an invite link, else onboarding.
+  const next = safeNext(params.get("next"), "/onboarding");
   const [pending, setPending] = useState(false);
   const form = useForm<SignUpInput>({
     resolver: zodResolver(signUpSchema),
-    defaultValues: { name: "", email: "", password: "" },
+    defaultValues: { name: "", email: params.get("email") ?? "", password: "" },
   });
 
   async function onSubmit(values: SignUpInput) {
     setPending(true);
     const { error } = await authClient.signUp.email({
       ...values,
-      callbackURL: "/onboarding",
+      callbackURL: next,
     });
     setPending(false);
     if (error) {

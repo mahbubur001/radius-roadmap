@@ -1,6 +1,6 @@
 # 18 — Phase 1 plan: Accounts, workspaces & team
 
-Status: **APPROVED 2026-10-27**, with all §2 recommendations (D1–D5) accepted.
+Status: **APPROVED 2026-10-27** (all §2 recommendations, D1–D5). **BUILT 2026-10-27**; see "As built" below.
 
 Phase 0 gave us sign-up, onboarding (one account + one workspace) and an empty dashboard shell. Phase 1 makes an account usable by a real team:
 - several workspaces, with a switcher
@@ -216,10 +216,18 @@ All forms use React Hook Form with the shared Zod schemas, re-checked on the ser
 7. Tracked-users service + tests (no UI).
 8. Playwright team flow; update CLAUDE.md, doc 14 (new env vars and deps) and PROGRESS.md.
 
+## As built (2026-10-27): differences from the plan
+- **Email change:** the *current* address approves first (Better Auth `sendChangeEmailConfirmation`, template `change-email`); then Better Auth sends a verification link to the new address. This is safer than verifying only the new address.
+- **Uploads use presigned POST, not PUT:** a presigned PUT can't enforce a size limit; POST uses a `content-length-range` condition. The local driver accepts the same form at `POST /api/uploads` and checks an HMAC token and the image's magic bytes. Files are served from `GET /api/files/...`.
+- **Team writes bypass Better Auth's org endpoints:** our services write `member`/`invitation` rows, and Better Auth's HTTP endpoints for those writes are switched off with `disabledPaths`. Accepting still uses Better Auth (`afterAcceptInvitation` → `grantInvitedWorkspaces`).
+- **Last workspace** is remembered by `src/proxy.ts` (cookie `last_workspace`). Members with no workspaces land on `/no-access`.
+- **Voter function** is named `identifyTrackedUser` (plan: `upsertTrackedUser`).
+- **Shared helpers:** `src/server/action.ts` (the `action()` wrapper), `src/test/factories.ts` (test accounts and users), `src/lib/safe-next.ts` (`?next=` redirects).
+
 ## Done when
-- [ ] An owner can invite a teammate with a role and specific workspaces; the teammate signs up through the link and sees only those workspaces.
-- [ ] Owners and admins can create, rename, re-slug and delete workspaces; everyone can switch workspaces (and accounts, if they have several).
-- [ ] Role rules in §4.3 are enforced on the server and covered by tests.
-- [ ] Profile, account and workspace settings save, including logo and avatar uploads (local driver works with no AWS).
-- [ ] `tracked_users` and sessions exist with service + isolation tests.
-- [ ] `pnpm lint`, `typecheck`, `test`, `test:e2e` and `build` pass.
+- [x] An owner can invite a teammate with a role and specific workspaces; the teammate signs up through the link and sees only those workspaces.
+- [x] Owners and admins can create, rename, re-slug and delete workspaces; everyone can switch workspaces (and accounts, if they have several).
+- [x] Role rules in §4.3 are enforced on the server and covered by tests.
+- [x] Profile, account and workspace settings save, including logo and avatar uploads (local driver works with no AWS).
+- [x] `tracked_users` and sessions exist with service + isolation tests.
+- [x] `pnpm lint`, `typecheck`, `test`, `test:e2e` and `build` pass.

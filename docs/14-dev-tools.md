@@ -197,3 +197,7 @@ Installed versions differ from the planning estimates above. These are the ones 
 - Email transports: `console` (dev default), `smtp` (Mailpit / custom SMTP), `ses`.
 - Local services: Docker Compose **or** native Homebrew Postgres + Redis. The owner's Mac has no Docker and Mailpit wouldn't install, so it uses the `console` email transport.
 - pm2 file is `ecosystem.config.cjs`, because the package is `"type": "module"`.
+- Phase 1 additions:
+  - `@aws-sdk/client-s3` + `@aws-sdk/s3-presigned-post` (presigned **POST**, because it can cap file size)
+  - env `STORAGE_DRIVER` (`local`|`s3`), `UPLOAD_DIR`, `S3_BUCKET`, `S3_PUBLIC_URL`
+  - `dotenv-cli` removed: `dotenv` 18 ships its own CLI (`dotenv run -f .env.local -- …`)

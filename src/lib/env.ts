@@ -23,6 +23,13 @@ export const env = createEnv({
     SMTP_PASSWORD: z.string().optional(),
     // SES uses the default AWS credential chain (instance role on EC2)
     AWS_REGION: z.string().default("us-east-1"),
+
+    // File uploads: "local" (dev: files in UPLOAD_DIR) or "s3" (production)
+    STORAGE_DRIVER: z.enum(["local", "s3"]).default("local"),
+    UPLOAD_DIR: z.string().default(".uploads"),
+    S3_BUCKET: z.string().optional(),
+    // Public base URL for stored files (bucket URL or CloudFront)
+    S3_PUBLIC_URL: z.url().optional(),
   },
   client: {
     NEXT_PUBLIC_APP_URL: z.url(),
@@ -42,6 +49,10 @@ export const env = createEnv({
     SMTP_USER: process.env.SMTP_USER,
     SMTP_PASSWORD: process.env.SMTP_PASSWORD,
     AWS_REGION: process.env.AWS_REGION,
+    STORAGE_DRIVER: process.env.STORAGE_DRIVER,
+    UPLOAD_DIR: process.env.UPLOAD_DIR,
+    S3_BUCKET: process.env.S3_BUCKET,
+    S3_PUBLIC_URL: process.env.S3_PUBLIC_URL,
     NEXT_PUBLIC_APP_URL: process.env.NEXT_PUBLIC_APP_URL,
   },
   emptyStringAsUndefined: true,

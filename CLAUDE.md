@@ -68,12 +68,22 @@ Keep this list in sync with `package.json`. Deploy files: `ecosystem.config.cjs`
 ### Next.js 16 specifics
 - Read `AGENTS.md`: Next's version-matched docs are in `node_modules/next/dist/docs/`.
 - **Cache Components is on.** Anything that reads runtime data (`cookies()`, `headers()`, `params`, `searchParams`, `useParams`, `useSearchParams`, the session) must render inside `<Suspense>`. Pattern: the page/layout passes `params.then(...)` into a small async child component (the "gate") wrapped in `<Suspense>`.
+- Server actions are wrapped with `action(schema, handler)` from `src/server/action.ts`: it re-validates with the form's Zod schema and maps service errors (`ForbiddenError`, `NotFoundError`, `ConflictError`) to `{ ok: false, error }`. Shared dashboard actions live in `src/app/(dashboard)/_actions/`.
+- Next keeps earlier pages mounted but hidden (Activity). In Playwright, prefer role queries or scope to the open `dialog`, because `getByLabel` also matches the hidden copies.
 - Every dashboard page and server action under `[workspace]` calls `requireWorkspace(slug)` (from `src/server/session.ts`) to get its tenant context. Never derive the account from anything else.
 
 ### Multi-tenancy (critical)
 - Every tenant table has `account_id` (and `workspace_id` where it applies). **Every query must be scoped.** Go through `src/server/services/*`, which take a tenant context. Never import `db` in components, route handlers or server actions directly.
 - Public pages resolve the account from the hostname (`proxy.ts`). Never trust an `accountId` sent by the client.
 - Write a test for each service proving that data from another account can't be read.
+
+### Team and roles
+- Owners and admins see every workspace; members only see workspaces granted in `workspace_members`. The rules are in `src/server/services/team.ts` and `invitations.ts`.
+- Better Auth's HTTP endpoints for organization writes are disabled (`disabledPaths` in `src/server/auth`). Never re-enable them or call `authClient.organization.*` for team changes; go through our services.
+
+### Uploads
+- Use `src/server/storage` only: `createUpload` (signed POST form), `fileUrl`, `deleteFile`. Keys always sit under a tenant prefix (`prefixes.*`); check them with `keyHasPrefix` before saving.
+- `STORAGE_DRIVER=local` keeps files in `.uploads/` (dev); `s3` is for production.
 
 ### Two kinds of user
 - **Team members** (dashboard) use Better Auth. Organization = Account; check roles (owner/admin/member) on every mutation.

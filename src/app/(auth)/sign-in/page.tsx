@@ -1,5 +1,6 @@
 import type { Metadata } from "next";
 import Link from "next/link";
+import { Suspense } from "react";
 import { AuthCard } from "@/components/auth/auth-card";
 import { SignInForm } from "@/components/auth/sign-in-form";
 
@@ -19,7 +20,10 @@ export default function SignInPage() {
         </span>
       }
     >
-      <SignInForm />
+      {/* Reads ?next= and ?email= (runtime data), so it renders in Suspense. */}
+      <Suspense fallback={null}>
+        <SignInForm />
+      </Suspense>
     </AuthCard>
   );
 }

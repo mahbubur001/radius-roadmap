@@ -25,22 +25,22 @@
 - Stack versions as built: `docs/14-dev-tools.md` → "Versions as built"
 
 ## Current status
-- **Phase:** Phase 0 (scaffold) **finished** on 2026-10-27. Every "Done when" item in doc 17 passes.
-- **Code:**
-  - Next 16.4 app with Better Auth (email/password, verification, reset, organizations = accounts, invitations).
-  - Onboarding creates an account and its first workspace.
-  - Dashboard shell at `/<workspace>`, with placeholder pages for each module.
-  - Tenant-scoped `workspaces` service, with an isolation test.
-  - BullMQ email queue and worker; React Email templates; console/smtp/ses transports.
-  - Hostname proxy skeleton for public sites.
-  - Preact widget skeleton (`public/widget.js`, ~6.5 KB gzipped).
-  - Deploy files (pm2, Caddy, deploy script, CI).
-- **Checks:** `pnpm lint`, `pnpm typecheck`, `pnpm test` (15 tests), `pnpm test:e2e` (sign-up → verify → onboarding → dashboard) and `pnpm build` all pass.
-- **Git:** Phase 0 committed (`4267510`) and pushed to `origin/main` (`git@github.com:mahbubur001/radius-roadmap.git`).
-- **This Mac:** no Docker, and Mailpit won't install, so it uses Homebrew Postgres 18 + Redis and `EMAIL_TRANSPORT=console`.
+- **Phase:** Phase 0 done. **Phase 1 built 2026-10-27**; every item in doc 18's "Done when" list passes. It isn't committed yet (see Next step).
+- **Phase 1 delivered:**
+  - Workspace switcher with create, rename/re-slug and delete; account switcher; remembers the last workspace.
+  - Team page: invite with role and workspaces; resend/cancel invites; change role; edit workspace access; remove member; transfer ownership; leave account.
+  - Per-member workspace access.
+  - Profile (name, photo, change email with approval from the current address, password, sign out other devices); account and workspace settings with logo uploads.
+  - Storage layer (local + S3).
+  - `tracked_users` + voter sessions (service only).
+  - Migration `0001`.
+- **Checks:** `pnpm lint`, `typecheck`, `test` (57 tests), `test:e2e` (6 tests: smoke, invite → member sees only granted workspace, rename/delete, avatar upload, change email, disabled endpoints) and `build` all pass.
+- **Git:** Phase 0 and the doc 18 plan are pushed to `origin/main`. The Phase 1 code is local only, until the owner says commit.
+- **This Mac:** Homebrew Postgres 18 + Redis, `EMAIL_TRANSPORT=console`, `STORAGE_DRIVER=local`. The local dev DB now also holds many `e2e-*`/`owner-*@example.test` accounts made by Playwright; they're harmless.
 
 ## Next step
-Build Phase 1 per `docs/18-phase-1-plan.md` §7, starting with Step 1 (schema). Check that plan's "Done when" list as steps land.
+1. Owner: try Phase 1 locally (Settings → Team, Workspace, Account, Profile; the workspace switcher at the top-left), then commit + push.
+2. Write the **Phase 2 plan** (`docs/19-phase-2-plan.md`: roadmap, voting, public roadmap page, embed) and get it approved before coding. Decide the public URL scheme (subdomain vs path) there.
 
 ## Decisions (approved)
 - Stack per doc 14:
@@ -79,7 +79,7 @@ Build Phase 1 per `docs/18-phase-1-plan.md` §7, starting with Step 1 (schema). 
 - [x] Live public audit — doc 15
 - [x] Live admin audit — doc 16
 - [x] Phase 0 — Scaffold (doc 17)
-- [ ] Phase 1 — Accounts & workspaces
+- [x] Phase 1 — Accounts & workspaces (doc 18)
 - [ ] Phase 2 — Roadmap + voting + public page + embed
 - [ ] Phase 3 — Feedback + triage + import
 - [ ] Phase 4 — Updates + email
@@ -96,3 +96,4 @@ Build Phase 1 per `docs/18-phase-1-plan.md` §7, starting with Step 1 (schema). 
 | 2026-10-27 | mahbubur (Mac) | LoopedIn research (docs 00–13), stack (14), public audit (15), admin audit (16), CLAUDE.md, scaffold plan (17), this file | Approve 17 + set up the git remote → start Phase 0 |
 | 2026-10-27 | mahbubur (Mac) | Phase 0 scaffold built and verified: auth, onboarding, dashboard shell, queue/worker/email, widget, unit + e2e tests, deploy files, docs updated | First commit → write the Phase 1 plan (doc 18) for approval |
 | 2026-10-27 | mahbubur (Mac) | Committed + pushed Phase 0; wrote the Phase 1 plan (doc 18) | Doc 18 approved (all recommendations) → build Phase 1 |
+| 2026-10-27 | mahbubur (Mac) | Phase 1 built and tested (doc 18): workspaces, team/invites, workspace access, settings, uploads, voter model | Owner reviews + commits → Phase 2 plan (doc 19) |

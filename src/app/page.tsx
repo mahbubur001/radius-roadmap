@@ -1,10 +1,13 @@
+import { cookies } from "next/headers";
 import { redirect } from "next/navigation";
 import { Suspense } from "react";
+import { LAST_WORKSPACE_COOKIE } from "@/lib/schemas/workspace";
 import { db } from "@/server/db/client";
 import { listWorkspaces } from "@/server/services/workspaces";
 import { requireAccount } from "@/server/session";
 
-// Entry point: send the user to their first workspace (or sign-in/onboarding).
+// Entry point: back to the last-used workspace, else the first one the user
+// can open. Members with no workspace access yet get an explanation page.
 export default function Home() {
   return (
     <Suspense fallback={null}>
@@ -15,7 +18,10 @@ export default function Home() {
 
 async function HomeRedirect() {
   const ctx = await requireAccount();
-  const [first] = await listWorkspaces(db, ctx);
-  redirect(first ? `/${first.slug}` : "/onboarding");
+  const workspaces = await listWorkspaces(db, ctx);
+  const last = (await cookies()).get(LAST_WORKSPACE_COOKIE)?.value;
+  const target = workspaces.find((w) => w.slug === last) ?? workspaces[0];
+  if (target) redirect(`/${target.slug}`);
+  redirect(ctx.role === "member" ? "/no-access" : "/onboarding");
   return null;
 }

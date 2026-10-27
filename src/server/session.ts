@@ -1,5 +1,5 @@
 import "server-only";
-import { and, eq } from "drizzle-orm";
+import { asc, eq } from "drizzle-orm";
 import { headers } from "next/headers";
 import { redirect } from "next/navigation";
 import { cache } from "react";
@@ -26,25 +26,28 @@ export async function requireUser() {
   return session;
 }
 
-/** The signed-in user's active account. Redirects to onboarding if none. */
+/**
+ * The signed-in user's account: the session's active one if they're still a
+ * member, otherwise their oldest membership (e.g. just accepted an invite).
+ * Redirects to onboarding when they belong to no account.
+ */
 export const requireAccount = cache(async (): Promise<AccountContext> => {
   const session = await requireUser();
-  const accountId = session.session.activeOrganizationId;
-  if (!accountId) redirect("/onboarding");
+  const active = session.session.activeOrganizationId;
 
-  const [row] = await db
-    .select({ role: member.role })
+  const rows = await db
+    .select({ accountId: member.organizationId, role: member.role })
     .from(member)
-    .where(
-      and(
-        eq(member.organizationId, accountId),
-        eq(member.userId, session.user.id),
-      ),
-    )
-    .limit(1);
+    .where(eq(member.userId, session.user.id))
+    .orderBy(asc(member.createdAt));
+  const row = rows.find((r) => r.accountId === active) ?? rows[0];
   if (!row) redirect("/onboarding");
 
-  return { accountId, userId: session.user.id, role: toRole(row.role) };
+  return {
+    accountId: row.accountId,
+    userId: session.user.id,
+    role: toRole(row.role),
+  };
 });
 
 export const requireWorkspace = cache(

@@ -26,7 +26,7 @@
 - Stack versions as built: `docs/14-dev-tools.md` → "Versions as built"
 
 ## Current status
-- **Phase:** Phases 0 and 1 done and pushed. **Phase 2 approved 2026-10-27 (D1–D6, all recommendations); steps 1–9 of doc 19 §7 are built** and not yet committed.
+- **Phase:** Phases 0 and 1 done and pushed. **Phase 2 approved 2026-10-27 (D1–D6, all recommendations); steps 1–9 and 11 of doc 19 §7 are built, tested and pushed.** Only step 10 (LoopedIn import) is left.
 - **Phase 2 delivered so far:**
   - Schema + migration `0002`: roadmaps, columns, cards (full-text search), features, categories, tags, votes, events, voter login codes. New workspaces are seeded with a roadmap, columns and categories.
   - Admin board (dnd-kit, fractional ordering), roadmap settings, columns editor, categories/tags, card drawer (Tiptap with image upload, autosave, features, Votes tab).
@@ -35,14 +35,18 @@
   - Embed: `public/embed.js` + embed mode + Public settings page.
   - Home dashboard v1 (stat tiles, views chart, recent votes, most voted).
   - Shared form components: `DatePicker`/`DateRangePicker`, `ColorPicker`, `RichTextEditor`; chart: `ColumnChart`.
+  - Real 404 / 308 statuses for public sites, checked in `src/proxy.ts` (`publicPathStatus`).
+  - Playwright flows 1–5 (`e2e/roadmap.spec.ts`).
 - **Checks:** `pnpm lint`, `typecheck`, `test` (91 tests), `test:e2e` (11 tests, incl. Phase 2 flows 1–5 in `e2e/roadmap.spec.ts`) and `build` pass.
-- **Git:** Phase 2 steps 1–9 pushed (`f7703a7`), then the Playwright flows, embed-height fix and proxy 404s.
+- **Git:** everything is pushed to `origin/main`. Latest code commit `a280db4` (Playwright flows, embed height fix, proxy 404s); the commit after it only updates this file.
 - **This Mac:** Homebrew Postgres 18 + Redis, `EMAIL_TRANSPORT=console`, `STORAGE_DRIVER=local`, `PUBLIC_ROOT_DOMAIN=localhost:3000` in `.env.local`. The dev workspace `demo-product` was renamed "Radius Roadmap" (slug unchanged). The local dev DB also holds many test accounts made by Playwright; they're harmless.
 
 ## Next step
-1. Owner: export the Radius roadmap from LoopedIn (Roadmap → More → Export) and put the file in `docs/samples/`. Then build step 10 (import page at `/<workspace>/roadmap/import`).
-2. Add Playwright flow 6 (import) once step 10 exists, and a rate-limit test.
-3. Tick the remaining "Done when" items in doc 19, then commit + push.
+Resume here. On a new session say: *"Read docs/PROGRESS.md and continue from Next step."*
+1. **Fix the rate-limit bypass:** `clientIp()` in `src/server/visitor.ts` trusts the `cf-connecting-ip` header, so without Cloudflare in front, anyone can send their own value and dodge the per-IP vote limit. Trust it only when a new env flag (e.g. `TRUST_CLOUDFLARE=1`, added to `src/lib/env.ts` + `.env.example`) is set; otherwise use the `x-forwarded-for` that Caddy sets. Add a Vitest test for `hit()` / the vote limits (doc 19 §6 "rate limits trip").
+2. **Owner:** export the Radius roadmap from LoopedIn (Roadmap → More → Export) and put the file in `docs/samples/`.
+3. Then build **step 10**, the LoopedIn import page at `/<workspace>/roadmap/import?r=<roadmap-slug>` (papaparse, preview step, idempotent by `external_ref`, totals into `imported_votes`), its Vitest test and Playwright flow 6.
+4. Tick the last "Done when" items in doc 19, mark Phase 2 done here, commit + push, then write the Phase 3 plan (doc 20) for approval.
 
 ## Decisions (approved)
 - Stack per doc 14:
@@ -82,7 +86,7 @@
 - [x] Live admin audit — doc 16
 - [x] Phase 0 — Scaffold (doc 17)
 - [x] Phase 1 — Accounts & workspaces (doc 18)
-- [ ] Phase 2 — Roadmap + voting + public page + embed (steps 1–9 built; import + e2e left)
+- [ ] Phase 2 — Roadmap + voting + public page + embed (all built except step 10, LoopedIn import)
 - [ ] Phase 3 — Feedback + triage + import
 - [ ] Phase 4 — Updates + email
 - [ ] Phase 5 — Knowledge base
@@ -101,4 +105,4 @@
 | 2026-10-27 | mahbubur (Mac) | Phase 1 built and tested (doc 18): workspaces, team/invites, workspace access, settings, uploads, voter model | Owner reviews + commits → Phase 2 plan (doc 19) |
 | 2026-10-27 | mahbubur (Mac) | Committed + pushed Phase 1; wrote the Phase 2 plan (doc 19) | Owner approves doc 19 (D1–D6) + sends the LoopedIn export → build Phase 2 |
 | 2026-10-27 | mahbubur (Mac) | Committed + pushed doc 19; doc 19 approved; built Phase 2 steps 1–9 (schema, board, card drawer, public site, voting, voter sign-in, embed, Home dashboard), shared DatePicker/ColorPicker, 90 tests passing | LoopedIn export → import (step 10), Playwright flows, commit + push |
-| 2026-10-28 | mahbubur (Mac) | Pushed Phase 2 steps 1–9 (`f7703a7`); Playwright flows 1–5 (11 e2e passing); fixed embed iframe height ; real 404/308 for public pages via the proxy (owner approved) | LoopedIn export → step 10 |
+| 2026-10-28 | mahbubur (Mac) | Pushed Phase 2 steps 1–9 (`f7703a7`); Playwright flows 1–5 (11 e2e passing); fixed embed iframe height ; real 404/308 for public pages via the proxy (owner approved); pushed `a280db4` | Fix cf-connecting-ip rate-limit bypass + rate-limit test → LoopedIn export → step 10 |

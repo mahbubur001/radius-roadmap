@@ -27,7 +27,8 @@ Researched: 2026-10-27.
 | 14 | [14-dev-tools.md](14-dev-tools.md) | Dev tools & stack (Next.js, Better Auth), draft for approval |
 | 15 | [15-public-site-audit.md](15-public-site-audit.md) | Live audit of Radius Theme public roadmap and proposed plan changes |
 | 16 | [16-admin-ui-walkthrough.md](16-admin-ui-walkthrough.md) | Logged-in admin walkthrough + plan impact |
-| 17 | [17-scaffold-plan.md](17-scaffold-plan.md) | Phase 0 scaffold plan |
+| 17 | [17-scaffold-plan.md](17-scaffold-plan.md) | Phase 0 scaffold plan (done) |
+| 18 | [18-phase-1-plan.md](18-phase-1-plan.md) | Phase 1 plan: accounts, workspaces, team, settings, uploads, voter model |
 | — | [PROGRESS.md](PROGRESS.md) | **Start here each session**: status, next step, decisions, session log |
 
 ## Key URLs

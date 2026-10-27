@@ -21,6 +21,7 @@
 - Public audit + approved changes: `docs/15-public-site-audit.md` §9
 - Admin audit + approved changes: `docs/16-admin-ui-walkthrough.md` §8
 - Phase 0 scaffold plan (done): `docs/17-scaffold-plan.md`
+- Phase 1 plan (approved): `docs/18-phase-1-plan.md`
 - Stack versions as built: `docs/14-dev-tools.md` → "Versions as built"
 
 ## Current status
@@ -35,18 +36,11 @@
   - Preact widget skeleton (`public/widget.js`, ~6.5 KB gzipped).
   - Deploy files (pm2, Caddy, deploy script, CI).
 - **Checks:** `pnpm lint`, `pnpm typecheck`, `pnpm test` (15 tests), `pnpm test:e2e` (sign-up → verify → onboarding → dashboard) and `pnpm build` all pass.
-- **Git:** `git init` done on `main`, with remote `origin` = `git@github.com:mahbubur001/radius-roadmap.git`. Nothing is committed yet; local only, per the owner's instruction.
+- **Git:** Phase 0 committed (`4267510`) and pushed to `origin/main` (`git@github.com:mahbubur001/radius-roadmap.git`).
 - **This Mac:** no Docker, and Mailpit won't install, so it uses Homebrew Postgres 18 + Redis and `EMAIL_TRANSPORT=console`.
 
 ## Next step
-1. Owner: review Phase 0, then make the first commit (and push when ready).
-2. Write the **Phase 1 plan** (`docs/18-phase-1-plan.md`) and get it approved before coding. Phase 1 covers:
-   - account settings
-   - workspace create/switch/rename/delete
-   - team members and invitations UI with role checks
-   - an invite-email e2e test
-   - basic workspace settings (name, slug, logo upload to S3 or a local stub)
-   - the `tracked_users` table design
+Build Phase 1 per `docs/18-phase-1-plan.md` §7, starting with Step 1 (schema). Check that plan's "Done when" list as steps land.
 
 ## Decisions (approved)
 - Stack per doc 14:
@@ -63,6 +57,12 @@
   - Internal vs public title/summary; per-column public toggle; display toggles
   - Triage inbox for new requests; CSV import/export; LoopedIn CSV migration
   - Analytics events + dashboard; comments/follows optional (default off); autosave
+- Phase 1 decisions (doc 18 §2, approved 2026-10-27):
+  - per-member workspace access
+  - uploads now (local + S3 drivers)
+  - change email in Phase 1
+  - password minimum 10 characters
+  - owners and admins invite; only an owner manages owners
 - **Build order:**
   1. Phase 0 — Scaffold
   2. Phase 1 — Accounts + workspaces + team/invites + settings basics
@@ -88,7 +88,6 @@
 
 ## Open questions
 - Product name and app domain (not blocking).
-- First commit/push to GitHub (owner's call; repo URL is set).
 - Google OAuth credentials (optional for Phase 0).
 
 ## Session log
@@ -96,3 +95,4 @@
 |------|----|------|------|
 | 2026-10-27 | mahbubur (Mac) | LoopedIn research (docs 00–13), stack (14), public audit (15), admin audit (16), CLAUDE.md, scaffold plan (17), this file | Approve 17 + set up the git remote → start Phase 0 |
 | 2026-10-27 | mahbubur (Mac) | Phase 0 scaffold built and verified: auth, onboarding, dashboard shell, queue/worker/email, widget, unit + e2e tests, deploy files, docs updated | First commit → write the Phase 1 plan (doc 18) for approval |
+| 2026-10-27 | mahbubur (Mac) | Committed + pushed Phase 0; wrote the Phase 1 plan (doc 18) | Doc 18 approved (all recommendations) → build Phase 1 |

@@ -206,6 +206,7 @@ Feedback pages use the same `"use cache"` loaders with `cacheTag("ws:<id>")`; ev
 
 ## As built (2026-10-28)
 - Step 1: schema in `src/server/db/schema/feedback.ts`, migration `0003` (tables, enums, `votes.feedback_id` + `votes_one_target_check`, new event types) and `0004` (data: default board + statuses for workspaces created before Phase 3). New workspaces are seeded by `seedFeedback` (`src/server/services/feedback-boards.ts`) from `seedWorkspace`. `claimVisitorVotes` already drops duplicate feedback votes. Tests: `src/server/services/feedback.test.ts`. Cross-account isolation tests come with the services in step 2.
+- Step 2: `src/server/services/feedback.ts` (boards/statuses read, items CRUD, list with filters/sort/search, priority score in SQL), schemas in `src/lib/schemas/feedback.ts` (`priorityScore`, `PRIORITY_BUCKETS`), actions in `_actions/feedback.ts`. Admin page `/<workspace>/feedback`: filters live in the URL (`?b=&q=&sort=&status=&category=&tag=&vis=&linked=&priority=&state=`) and run on the server; the drawer (`?feedback=<id>`) autosaves. A `done` status sets `completed_at`; Mark complete / Reopen picks the first `done` / `open` status. The card drawer's autosave hook, tag picker and voters list moved to `src/components/dashboard/` and are shared. Board settings and the statuses editor come with step 3.
 
 ## Done when
 - [ ] Feedback boards, statuses, categories and tags work; the admin list filters, sorts and searches; the drawer autosaves.

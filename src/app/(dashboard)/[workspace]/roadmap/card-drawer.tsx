@@ -7,16 +7,12 @@ import {
   Circle,
   Link as LinkIcon,
   MoreHorizontal,
-  Plus,
-  Tags,
   Trash2,
-  X,
 } from "lucide-react";
-import { useCallback, useEffect, useRef, useState } from "react";
+import { useCallback, useEffect, useState } from "react";
 import { toast } from "sonner";
 import {
   addFeatureAction,
-  createTagAction,
   deleteCardAction,
   deleteFeatureAction,
   getCardAction,
@@ -25,6 +21,12 @@ import {
   updateCardAction,
   updateFeatureAction,
 } from "@/app/(dashboard)/_actions/roadmap";
+import { TagPicker } from "@/components/dashboard/tag-picker";
+import {
+  autosaveLabel,
+  useAutosave,
+} from "@/components/dashboard/use-autosave";
+import { VotersList } from "@/components/dashboard/voters-list";
 import { DatePicker } from "@/components/form/date-picker";
 import {
   RichTextEditor,
@@ -52,11 +54,6 @@ import {
 } from "@/components/ui/dropdown-menu";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import {
-  Popover,
-  PopoverContent,
-  PopoverTrigger,
-} from "@/components/ui/popover";
 import { Progress } from "@/components/ui/progress";
 import {
   Select,
@@ -83,44 +80,8 @@ type Detail = Extract<
   { ok: true }
 >["data"];
 type Patch = Omit<UpdateCardInput, "id">;
-type Status = "idle" | "saving" | "saved" | "error";
 
 const NO_CATEGORY = "none";
-
-/**
- * Debounced autosave. Patches merge until 600 ms of quiet, then go out one
- * request at a time (so a slow save can't land after a newer one).
- */
-function useAutosave(save: (patch: Patch) => Promise<boolean>) {
-  const pending = useRef<Patch>({});
-  const timer = useRef<ReturnType<typeof setTimeout>>(undefined);
-  const queue = useRef(Promise.resolve());
-  const [status, setStatus] = useState<Status>("idle");
-
-  const flush = useCallback(() => {
-    clearTimeout(timer.current);
-    const patch = pending.current;
-    pending.current = {};
-    if (!Object.keys(patch).length) return queue.current;
-    setStatus("saving");
-    queue.current = queue.current.then(async () => {
-      setStatus((await save(patch)) ? "saved" : "error");
-    });
-    return queue.current;
-  }, [save]);
-
-  const schedule = useCallback(
-    (patch: Patch) => {
-      Object.assign(pending.current, patch);
-      setStatus("saving");
-      clearTimeout(timer.current);
-      timer.current = setTimeout(() => void flush(), 600);
-    },
-    [flush],
-  );
-
-  return { schedule, flush, status };
-}
 
 export function CardDrawer({
   workspace,
@@ -243,7 +204,7 @@ function CardEditor({
     },
     [workspace, card.id],
   );
-  const { schedule, flush, status } = useAutosave(save);
+  const { schedule, flush, status } = useAutosave<Patch>(save);
 
   // Save whatever is pending when the drawer closes.
   useEffect(() => () => void flush(), [flush]);
@@ -274,13 +235,7 @@ function CardEditor({
           Changes save automatically.
         </SheetDescription>
         <span className="text-xs text-muted-foreground" aria-live="polite">
-          {status === "saving"
-            ? "Saving…"
-            : status === "saved"
-              ? "Saved"
-              : status === "error"
-                ? "Not saved"
-                : ""}
+          {autosaveLabel(status)}
         </span>
         {completed ? <Badge variant="secondary">Completed</Badge> : null}
         {archived ? <Badge variant="outline">Archived</Badge> : null}
@@ -485,7 +440,7 @@ function CardEditor({
           </TabsContent>
 
           <TabsContent value="votes" className="pt-2">
-            <Voters voters={detail.voters} />
+            <VotersList voters={detail.voters} />
           </TabsContent>
         </Tabs>
       </div>
@@ -519,105 +474,6 @@ function CardEditor({
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>
-    </div>
-  );
-}
-
-function TagPicker({
-  workspace,
-  tags,
-  selected,
-  onChange,
-  onCreated,
-}: {
-  workspace: string;
-  tags: TagOption[];
-  selected: string[];
-  onChange: (ids: string[]) => void;
-  onCreated: (tag: TagOption) => void;
-}) {
-  const [name, setName] = useState("");
-  const chosen = tags.filter((t) => selected.includes(t.id));
-
-  async function create() {
-    const value = name.trim();
-    if (!value) return;
-    const result = await createTagAction({ workspace, name: value });
-    if (!result.ok) return toast.error(result.error);
-    onCreated(result.data);
-    if (!selected.includes(result.data.id)) {
-      onChange([...selected, result.data.id]);
-    }
-    setName("");
-  }
-
-  return (
-    <div className="flex flex-col gap-2">
-      <Label>Tags</Label>
-      <div className="flex flex-wrap items-center gap-1.5">
-        {chosen.map((t) => (
-          <Badge key={t.id} variant="secondary" className="gap-1">
-            {t.name}
-            <button
-              type="button"
-              aria-label={`Remove tag ${t.name}`}
-              onClick={() => onChange(selected.filter((id) => id !== t.id))}
-            >
-              <X className="size-3" />
-            </button>
-          </Badge>
-        ))}
-        <Popover>
-          <PopoverTrigger asChild>
-            <Button type="button" variant="outline" size="sm">
-              <Tags />
-              Edit tags
-            </Button>
-          </PopoverTrigger>
-          <PopoverContent className="flex w-64 flex-col gap-2">
-            <div className="flex max-h-48 flex-col gap-1 overflow-y-auto">
-              {tags.length === 0 ? (
-                <p className="text-xs text-muted-foreground">No tags yet.</p>
-              ) : null}
-              {tags.map((t) => (
-                <Label
-                  key={t.id}
-                  className="flex items-center gap-2 font-normal"
-                >
-                  <Checkbox
-                    checked={selected.includes(t.id)}
-                    onCheckedChange={(on) =>
-                      onChange(
-                        on
-                          ? [...selected, t.id]
-                          : selected.filter((id) => id !== t.id),
-                      )
-                    }
-                  />
-                  {t.name}
-                </Label>
-              ))}
-            </div>
-            <form
-              className="flex gap-2"
-              onSubmit={(e) => {
-                e.preventDefault();
-                void create();
-              }}
-            >
-              <Input
-                aria-label="New tag"
-                placeholder="New tag"
-                value={name}
-                onChange={(e) => setName(e.target.value)}
-              />
-              <Button type="submit" size="icon" aria-label="Add tag">
-                <Plus />
-              </Button>
-            </form>
-          </PopoverContent>
-        </Popover>
-      </div>
     </div>
   );
 }
@@ -726,44 +582,6 @@ function Features({
           Add
         </Button>
       </form>
-    </div>
-  );
-}
-
-function Voters({ voters }: { voters: Detail["voters"] }) {
-  const total = voters.named.length + voters.anonymous + voters.imported;
-  if (!total) {
-    return <p className="text-sm text-muted-foreground">No votes yet.</p>;
-  }
-  return (
-    <div className="flex flex-col gap-3 text-sm">
-      <ul className="flex flex-col divide-y rounded-md border">
-        {voters.named.map((v) => (
-          <li key={v.id} className="flex items-center gap-2 px-3 py-2">
-            <div className="min-w-0 flex-1">
-              <p className="truncate font-medium">{v.name || v.email}</p>
-              <p className="truncate text-xs text-muted-foreground">
-                {v.email}
-                {v.kind === "guest" ? " · guest (unverified)" : ""}
-              </p>
-            </div>
-            <span className="text-xs text-muted-foreground">
-              {[v.city, v.country].filter(Boolean).join(", ")}
-            </span>
-          </li>
-        ))}
-        {voters.anonymous ? (
-          <li className="px-3 py-2 text-muted-foreground">
-            {voters.anonymous} anonymous{" "}
-            {voters.anonymous === 1 ? "vote" : "votes"}
-          </li>
-        ) : null}
-        {voters.imported ? (
-          <li className="px-3 py-2 text-muted-foreground">
-            {voters.imported} imported from LoopedIn
-          </li>
-        ) : null}
-      </ul>
     </div>
   );
 }

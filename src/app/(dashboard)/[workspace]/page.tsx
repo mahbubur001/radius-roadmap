@@ -3,6 +3,7 @@ import Link from "next/link";
 import { Suspense } from "react";
 import { ColumnChart } from "@/components/charts/column-chart";
 import { Skeleton } from "@/components/ui/skeleton";
+import { ago } from "@/lib/time";
 import { cn } from "@/lib/utils";
 import { db } from "@/server/db/client";
 import {
@@ -47,16 +48,6 @@ const dayLabel = new Intl.DateTimeFormat("en", {
   day: "numeric",
   timeZone: "UTC",
 });
-const relative = new Intl.RelativeTimeFormat("en", { numeric: "auto" });
-
-function ago(date: Date) {
-  const minutes = Math.round((date.getTime() - Date.now()) / 60_000);
-  if (minutes > -60) return relative.format(minutes, "minute");
-  const hours = Math.round(minutes / 60);
-  if (hours > -24) return relative.format(hours, "hour");
-  return relative.format(Math.round(hours / 24), "day");
-}
-
 async function Home({
   slug,
   range,

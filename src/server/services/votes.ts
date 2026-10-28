@@ -6,6 +6,7 @@ import {
   inArray,
   isNotNull,
   isNull,
+  type SQL,
   sql,
 } from "drizzle-orm";
 import type { Db, DbOrTx } from "@/server/db/client";
@@ -18,6 +19,7 @@ import {
 } from "@/server/db/schema";
 import { getCard } from "./cards";
 import type { PublicContext, WorkspaceContext } from "./context";
+import { getFeedback } from "./feedback";
 
 // Votes (doc 19 §3.6, §4.3). One row per voter per card: tracked users by
 // tracked_user_id, anonymous visitors by visitor_id. roadmap_cards.vote_count
@@ -176,17 +178,7 @@ export async function claimVisitorVotes(
 }
 
 /** Admin "Votes" tab: named voters plus the anonymous count. */
-export async function listVoters(
-  db: Db,
-  ctx: WorkspaceContext,
-  cardId: string,
-) {
-  const card = await getCard(db, ctx, cardId);
-  const scope = and(
-    eq(votes.accountId, ctx.accountId),
-    eq(votes.workspaceId, ctx.workspaceId),
-    eq(votes.cardId, card.id),
-  );
+async function voters(db: Db, scope: SQL | undefined, imported: number) {
   const [named, [anon]] = await Promise.all([
     db
       .select({
@@ -207,9 +199,39 @@ export async function listVoters(
       .from(votes)
       .where(and(scope, isNull(votes.trackedUserId))),
   ]);
-  return {
-    named,
-    anonymous: anon?.n ?? 0,
-    imported: card.importedVotes,
-  };
+  return { named, anonymous: anon?.n ?? 0, imported };
+}
+
+export async function listVoters(
+  db: Db,
+  ctx: WorkspaceContext,
+  cardId: string,
+) {
+  const card = await getCard(db, ctx, cardId);
+  return voters(
+    db,
+    and(
+      eq(votes.accountId, ctx.accountId),
+      eq(votes.workspaceId, ctx.workspaceId),
+      eq(votes.cardId, card.id),
+    ),
+    card.importedVotes,
+  );
+}
+
+export async function listFeedbackVoters(
+  db: Db,
+  ctx: WorkspaceContext,
+  feedbackId: string,
+) {
+  const item = await getFeedback(db, ctx, feedbackId);
+  return voters(
+    db,
+    and(
+      eq(votes.accountId, ctx.accountId),
+      eq(votes.workspaceId, ctx.workspaceId),
+      eq(votes.feedbackId, item.id),
+    ),
+    item.importedVotes,
+  );
 }

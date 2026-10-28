@@ -29,8 +29,8 @@ Before writing or changing code that uses any library, **query Context7** (`reso
 
 ```
 src/app/(auth)        login/register/verify/invite
-src/app/(dashboard)   /[workspace]/feedback|roadmap|updates|articles|settings
-src/app/(public)      tenant public site, resolved from hostname in src/proxy.ts
+src/app/(dashboard)   /dashboard/[workspace]/feedback|roadmap|updates|articles|settings
+src/app/(public)      tenant public site at /<account>/<workspace>, routed by src/proxy.ts
 src/app/api           auth handler, /v1 REST, widget API, webhooks (SES/SNS, Stripe)
 src/server/db         Drizzle schema + migrations + client
 src/server/auth       Better Auth (team) + tracked-user auth (end users)
@@ -70,17 +70,17 @@ Keep this list in sync with `package.json`. Deploy files: `ecosystem.config.cjs`
 - **Cache Components is on.** Anything that reads runtime data (`cookies()`, `headers()`, `params`, `searchParams`, `useParams`, `useSearchParams`, the session) must render inside `<Suspense>`. Pattern: the page/layout passes `params.then(...)` into a small async child component (the "gate") wrapped in `<Suspense>`.
 - Server actions are wrapped with `action(schema, handler)` from `src/server/action.ts` (or `workspaceAction(schema, (ctx, input) => …)`, which adds the `workspace` field and calls `requireWorkspace`): it re-validates with the form's Zod schema and maps service errors (`ForbiddenError`, `NotFoundError`, `ConflictError`) to `{ ok: false, error }`. Shared dashboard actions live in `src/app/(dashboard)/_actions/`.
 - Next keeps earlier pages mounted but hidden (Activity). In Playwright, prefer role queries or scope to the open `dialog`, because `getByLabel` also matches the hidden copies.
-- Every dashboard page and server action under `[workspace]` calls `requireWorkspace(slug)` (from `src/server/session.ts`) to get its tenant context. Never derive the account from anything else.
+- Every dashboard page and server action under `/dashboard/[workspace]` calls `requireWorkspace(slug)` (from `src/server/session.ts`) to get its tenant context. Never derive the account from anything else.
 
 ### Multi-tenancy (critical)
 - Every tenant table has `account_id` (and `workspace_id` where it applies). **Every query must be scoped.** Go through `src/server/services/*`, which take a tenant context. Never import `db` in components, route handlers or server actions directly.
-- Public pages resolve the account from the hostname (`proxy.ts`). Never trust an `accountId` sent by the client.
+- Public pages resolve the account from the account slug in the URL path (`proxy.ts`), public API routes from the `x-rr-site` slug. Never trust an `accountId` sent by the client.
 - Write a test for each service proving that data from another account can't be read.
 
 ### Public sites and voting
-- A public site lives at `<account-slug>.<PUBLIC_ROOT_DOMAIN>` (`http://<slug>.localhost:3000` locally). `src/proxy.ts` rewrites it to `src/app/(public)/sites/[host]/…`; pages load data through the `"use cache"` loaders in `sites/[host]/data.ts`. Public pages stream, so their HTTP status is decided in the proxy by `publicPathStatus` (404 / 308); a new public route must be added there too.
+- A public site lives on the app domain at `/<account-slug>/<workspace-slug>/…` (`http://localhost:3000/<account>/<workspace>/roadmap` locally; doc 19 "D1 revised"). The dashboard is under `/dashboard/<workspace>`. `src/proxy.ts` routes by the first path segment: reserved app routes (`RESERVED_SLUGS`, which account slugs can't use) go to the dashboard and can't be framed; anything else is an account, rewritten to `src/app/(public)/sites/[account]/…`. Pages load data through the `"use cache"` loaders in `sites/[account]/data.ts`; links inside public pages always start with `/<account>`. Public pages stream, so their HTTP status is decided in the proxy by `publicPathStatus` (404 / 308); a new public route must be added there too.
 - After any change that affects what a public site shows, call `invalidatePublic(workspaceId)` (roadmap data) and/or `invalidateSite(accountId)` (site name/logo, workspace list) from `src/server/public-cache.ts`. Dashboard roadmap actions do this through `mutate()`.
-- Public API routes (`src/app/api/public/*`) start with `publicRequest(request)` (`src/server/public-request.ts`): it resolves the site from the host, the visitor id (`rr_vid` cookie or `x-rr-visitor` header in embeds) and the voter session (`rr_vs`). Rate-limit with `hit()` from `src/server/rate-limit.ts`; check Turnstile with `verifyTurnstile`.
+- Public API routes (`src/app/api/public/*`) start with `publicRequest(request)` (`src/server/public-request.ts`): it resolves the site from the `x-rr-site` header (the account slug, sent by `publicApi()`; `?site=` on email links), the visitor id (`rr_vid` cookie or `x-rr-visitor` header in embeds) and the voter session (`rr_vs_<accountId>`, one cookie per account). Rate-limit with `hit()` from `src/server/rate-limit.ts`; check Turnstile with `verifyTurnstile`.
 - Never cache visitor-specific state (own votes, sign-in); the client loads it from `/api/public/me`.
 - Build links and redirects from `siteOrigin(request)`, not `request.nextUrl` (Caddy proxies the request).
 

@@ -51,7 +51,7 @@ export function CreateWorkspaceDialog({
     }
     onOpenChange(false);
     form.reset();
-    router.push(`/${result.data.slug}`);
+    router.push(`/dashboard/${result.data.slug}`);
     router.refresh();
   }
 

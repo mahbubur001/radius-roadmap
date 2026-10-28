@@ -18,7 +18,7 @@ export function SettingsNav() {
   return (
     <nav className="flex gap-1 md:flex-col" aria-label="Settings">
       {items.map(({ href, label }) => {
-        const to = `/${workspace}/settings/${href}`;
+        const to = `/dashboard/${workspace}/settings/${href}`;
         return (
           <Link
             key={href}

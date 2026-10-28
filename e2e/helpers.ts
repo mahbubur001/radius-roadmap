@@ -25,6 +25,6 @@ export async function signUpOwner(page: Page, id: string) {
   await page.getByLabel("Company or team name").fill(`E2E Co ${id}`);
   await page.getByLabel("Product or project name").fill(`Product ${id}`);
   await page.getByRole("button", { name: "Continue" }).click();
-  await expect(page).toHaveURL(new RegExp(`/product-${id}$`));
+  await expect(page).toHaveURL(new RegExp(`/dashboard/product-${id}$`));
   return { email, slug: `product-${id}` };
 }

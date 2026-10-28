@@ -243,6 +243,26 @@ The embed iframe is third-party on the customer's site, so its cookies are set `
 10. LoopedIn roadmap import (once the owner's export file is in `docs/samples/` or attached).
 11. Playwright flows; update CLAUDE.md, doc 14 (new deps: `@dnd-kit/*`, `@tiptap/*`, `fractional-indexing`, `papaparse`; new env vars) and PROGRESS.md.
 
+## D1 revised: public pages on the app domain (owner decision, 2026-10-28)
+The owner replaced D1 (account subdomains) with LoopedIn-style paths on the app domain (`app.loopedin.io/classified-listing`). Subdomains are removed.
+
+| Before | After |
+|--------|-------|
+| `https://<account>.<PUBLIC_ROOT_DOMAIN>/<workspace>/roadmap` | `https://<app>/<account>/<workspace>/roadmap` |
+| card `…/<workspace>/roadmap/<card>` | `/<account>/<workspace>/roadmap/<card>` |
+| dashboard `/<workspace>/…` | `/dashboard/<workspace>/…` (onboarding, auth pages and `/` stay where they are) |
+| `<account>.<root>/sitemap.xml`, `/robots.txt` | `/<account>/sitemap.xml`; one app-wide `/robots.txt` (disallows `/dashboard`, `/api` and the auth pages) |
+
+How it works:
+- **Routing:** `src/proxy.ts` branches on the path, not the host. `/dashboard/…` and the app's own routes go to the dashboard (no framing allowed). Any other first segment is an account slug: the proxy checks it with `publicPathStatus` (real 404 / 308), issues `rr_vid`, and rewrites to `/sites/<account>/…` internally. Direct requests to `/sites/…` get a 404.
+- **Reserved slugs:** account slugs can't be an app route (`dashboard`, `sign-in`, `api`, `sites`, … in `RESERVED_SLUGS`).
+- **Public API:** `/api/public/*` stays. The account comes from the `x-rr-site` header (the public pages and the embed send their account slug; the magic link carries `site=`). It is a routing hint exactly like the old Host header: sessions, cards and workspaces are still checked against that account.
+- **Cookies:** `rr_vid` (anonymous visitor) is one cookie for the app domain. The voter session is per account: `rr_vs_<accountId>`, so signing in on one account's site never signs you in on another's.
+- **Framing:** only public paths may be framed; the dashboard keeps `frame-ancestors 'none'`.
+- **Embed:** `<script src="https://<app>/embed.js" data-account="<account>" data-workspace="<workspace>" async>`.
+- **Removed:** `PUBLIC_ROOT_DOMAIN`, the wildcard block and on-demand TLS in `deploy/Caddyfile`, and `/api/internal/domain-check` (custom domains in Phase 6 bring host-based routing back for those domains only).
+- **Trade-off (accepted):** public pages now share the dashboard's origin, which the subdomain design avoided. Mitigations: user content is only rendered through the allow-listed Tiptap renderer, the dashboard session cookie is `httpOnly`, and server actions check the Origin. A strict CSP on public pages is a follow-up.
+
 ## As built (2026-10-27, steps 1–9)
 Deviations from the plan above:
 - **Card slugs are unique per workspace**, not per roadmap. Card pages live at `/<workspace>/roadmap/<card-slug>`; a non-default roadmap is chosen with `?board=<roadmap-slug>`.

@@ -11,7 +11,7 @@ const PNG = Buffer.from(
 
 test("upload an avatar, then remove it", async ({ page }) => {
   const { slug } = await signUpOwner(page, randomUUID().slice(0, 8));
-  await page.goto(`/${slug}/settings/profile`);
+  await page.goto(`/dashboard/${slug}/settings/profile`);
   await page.waitForLoadState("networkidle"); // hydrated
 
   const chooser = page.waitForEvent("filechooser");
@@ -34,7 +34,7 @@ test("upload an avatar, then remove it", async ({ page }) => {
 
 test("changing email asks the current address to approve", async ({ page }) => {
   const { slug, email } = await signUpOwner(page, randomUUID().slice(0, 8));
-  await page.goto(`/${slug}/settings/profile`);
+  await page.goto(`/dashboard/${slug}/settings/profile`);
   await page.getByLabel("New email").fill(`new-${email}`);
   await page.getByRole("button", { name: "Change email" }).click();
   await expect(

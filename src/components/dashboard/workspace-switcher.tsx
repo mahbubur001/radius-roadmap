@@ -47,7 +47,7 @@ export function WorkspaceSwitcher({
           <DropdownMenuLabel>Workspaces</DropdownMenuLabel>
           {workspaces.map((w) => (
             <DropdownMenuItem key={w.id} asChild>
-              <Link href={`/${w.slug}`}>
+              <Link href={`/dashboard/${w.slug}`}>
                 <WorkspaceAvatar workspace={w} small />
                 <span className="flex-1 truncate">{w.name}</span>
                 {w.slug === current ? <Check /> : null}
@@ -62,7 +62,7 @@ export function WorkspaceSwitcher({
                 New workspace
               </DropdownMenuItem>
               <DropdownMenuItem asChild>
-                <Link href={`/${current}/settings/workspace`}>
+                <Link href={`/dashboard/${current}/settings/workspace`}>
                   <Settings />
                   Workspace settings
                 </Link>

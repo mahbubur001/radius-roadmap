@@ -45,7 +45,7 @@ export function OnboardingForm() {
       toast.error(result.error);
       return;
     }
-    router.push(`/${result.workspaceSlug}`);
+    router.push(`/dashboard/${result.workspaceSlug}`);
     router.refresh();
   }
 

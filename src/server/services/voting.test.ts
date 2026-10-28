@@ -114,18 +114,15 @@ beforeAll(async () => {
 afterAll(() => cleanup(db, accounts, users));
 
 describe("public site visibility", () => {
-  it("resolves the account from its subdomain only", async () => {
+  it("resolves the account from its slug (the first path segment)", async () => {
     const [slug] = accounts;
+    expect((await resolveSite(db, slug as string))?.accountId).toBe(slug);
     expect(
-      (await resolveSite(db, `${slug}.localhost:3000`, "localhost:3000"))
-        ?.accountId,
+      (await resolveSite(db, (slug as string).toUpperCase()))?.accountId,
     ).toBe(slug);
-    expect(
-      await resolveSite(db, "evil.example.com", "localhost:3000"),
-    ).toBeNull();
-    expect(
-      await resolveSite(db, "nope-nope.localhost:3000", "localhost:3000"),
-    ).toBeNull();
+    expect(await resolveSite(db, "nope-nope")).toBeNull();
+    expect(await resolveSite(db, "../etc")).toBeNull();
+    expect(await resolveSite(db, "")).toBeNull();
   });
 
   it("shows public cards and hides private ones", async () => {
@@ -214,6 +211,8 @@ describe("public path status (proxy 404s)", () => {
     expect(await check("/nope/roadmap")).toBe("missing");
     expect(await check(`/${ws}/other`)).toBe("missing");
     expect(await check("/sitemap.xml")).toBe("ok");
+    // robots.txt is app-wide now (src/app/robots.ts), not per site.
+    expect(await check("/robots.txt")).toBe("missing");
     // Another account's site never sees this workspace.
     expect(await publicPathStatus(db, pubB, [ws, "roadmap", card.slug])).toBe(
       "missing",

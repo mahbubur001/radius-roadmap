@@ -17,7 +17,7 @@ export async function completeSignIn(
 ) {
   await claimVisitorVotes(db, req.ctx, req.visitorId, user.id);
   const session = await createTrackedSession(db, req.ctx, user.id);
-  setVoterSession(response, session.token, session.expiresAt, req.embed);
+  setVoterSession(response, req, session.token, session.expiresAt);
   return response;
 }
 

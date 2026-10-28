@@ -24,7 +24,7 @@ export function SignInDialog({
   open: boolean;
   onOpenChange: (open: boolean) => void;
 }) {
-  const { embed, setVoter } = useVoter();
+  const { site, embed, setVoter } = useVoter();
   const [email, setEmail] = useState("");
   const [code, setCode] = useState("");
   const [name, setName] = useState("");
@@ -41,10 +41,14 @@ export function SignInDialog({
 
   async function sendCode() {
     setBusy(true);
-    const res = await publicApi("/api/public/auth/code", embed, {
-      method: "POST",
-      body: { email, next: window.location.pathname },
-    });
+    const res = await publicApi(
+      "/api/public/auth/code",
+      { site, embed },
+      {
+        method: "POST",
+        body: { email, next: window.location.pathname },
+      },
+    );
     setBusy(false);
     if (!res.ok) return toast.error(res.data.error ?? "Couldn't send a code.");
     setSent(true);
@@ -54,7 +58,7 @@ export function SignInDialog({
     setBusy(true);
     const res = await publicApi<{ voter: Voter }>(
       "/api/public/auth/verify",
-      embed,
+      { site, embed },
       {
         method: "POST",
         body: { email, code },
@@ -70,7 +74,7 @@ export function SignInDialog({
     try {
       const res = await publicApi<{ voter: Voter }>(
         "/api/public/auth/guest",
-        embed,
+        { site, embed },
         {
           method: "POST",
           body: { name, email, turnstileToken: await turnstileToken() },

@@ -5,16 +5,20 @@ import { publicApi, useVoter } from "./voter-provider";
 
 /** Records a page or card view (pages are cached, so this runs client-side). */
 export function PageView({ cardId }: { cardId?: string }) {
-  const { workspaceId, embed } = useVoter();
+  const { site, workspaceId, embed } = useVoter();
   useEffect(() => {
-    void publicApi("/api/public/events", embed, {
-      method: "POST",
-      body: {
-        workspaceId,
-        type: cardId ? "card_view" : "page_view",
-        subjectId: cardId ?? null,
+    void publicApi(
+      "/api/public/events",
+      { site, embed },
+      {
+        method: "POST",
+        body: {
+          workspaceId,
+          type: cardId ? "card_view" : "page_view",
+          subjectId: cardId ?? null,
+        },
       },
-    }).catch(() => undefined);
-  }, [workspaceId, embed, cardId]);
+    ).catch(() => undefined);
+  }, [site, workspaceId, embed, cardId]);
   return null;
 }

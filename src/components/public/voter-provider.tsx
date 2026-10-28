@@ -23,6 +23,8 @@ export type Voter = {
 };
 
 type VoterState = {
+  /** Account slug of this public site (/<site>/…). */
+  site: string;
   workspaceId: string;
   embed: boolean;
   voter: Voter | null;
@@ -56,14 +58,21 @@ function storeVisitor(token: unknown) {
   }
 }
 
-/** fetch() for /api/public/*: same-origin cookies + embed fallbacks. */
+/** Which public site a call is for, and whether it runs in an embed. */
+export type ApiScope = { site: string; embed: boolean };
+
+/**
+ * fetch() for /api/public/*: same-origin cookies + embed fallbacks. The
+ * account comes from `x-rr-site` (the site's slug); the server resolves it.
+ */
 export async function publicApi<T>(
   path: string,
-  embed: boolean,
+  { site, embed }: ApiScope,
   init: { method?: string; body?: unknown } = {},
 ): Promise<{ ok: boolean; status: number; data: T & { error?: string } }> {
   const headers: Record<string, string> = {
     "content-type": "application/json",
+    "x-rr-site": site,
   };
   if (embed) headers["x-rr-embed"] = "1";
   const visitor = storedVisitor();
@@ -83,10 +92,12 @@ export async function publicApi<T>(
 }
 
 export function VoterProvider({
+  site,
   workspaceId,
   embed,
   children,
 }: {
+  site: string;
   workspaceId: string;
   embed: boolean;
   children: ReactNode;
@@ -100,12 +111,12 @@ export function VoterProvider({
   const refresh = useCallback(async () => {
     const res = await publicApi<{ voter: Voter | null; voted: string[] }>(
       `/api/public/me?workspace=${workspaceId}`,
-      embed,
+      { site, embed },
     );
     if (!res.ok) return;
     setVoter(res.data.voter);
     setVoted(new Set(res.data.voted));
-  }, [workspaceId, embed]);
+  }, [site, workspaceId, embed]);
 
   useEffect(() => {
     void refresh();
@@ -121,10 +132,14 @@ export function VoterProvider({
           voted: boolean;
           total: number;
           signIn?: boolean;
-        }>("/api/public/votes", embed, {
-          method: "POST",
-          body: { cardId, turnstileToken: token },
-        });
+        }>(
+          "/api/public/votes",
+          { site, embed },
+          {
+            method: "POST",
+            body: { cardId, turnstileToken: token },
+          },
+        );
         if (res.status === 401 && res.data.signIn) {
           setSignInOpen(true);
           toast.info("Sign in to vote.");
@@ -147,17 +162,22 @@ export function VoterProvider({
         setPending(null);
       }
     },
-    [embed, pending, voter],
+    [site, embed, pending, voter],
   );
 
   const signOut = useCallback(async () => {
-    await publicApi("/api/public/auth/sign-out", embed, { method: "POST" });
+    await publicApi(
+      "/api/public/auth/sign-out",
+      { site, embed },
+      { method: "POST" },
+    );
     setVoter(null);
     await refresh();
-  }, [embed, refresh]);
+  }, [site, embed, refresh]);
 
   const value = useMemo<VoterState>(
     () => ({
+      site,
       workspaceId,
       embed,
       voter,
@@ -171,7 +191,17 @@ export function VoterProvider({
         void refresh();
       },
     }),
-    [workspaceId, embed, voter, voted, totals, toggleVote, signOut, refresh],
+    [
+      site,
+      workspaceId,
+      embed,
+      voter,
+      voted,
+      totals,
+      toggleVote,
+      signOut,
+      refresh,
+    ],
   );
 
   return (

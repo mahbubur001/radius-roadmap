@@ -22,11 +22,11 @@ test("invite a member to one workspace; they see only that workspace", async ({
     .getByRole("dialog")
     .getByRole("button", { name: "Create workspace" })
     .click();
-  await expect(page).toHaveURL(new RegExp(`/${second}$`));
+  await expect(page).toHaveURL(new RegExp(`/dashboard/${second}$`));
 
   // Invite a member with access to the first workspace only.
   const mateEmail = `mate-${id}@example.test`;
-  await page.goto(`/${first}/settings/team`);
+  await page.goto(`/dashboard/${first}/settings/team`);
   await page.getByRole("button", { name: "Invite teammate" }).click();
   const dialog = page.getByRole("dialog");
   await dialog.getByLabel("Email").fill(mateEmail);
@@ -45,7 +45,7 @@ test("invite a member to one workspace; they see only that workspace", async ({
   await signUpAndVerify(mate, "Team Mate", mateEmail);
   await expect(mate).toHaveURL(/\/accept-invite\//);
   await mate.getByRole("button", { name: "Accept invitation" }).click();
-  await expect(mate).toHaveURL(new RegExp(`/${first}$`));
+  await expect(mate).toHaveURL(new RegExp(`/dashboard/${first}$`));
 
   // Only the granted workspace is visible or reachable.
   await mate.getByRole("button", { name: "Switch workspace" }).click();
@@ -56,16 +56,16 @@ test("invite a member to one workspace; they see only that workspace", async ({
     mate.getByRole("menuitem", { name: `Second ${id}` }),
   ).toHaveCount(0);
   await mate.keyboard.press("Escape");
-  await mate.goto(`/${second}`);
-  await expect(mate).toHaveURL(new RegExp(`/${first}$`));
+  await mate.goto(`/dashboard/${second}`);
+  await expect(mate).toHaveURL(new RegExp(`/dashboard/${first}$`));
 
   // Members get read-only team and no workspace settings.
-  await mate.goto(`/${first}/settings/team`);
+  await mate.goto(`/dashboard/${first}/settings/team`);
   await expect(mate.getByTestId(`member-${mateEmail}`)).toContainText("(you)");
   await expect(
     mate.getByRole("button", { name: "Invite teammate" }),
   ).toHaveCount(0);
-  await mate.goto(`/${first}/settings/workspace`);
+  await mate.goto(`/dashboard/${first}/settings/workspace`);
   await expect(
     mate.getByText("You don't have access to workspace settings"),
   ).toBeVisible();
@@ -91,14 +91,14 @@ test("owner renames and deletes a workspace", async ({ page }) => {
     .getByRole("dialog")
     .getByRole("button", { name: "Create workspace" })
     .click();
-  await expect(page).toHaveURL(new RegExp(`/temp-${id}$`));
+  await expect(page).toHaveURL(new RegExp(`/dashboard/temp-${id}$`));
 
-  await page.goto(`/temp-${id}/settings/workspace`);
+  await page.goto(`/dashboard/temp-${id}/settings/workspace`);
   await page.getByLabel("Workspace name").fill(`Renamed ${id}`);
   await page.getByLabel("Workspace URL").fill(`renamed-${id}`);
   await page.getByRole("button", { name: "Save changes" }).click();
   await expect(page).toHaveURL(
-    new RegExp(`/renamed-${id}/settings/workspace$`),
+    new RegExp(`/dashboard/renamed-${id}/settings/workspace$`),
   );
   // Role queries skip the hidden copies Next keeps of earlier pages.
   await expect(page.getByRole("banner")).toContainText(`Renamed ${id}`);
@@ -107,5 +107,5 @@ test("owner renames and deletes a workspace", async ({ page }) => {
   const confirm = page.getByRole("alertdialog");
   await confirm.getByLabel(/Type/).fill(`Renamed ${id}`);
   await confirm.getByRole("button", { name: "Delete workspace" }).click();
-  await expect(page).toHaveURL(new RegExp(`/${first}$`));
+  await expect(page).toHaveURL(new RegExp(`/dashboard/${first}$`));
 });

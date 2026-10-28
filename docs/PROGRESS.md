@@ -31,7 +31,7 @@
 - **Phase 2 delivered so far:**
   - Schema + migration `0002`: roadmaps, columns, cards (full-text search), features, categories, tags, votes, events, voter login codes. New workspaces are seeded with a roadmap, columns and categories.
   - Admin board (dnd-kit, fractional ordering), roadmap settings, columns editor, categories/tags, card drawer (Tiptap with image upload, autosave, features, Votes tab).
-  - Public site at `<account>.localhost:3000/<workspace>/roadmap`: server-rendered, cached, card pages, search, SEO (metadata, sitemap.xml, robots.txt).
+  - Public site at `localhost:3000/<account>/<workspace>/roadmap` (moved from subdomains 2026-10-28, doc 19 "D1 revised"; dashboard now at `/dashboard/<workspace>`): server-rendered, cached, card pages, search, SEO (metadata, sitemap.xml, robots.txt).
   - Voting: anonymous (signed visitor cookie), guest, email code / magic link; rate limits; Turnstile (optional); visitor votes claimed on sign-in.
   - Embed: `public/embed.js` + embed mode + Public settings page.
   - Home dashboard v1 (stat tiles, views chart, recent votes, most voted).
@@ -42,7 +42,7 @@
 - **Checks:** `pnpm lint`, `typecheck`, `test` (109 tests), `test:e2e` (11 tests, incl. Phase 2 flows 1–5 in `e2e/roadmap.spec.ts`) and `build` pass.
 - **Git:** everything is pushed to `origin/main`. Latest code commit `a280db4` (Playwright flows, embed height fix, proxy 404s); the commit after it only updates this file.
 - **Second Mac (user `radiustheme`):** set up 2026-10-28. Homebrew Postgres 18 (role `radiustheme`, no `postgres` role, so `DATABASE_URL=postgres://radiustheme@localhost:5432/radius_roadmap`) + Redis. `~/.zshrc` has `PNPM_HOME=/Users/mahbubur/...` copied from the first Mac, so pnpm fails with EACCES until it's fixed to `$HOME/Library/pnpm`. Playwright Chromium installed 2026-10-28.
-- **First Mac (user `mahbubur`):** Homebrew Postgres 18 + Redis, `EMAIL_TRANSPORT=console`, `STORAGE_DRIVER=local`, `PUBLIC_ROOT_DOMAIN=localhost:3000` in `.env.local`. The dev workspace `demo-product` was renamed "Radius Roadmap" (slug unchanged). The local dev DB also holds many test accounts made by Playwright; they're harmless.
+- **First Mac (user `mahbubur`):** Homebrew Postgres 18 + Redis, `EMAIL_TRANSPORT=console`, `STORAGE_DRIVER=local` in `.env.local` (its `PUBLIC_ROOT_DOMAIN` line is no longer used and can be deleted). The dev workspace `demo-product` was renamed "Radius Roadmap" (slug unchanged). The local dev DB also holds many test accounts made by Playwright; they're harmless.
 
 ## Next step
 Resume here. On a new session say: *"Read docs/PROGRESS.md and continue from Next step."*
@@ -53,6 +53,7 @@ Resume here. On a new session say: *"Read docs/PROGRESS.md and continue from Nex
 5. **Phase 3 approved 2026-10-28 (D1–D7, all recommendations).** Build doc 20 §7 steps 1–8 while waiting for the exports. **Steps 1 (schema, migrations 0003/0004) and 2 (feedback services, admin list with filters, drawer with autosave + priority) done 2026-10-28; next is step 3** (triage inbox + sidebar count + bulk actions, plus board settings and the statuses editor). D7 also needs the LoopedIn **feedback** export (Boards → More → Export) in `docs/samples/`.
 
 ## Decisions (approved)
+- **2026-10-28, owner: public pages on the app domain, LoopedIn-style** (`<app>/<account>/<workspace>`), dashboard under `/dashboard/<workspace>`, account subdomains removed. Replaces doc 19 D1; details in doc 19 "D1 revised".
 - Stack per doc 14:
   - Next.js 16.4, Better Auth 1.7, Drizzle + Postgres 16 (on the same EC2), BullMQ + Redis
   - Amazon SES, React Hook Form + Zod, Biome

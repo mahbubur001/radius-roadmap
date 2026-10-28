@@ -21,7 +21,7 @@ async function HomeRedirect() {
   const workspaces = await listWorkspaces(db, ctx);
   const last = (await cookies()).get(LAST_WORKSPACE_COOKIE)?.value;
   const target = workspaces.find((w) => w.slug === last) ?? workspaces[0];
-  if (target) redirect(`/${target.slug}`);
+  if (target) redirect(`/dashboard/${target.slug}`);
   redirect(ctx.role === "member" ? "/no-access" : "/onboarding");
   return null;
 }

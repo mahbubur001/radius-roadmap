@@ -1,7 +1,7 @@
 /*
  * Radius Roadmap embed (doc 19 §4.4). Paste on any page:
  *
- *   <script src="https://<account>.<root>/embed.js"
+ *   <script src="https://<app>/embed.js" data-account="<account-slug>"
  *     data-workspace="<workspace-slug>" async></script>
  *
  * Optional: data-board="<roadmap-slug>", data-min-height="600".
@@ -12,13 +12,18 @@
   const script = document.currentScript;
   if (!script?.src) return;
   const origin = new URL(script.src).origin;
-  const workspace = script.dataset.workspace;
-  if (!workspace) {
-    console.error("[radius-roadmap] data-workspace is required");
+  const { account, workspace } = script.dataset;
+  if (!account || !workspace) {
+    console.error(
+      "[radius-roadmap] data-account and data-workspace are required",
+    );
     return;
   }
 
-  const url = new URL(`/${encodeURIComponent(workspace)}/roadmap`, origin);
+  const url = new URL(
+    `/${encodeURIComponent(account)}/${encodeURIComponent(workspace)}/roadmap`,
+    origin,
+  );
   url.searchParams.set("embed", "1");
   if (script.dataset.board) url.searchParams.set("board", script.dataset.board);
 

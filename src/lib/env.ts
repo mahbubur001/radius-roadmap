@@ -31,9 +31,6 @@ export const env = createEnv({
     // Public base URL for stored files (bucket URL or CloudFront)
     S3_PUBLIC_URL: z.url().optional(),
 
-    // Public sites live at <account-slug>.<PUBLIC_ROOT_DOMAIN> (doc 19 D1).
-    // Locally "localhost:3000" → http://acme.localhost:3000
-    PUBLIC_ROOT_DOMAIN: z.string().default("localhost:3000"),
     // Signs the anonymous visitor cookie and hashes voter IPs. Falls back to
     // a key derived from BETTER_AUTH_SECRET when unset.
     VISITOR_SECRET: z.string().min(32).optional(),
@@ -67,7 +64,6 @@ export const env = createEnv({
     UPLOAD_DIR: process.env.UPLOAD_DIR,
     S3_BUCKET: process.env.S3_BUCKET,
     S3_PUBLIC_URL: process.env.S3_PUBLIC_URL,
-    PUBLIC_ROOT_DOMAIN: process.env.PUBLIC_ROOT_DOMAIN,
     VISITOR_SECRET: process.env.VISITOR_SECRET,
     TURNSTILE_SECRET_KEY: process.env.TURNSTILE_SECRET_KEY,
     TRUST_CLOUDFLARE: process.env.TRUST_CLOUDFLARE,

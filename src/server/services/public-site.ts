@@ -20,8 +20,8 @@ import { likePattern } from "./cards";
 import type { PublicContext } from "./context";
 import { byPosition } from "./positions";
 
-// Public site queries (doc 19 §4.1). The account comes from the hostname,
-// never from the client. Only public roadmaps, public columns and public,
+// Public site queries (doc 19 §4.1). The account comes from the URL path
+// (/<account>/…), never from an account id sent by the client. Only public roadmaps, public columns and public,
 // unarchived cards are returned, with only the fields `display` allows.
 
 export type PublicSite = {
@@ -32,19 +32,15 @@ export type PublicSite = {
 };
 
 /**
- * `<account-slug>.<rootDomain>` → the account. Custom domains are Phase 6,
- * so any other host resolves to nothing.
+ * The account whose public site lives at /<slug> (doc 19, D1 revised).
+ * Custom domains (Phase 6) will add a host lookup next to this one.
  */
 export async function resolveSite(
   db: Db,
-  host: string,
-  rootDomain: string,
+  slug: string,
 ): Promise<PublicSite | null> {
-  const h = host.toLowerCase();
-  const suffix = `.${rootDomain.toLowerCase()}`;
-  if (!h.endsWith(suffix)) return null;
-  const slug = h.slice(0, -suffix.length);
-  if (!/^[a-z0-9]+(?:-[a-z0-9]+)*$/.test(slug)) return null;
+  const s = slug.toLowerCase();
+  if (!/^[a-z0-9]+(?:-[a-z0-9]+)*$/.test(s)) return null;
   const [row] = await db
     .select({
       accountId: organization.id,
@@ -53,7 +49,7 @@ export async function resolveSite(
       logo: organization.logo,
     })
     .from(organization)
-    .where(eq(organization.slug, slug))
+    .where(eq(organization.slug, s))
     .limit(1);
   return row ?? null;
 }
@@ -448,9 +444,10 @@ export type PublicPathStatus = "ok" | "missing" | { redirect: string };
 
 /**
  * Cheap existence check for a public-site path, run by the proxy before the
- * page streams, so missing pages get a real 404 and the `/` and
- * `/<workspace>` shortcuts get real redirects. Same visibility rules as the
- * page loaders above.
+ * page streams, so missing pages get a real 404 and the `/<account>` and
+ * `/<account>/<workspace>` shortcuts get real redirects. `segments` and the
+ * redirect are relative to the site root (/<account>). Same visibility rules
+ * as the page loaders above.
  */
 export async function publicPathStatus(
   db: Db,
@@ -466,9 +463,7 @@ export async function publicPathStatus(
       ? { redirect: `/${only.slug}/roadmap` }
       : "ok";
   }
-  if (segments.length === 1 && (ws === "sitemap.xml" || ws === "robots.txt")) {
-    return "ok";
-  }
+  if (segments.length === 1 && ws === "sitemap.xml") return "ok";
   if (rest.length || (module !== undefined && module !== "roadmap")) {
     return "missing";
   }

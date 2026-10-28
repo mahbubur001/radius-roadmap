@@ -6,7 +6,7 @@ import { signUpOwner } from "./helpers";
 import { waitForMail } from "./mail";
 
 // Phase 2 flows (doc 19 §6). Each test signs up its own account, so the
-// public site lives at <account-slug>.localhost:3000.
+// public site lives at /<account-slug>/<workspace> (doc 19, D1 revised).
 
 /** A fresh browser context with its own client IP, so rate limits don't collide. */
 async function visitor(browser: Browser) {
@@ -22,7 +22,7 @@ function rand() {
 }
 
 async function openRoadmap(page: Page, slug: string) {
-  await page.goto(`/${slug}/roadmap`);
+  await page.goto(`/dashboard/${slug}/roadmap`);
   await expect(page.getByRole("region", { name: "Up next" })).toBeVisible();
 }
 
@@ -218,7 +218,7 @@ test("require sign-in: voter signs in with an email code and is listed by name",
   const id = randomUUID().slice(0, 8);
   const { slug } = await signUpOwner(page, id);
 
-  await page.goto(`/${slug}/settings/workspace`);
+  await page.goto(`/dashboard/${slug}/settings/workspace`);
   await page
     .getByRole("switch", { name: "Require sign-in to vote, comment or submit" })
     .click();
@@ -264,16 +264,18 @@ test("embed.js inserts a self-sizing iframe where voting works", async ({
   const { slug } = await signUpOwner(page, id);
   await openRoadmap(page, slug);
   await addCard(page, "Up next", "Embedded idea");
-  const origin = new URL(await publicUrl(page)).origin;
+  const url = new URL(await publicUrl(page));
+  const { origin } = url;
+  const account = url.pathname.split("/")[1];
 
   // A customer page that only has the snippet, served by a real local
-  // server on 127.0.0.1 (another site than *.localhost). A route-mocked page
+  // server on 127.0.0.1 (another site than localhost). A route-mocked page
   // would count as public, and Chrome blocks public pages from loading
   // loopback URLs.
   const server = createServer((_req, res) => {
     res.writeHead(200, { "content-type": "text/html" });
     res.end(`<!doctype html><title>Customer</title><h1>Our roadmap</h1>
-      <script src="${origin}/embed.js" data-workspace="${slug}" async></script>`);
+      <script src="${origin}/embed.js" data-account="${account}" data-workspace="${slug}" async></script>`);
   });
   await new Promise<void>((resolve) => server.listen(0, "127.0.0.1", resolve));
   const { port } = server.address() as AddressInfo;

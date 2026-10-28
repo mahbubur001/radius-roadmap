@@ -1,8 +1,10 @@
 import { z } from "zod";
 
-// Top-level app routes that a workspace slug must not shadow.
+// Top-level app routes. Account slugs are the first path segment of public
+// sites (/<account>/<workspace>), so they must not shadow these.
 export const RESERVED_SLUGS = new Set([
   "api",
+  "dashboard",
   "sites",
   "p",
   "onboarding",

@@ -31,7 +31,7 @@ const items = [
 export function SidebarNav() {
   const { workspace } = useParams<{ workspace: string }>();
   const pathname = usePathname();
-  const base = `/${workspace}`;
+  const base = `/dashboard/${workspace}`;
 
   return (
     <nav className="flex flex-col items-center gap-1">

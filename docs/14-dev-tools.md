@@ -146,8 +146,8 @@ radius-roadmap/
 ├─ src/
 │  ├─ app/
 │  │  ├─ (auth)/            # login, register, verify, invite
-│  │  ├─ (dashboard)/       # /[workspace]/feedback|roadmap|updates|articles|settings
-│  │  ├─ (public)/          # tenant public site (resolved from hostname)
+│  │  ├─ (dashboard)/       # /dashboard/[workspace]/feedback|roadmap|updates|articles|settings
+│  │  ├─ (public)/          # tenant public site at /<account>/<workspace> (routed by proxy.ts)
 │  │  └─ api/               # auth handler, /v1 REST, widget API, SES/SNS + Stripe webhooks
 │  ├─ components/           # shadcn/ui + app components
 │  ├─ server/
@@ -207,4 +207,4 @@ Installed versions differ from the planning estimates above. These are the ones 
   - `fractional-indexing` 4 (column/card order; sort with `COLLATE "C"`)
   - `papaparse` (LoopedIn CSV import)
   - shadcn `calendar` (`react-day-picker` 10, `date-fns` 4), `popover`, `textarea`, `progress`
-  - env `PUBLIC_ROOT_DOMAIN` (public sites live at `<account-slug>.<PUBLIC_ROOT_DOMAIN>`; `localhost:3000` locally), `VISITOR_SECRET` (signs the visitor cookie), `TURNSTILE_SECRET_KEY` + `NEXT_PUBLIC_TURNSTILE_SITE_KEY` (optional; Turnstile is skipped when unset)
+  - public sites live on the app domain at `/<account>/<workspace>` (doc 19 "D1 revised"; `PUBLIC_ROOT_DOMAIN` was removed 2026-10-28); env `VISITOR_SECRET` (signs the visitor cookie), `TURNSTILE_SECRET_KEY` + `NEXT_PUBLIC_TURNSTILE_SITE_KEY` (optional; Turnstile is skipped when unset)

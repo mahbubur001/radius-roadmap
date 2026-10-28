@@ -40,8 +40,12 @@ export async function POST(request: NextRequest) {
 
   const { code, token } = await startEmailCode(db, req.ctx, email);
   const link = new URL("/api/public/auth/link", siteOrigin(request));
+  link.searchParams.set("site", req.site.slug);
   link.searchParams.set("token", token);
-  link.searchParams.set("next", safeNext(parsed.data.next, "/"));
+  link.searchParams.set(
+    "next",
+    safeNext(parsed.data.next, `/${req.site.slug}`),
+  );
   await enqueueEmail({
     template: "voter-code",
     to: email,

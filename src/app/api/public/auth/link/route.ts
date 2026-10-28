@@ -10,7 +10,10 @@ import { completeSignIn } from "@/server/voter-session";
 export async function GET(request: NextRequest) {
   const req = await publicRequest(request);
   if (!req) return notFound();
-  const next = safeNext(request.nextUrl.searchParams.get("next"), "/");
+  const next = safeNext(
+    request.nextUrl.searchParams.get("next"),
+    `/${req.site.slug}`,
+  );
   const target = new URL(next, siteOrigin(request));
   try {
     const user = await verifyEmailLink(

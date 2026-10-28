@@ -27,7 +27,13 @@
 - Stack versions as built: `docs/14-dev-tools.md` → "Versions as built"
 
 ## Current status
-- **Phase:** Phases 0 and 1 done and pushed. **Phase 2 approved 2026-10-27 (D1–D6, all recommendations); steps 1–9 and 11 of doc 19 §7 are built, tested and pushed.** Only step 10 (LoopedIn import) is left.
+- **Phase:** Phases 0 and 1 done. **Phase 2:** everything built except step 10 (LoopedIn roadmap import, waiting for the export file). **Phase 3 (doc 20, approved 2026-10-28):** steps 1–4 of doc 20 §7 built, tested and pushed; step 5 (public feedback pages) is next.
+- **Phase 3 delivered so far** (details in doc 20 "As built"):
+  - Schema + migrations `0003` (feedback boards, statuses, items, links, comments, follows, notification preferences; `votes.feedback_id`) and `0004` (defaults for existing workspaces).
+  - Admin feedback list at `/dashboard/<workspace>/feedback` (filters in the URL, sort, search) + drawer (autosave, Impact/Effort priority).
+  - Triage inbox (`/feedback/inbox`), sidebar badge, bulk actions, keyboard shortcuts, board settings, statuses editor.
+  - Push to roadmap / link to card, Linked feedback tab on cards, 💡 counts, card → feedback status sync, merge, duplicate.
+  - Playwright: `e2e/feedback.spec.ts` (3 flows).
 - **Phase 2 delivered so far:**
   - Schema + migration `0002`: roadmaps, columns, cards (full-text search), features, categories, tags, votes, events, voter login codes. New workspaces are seeded with a roadmap, columns and categories.
   - Admin board (dnd-kit, fractional ordering), roadmap settings, columns editor, categories/tags, card drawer (Tiptap with image upload, autosave, features, Votes tab).
@@ -40,17 +46,19 @@
   - Playwright flows 1–5 (`e2e/roadmap.spec.ts`).
 - Rate-limit bypass fixed: `cf-*` headers trusted only with `TRUST_CLOUDFLARE=1` (new env var); `src/server/rate-limit.test.ts`.
 - **Checks:** `pnpm lint`, `typecheck`, `test` (120 tests), `test:e2e` (14 tests: Phase 2 flows 1–5 in `e2e/roadmap.spec.ts`, Phase 3 admin flows in `e2e/feedback.spec.ts`) and `build` pass.
-- **Git:** everything is pushed to `origin/main`. Latest code commit `a280db4` (Playwright flows, embed height fix, proxy 404s); the commit after it only updates this file.
+- **Git:** everything is pushed to `origin/main`. Latest code commit `4109b0d` (Phase 3 step 4); the commit after it only updates this file.
+- **Dev tip:** Turbopack's dev cache sometimes serves stale code after edits (seen twice: CSS and a new service export). If a change doesn't show up, stop `pnpm dev`, delete `.next/dev`, and start it again.
+- **Dev test account on this Mac:** `claude-dev@example.test` / `devpassword123` (account `claude-dev`, workspace `dev-product`). Local dev DB only.
 - **Second Mac (user `radiustheme`):** set up 2026-10-28. Homebrew Postgres 18 (role `radiustheme`, no `postgres` role, so `DATABASE_URL=postgres://radiustheme@localhost:5432/radius_roadmap`) + Redis. `~/.zshrc` has `PNPM_HOME=/Users/mahbubur/...` copied from the first Mac, so pnpm fails with EACCES until it's fixed to `$HOME/Library/pnpm`. Playwright Chromium installed 2026-10-28.
 - **First Mac (user `mahbubur`):** Homebrew Postgres 18 + Redis, `EMAIL_TRANSPORT=console`, `STORAGE_DRIVER=local` in `.env.local` (its `PUBLIC_ROOT_DOMAIN` line is no longer used and can be deleted). The dev workspace `demo-product` was renamed "Radius Roadmap" (slug unchanged). The local dev DB also holds many test accounts made by Playwright; they're harmless.
 
 ## Next step
 Resume here. On a new session say: *"Read docs/PROGRESS.md and continue from Next step."*
-1. ~~Fix the rate-limit bypass~~ (done 2026-10-28).
-2. **Owner (blocking):** export the Radius roadmap from LoopedIn (Roadmap → More → Export) and put the file in `docs/samples/`.
-3. Then build **step 10**, the LoopedIn import page at `/<workspace>/roadmap/import?r=<roadmap-slug>` (papaparse, preview step, idempotent by `external_ref`, totals into `imported_votes`), its Vitest test and Playwright flow 6.
-4. Tick the last "Done when" items in doc 19, mark Phase 2 done here, commit + push.
-5. **Phase 3 approved 2026-10-28 (D1–D7, all recommendations).** Build doc 20 §7 steps 1–8 while waiting for the exports. **Steps 1 (schema, migrations 0003/0004), 2 (feedback services, admin list, drawer) 3 (triage inbox, sidebar badge, bulk actions, keyboard shortcuts, board settings, statuses editor) and 4 (push to roadmap, linked feedback both ways, card → feedback status sync, merge, duplicate, 💡 counts) done 2026-10-28; next is step 5** (public feedback page, item page, search, sort; `publicPathStatus` + sitemap; 308 for merged items). D7 also needs the LoopedIn **feedback** export (Boards → More → Export) in `docs/samples/`.
+1. **Phase 3 step 5** (doc 20 §7): public Feedback tab at `/<account>/<workspace>/feedback` (board switcher, search, sort trending/top/new, status filter), item page `/<account>/<workspace>/feedback/<item-slug>` (drawer on soft navigation, full page on direct load), only approved + public + unarchived items on public boards; add the routes to `publicPathStatus` (308 from a merged item to its target) and the sitemap.
+2. Then Phase 3 steps 6–8: public submission + voting on feedback, comments and follows (behind the workspace settings), notification preferences + email jobs.
+3. **Owner (blocking for the imports):** export from LoopedIn and put both files in `docs/samples/`: the roadmap (Roadmap → More → Export) and the feedback (Boards → More → Export).
+4. With the exports: Phase 2 step 10 (LoopedIn roadmap import at `/dashboard/<workspace>/roadmap/import?r=<roadmap-slug>`: papaparse, preview step, idempotent by `external_ref`, totals into `imported_votes`, Vitest + Playwright flow 6), then Phase 3 step 9 (feedback import + CSV export). Tick doc 19 "Done when" and mark Phase 2 done.
+5. Open follow-ups: a strict Content-Security-Policy on public pages (they now share the dashboard's origin, doc 19 "D1 revised"); optional redirect from old dashboard URLs `/<workspace>/…` to `/dashboard/<workspace>/…`.
 
 ## Decisions (approved)
 - **2026-10-28, owner: public pages on the app domain, LoopedIn-style** (`<app>/<account>/<workspace>`), dashboard under `/dashboard/<workspace>`, account subdomains removed. Replaces doc 19 D1; details in doc 19 "D1 revised".
@@ -92,7 +100,7 @@ Resume here. On a new session say: *"Read docs/PROGRESS.md and continue from Nex
 - [x] Phase 0 — Scaffold (doc 17)
 - [x] Phase 1 — Accounts & workspaces (doc 18)
 - [ ] Phase 2 — Roadmap + voting + public page + embed (all built except step 10, LoopedIn import)
-- [ ] Phase 3 — Feedback + triage + import
+- [ ] Phase 3 — Feedback + triage + import (steps 1–4 of 11 built)
 - [ ] Phase 4 — Updates + email
 - [ ] Phase 5 — Knowledge base
 - [ ] Phase 6 — Billing, widget, domains, white-label

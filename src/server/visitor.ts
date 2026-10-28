@@ -67,10 +67,21 @@ export async function hashIp(ip: string | null) {
   return ip ? (await hmac(`ip:${ip}`)).slice(0, 32) : null;
 }
 
-/** Client IP from proxy headers (Cloudflare first, then the first XFF hop). */
+/**
+ * Cloudflare's `cf-*` headers are only set by Cloudflare. Without it in front,
+ * any client can send them, so they're ignored unless TRUST_CLOUDFLARE=1.
+ */
+function trustCloudflare() {
+  return process.env.TRUST_CLOUDFLARE === "1";
+}
+
+/**
+ * Client IP from proxy headers: Cloudflare's (only when trusted), then the
+ * first XFF hop. Caddy replaces any client-sent XFF with the real peer address.
+ */
 export function clientIp(headers: Headers) {
   return (
-    headers.get("cf-connecting-ip") ??
+    (trustCloudflare() ? headers.get("cf-connecting-ip") : null) ??
     headers.get("x-forwarded-for")?.split(",")[0]?.trim() ??
     headers.get("x-real-ip") ??
     null
@@ -79,6 +90,7 @@ export function clientIp(headers: Headers) {
 
 /** Coarse location from Cloudflare headers, when the site sits behind it. */
 export function clientLocation(headers: Headers) {
+  if (!trustCloudflare()) return { country: null, city: null };
   const country = headers.get("cf-ipcountry");
   const city = headers.get("cf-ipcity");
   return {

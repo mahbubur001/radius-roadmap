@@ -127,6 +127,11 @@
   html {
     @apply font-sans;
   }
+  /* Tailwind v4 Preflight gives buttons the default cursor; restore the pointer. */
+  button:not(:disabled),
+  [role="button"]:not(:disabled) {
+    cursor: pointer;
+  }
 }
 
 /* Rich text: the card editor and server-rendered descriptions (src/lib/rich-text.ts). */

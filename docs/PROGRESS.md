@@ -23,6 +23,7 @@
 - Phase 0 scaffold plan (done): `docs/17-scaffold-plan.md`
 - Phase 1 plan (built): `docs/18-phase-1-plan.md`
 - Phase 2 plan (approved, being built; see its "As built" section): `docs/19-phase-2-plan.md`
+- Phase 3 plan (approved 2026-10-28, being built): `docs/20-phase-3-plan.md`
 - Stack versions as built: `docs/14-dev-tools.md` → "Versions as built"
 
 ## Current status
@@ -37,16 +38,19 @@
   - Shared form components: `DatePicker`/`DateRangePicker`, `ColorPicker`, `RichTextEditor`; chart: `ColumnChart`.
   - Real 404 / 308 statuses for public sites, checked in `src/proxy.ts` (`publicPathStatus`).
   - Playwright flows 1–5 (`e2e/roadmap.spec.ts`).
-- **Checks:** `pnpm lint`, `typecheck`, `test` (91 tests), `test:e2e` (11 tests, incl. Phase 2 flows 1–5 in `e2e/roadmap.spec.ts`) and `build` pass.
+- Rate-limit bypass fixed: `cf-*` headers trusted only with `TRUST_CLOUDFLARE=1` (new env var); `src/server/rate-limit.test.ts`.
+- **Checks:** `pnpm lint`, `typecheck`, `test` (98 tests), `test:e2e` (11 tests, incl. Phase 2 flows 1–5 in `e2e/roadmap.spec.ts`) and `build` pass.
 - **Git:** everything is pushed to `origin/main`. Latest code commit `a280db4` (Playwright flows, embed height fix, proxy 404s); the commit after it only updates this file.
-- **This Mac:** Homebrew Postgres 18 + Redis, `EMAIL_TRANSPORT=console`, `STORAGE_DRIVER=local`, `PUBLIC_ROOT_DOMAIN=localhost:3000` in `.env.local`. The dev workspace `demo-product` was renamed "Radius Roadmap" (slug unchanged). The local dev DB also holds many test accounts made by Playwright; they're harmless.
+- **Second Mac (user `radiustheme`):** set up 2026-10-28. Homebrew Postgres 18 (role `radiustheme`, no `postgres` role, so `DATABASE_URL=postgres://radiustheme@localhost:5432/radius_roadmap`) + Redis. `~/.zshrc` has `PNPM_HOME=/Users/mahbubur/...` copied from the first Mac, so pnpm fails with EACCES until it's fixed to `$HOME/Library/pnpm`.
+- **First Mac (user `mahbubur`):** Homebrew Postgres 18 + Redis, `EMAIL_TRANSPORT=console`, `STORAGE_DRIVER=local`, `PUBLIC_ROOT_DOMAIN=localhost:3000` in `.env.local`. The dev workspace `demo-product` was renamed "Radius Roadmap" (slug unchanged). The local dev DB also holds many test accounts made by Playwright; they're harmless.
 
 ## Next step
 Resume here. On a new session say: *"Read docs/PROGRESS.md and continue from Next step."*
-1. **Fix the rate-limit bypass:** `clientIp()` in `src/server/visitor.ts` trusts the `cf-connecting-ip` header, so without Cloudflare in front, anyone can send their own value and dodge the per-IP vote limit. Trust it only when a new env flag (e.g. `TRUST_CLOUDFLARE=1`, added to `src/lib/env.ts` + `.env.example`) is set; otherwise use the `x-forwarded-for` that Caddy sets. Add a Vitest test for `hit()` / the vote limits (doc 19 §6 "rate limits trip").
-2. **Owner:** export the Radius roadmap from LoopedIn (Roadmap → More → Export) and put the file in `docs/samples/`.
+1. ~~Fix the rate-limit bypass~~ (done 2026-10-28).
+2. **Owner (blocking):** export the Radius roadmap from LoopedIn (Roadmap → More → Export) and put the file in `docs/samples/`.
 3. Then build **step 10**, the LoopedIn import page at `/<workspace>/roadmap/import?r=<roadmap-slug>` (papaparse, preview step, idempotent by `external_ref`, totals into `imported_votes`), its Vitest test and Playwright flow 6.
-4. Tick the last "Done when" items in doc 19, mark Phase 2 done here, commit + push, then write the Phase 3 plan (doc 20) for approval.
+4. Tick the last "Done when" items in doc 19, mark Phase 2 done here, commit + push.
+5. **Phase 3 approved 2026-10-28 (D1–D7, all recommendations).** Build doc 20 §7 steps 1–8 while waiting for the exports. D7 also needs the LoopedIn **feedback** export (Boards → More → Export) in `docs/samples/`.
 
 ## Decisions (approved)
 - Stack per doc 14:
@@ -106,3 +110,4 @@ Resume here. On a new session say: *"Read docs/PROGRESS.md and continue from Nex
 | 2026-10-27 | mahbubur (Mac) | Committed + pushed Phase 1; wrote the Phase 2 plan (doc 19) | Owner approves doc 19 (D1–D6) + sends the LoopedIn export → build Phase 2 |
 | 2026-10-27 | mahbubur (Mac) | Committed + pushed doc 19; doc 19 approved; built Phase 2 steps 1–9 (schema, board, card drawer, public site, voting, voter sign-in, embed, Home dashboard), shared DatePicker/ColorPicker, 90 tests passing | LoopedIn export → import (step 10), Playwright flows, commit + push |
 | 2026-10-28 | mahbubur (Mac) | Pushed Phase 2 steps 1–9 (`f7703a7`); Playwright flows 1–5 (11 e2e passing); fixed embed iframe height ; real 404/308 for public pages via the proxy (owner approved); pushed `a280db4` | Fix cf-connecting-ip rate-limit bypass + rate-limit test → LoopedIn export → step 10 |
+| 2026-10-28 | radiustheme (Mac 2) | First-time setup on this Mac; fixed the cf-connecting-ip rate-limit bypass (`TRUST_CLOUDFLARE`), added rate-limit tests (98 passing) ; button cursor fix (Tailwind v4 Preflight); wrote the Phase 3 plan (doc 20), approved | LoopedIn exports → Phase 2 step 10; build Phase 3 steps 1–8 |

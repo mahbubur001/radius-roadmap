@@ -258,7 +258,9 @@ Deviations from the plan above:
 - The embed measures the site shell (`[data-embed-root]`), not the document, so the iframe can also shrink below its 600px default.
 - **Real 404s and redirects for public sites come from the proxy.** Public pages stream (Cache Components), so their status is fixed at 200 before they render. `src/proxy.ts` first runs `publicPathStatus` (one indexed query, same visibility rules as the loaders): missing site/workspace/roadmap/card → plain 404 page; `/` (one workspace) and `/<workspace>` → 308 to the roadmap. Approved by the owner 2026-10-28.
 
-Still to do: step 10 (LoopedIn import, waiting for the export file) and a rate-limit test.
+- Rate limits: `src/server/rate-limit.test.ts` checks that `hit()` trips (incl. the per-card anonymous limit). `clientIp()` / `clientLocation()` only trust Cloudflare's `cf-*` headers when `TRUST_CLOUDFLARE=1`; otherwise they use the first `x-forwarded-for` hop, which Caddy overwrites with the real peer address (2026-10-28).
+
+Still to do: step 10 (LoopedIn import, waiting for the export file).
 
 ## Done when
 - [x] Admins and members (with access) manage a roadmap on a drag-and-drop board; cards autosave; columns, categories, tags and display settings work.

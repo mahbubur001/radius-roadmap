@@ -40,6 +40,9 @@ export const env = createEnv({
     // Cloudflare Turnstile (invisible) on anonymous and guest votes. Unset =
     // no check (dev); the .env.example values are Cloudflare's test keys.
     TURNSTILE_SECRET_KEY: z.string().optional(),
+    // "1" only when the app sits behind Cloudflare: trusts its cf-connecting-ip
+    // (vote rate limits) and cf-ipcountry/cf-ipcity (geo) headers.
+    TRUST_CLOUDFLARE: z.enum(["0", "1"]).default("0"),
   },
   client: {
     NEXT_PUBLIC_APP_URL: z.url(),
@@ -67,6 +70,7 @@ export const env = createEnv({
     PUBLIC_ROOT_DOMAIN: process.env.PUBLIC_ROOT_DOMAIN,
     VISITOR_SECRET: process.env.VISITOR_SECRET,
     TURNSTILE_SECRET_KEY: process.env.TURNSTILE_SECRET_KEY,
+    TRUST_CLOUDFLARE: process.env.TRUST_CLOUDFLARE,
     NEXT_PUBLIC_APP_URL: process.env.NEXT_PUBLIC_APP_URL,
     NEXT_PUBLIC_TURNSTILE_SITE_KEY: process.env.NEXT_PUBLIC_TURNSTILE_SITE_KEY,
   },

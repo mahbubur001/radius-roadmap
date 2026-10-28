@@ -27,6 +27,7 @@ import {
   CheckCircle2,
   EyeOff,
   GripVertical,
+  Lightbulb,
   Lock,
   Plus,
   ThumbsUp,
@@ -463,6 +464,15 @@ function CardFace({
           {total > 0 ? (
             <span>
               {done}/{total}
+            </span>
+          ) : null}
+          {card.ideas ? (
+            <span
+              className="flex items-center gap-1"
+              title={`${card.ideas} linked feedback`}
+            >
+              <Lightbulb className="size-3.5" />
+              {card.ideas}
             </span>
           ) : null}
           {!card.isPublic ? (

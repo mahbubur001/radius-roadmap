@@ -15,6 +15,7 @@ import {
   createTestAccount,
   createTestUser,
 } from "@/test/factories";
+import { listBoardCards, moveCard, setCardCompleted } from "./cards";
 import {
   type AccountContext,
   ConflictError,
@@ -26,6 +27,7 @@ import {
   bulkUpdateFeedback,
   createFeedback,
   deleteFeedback,
+  duplicateFeedback,
   firstStatusOfKind,
   getFeedback,
   getFeedbackDetail,
@@ -33,7 +35,9 @@ import {
   listBoards,
   listFeedback,
   listStatuses,
+  mergeFeedback,
   reviewFeedback,
+  searchFeedback,
   setFeedbackArchived,
   setFeedbackCompleted,
   updateFeedback,
@@ -48,7 +52,20 @@ import {
   moveStatus,
   updateBoard,
 } from "./feedback-boards";
-import { createTag, listCategories } from "./roadmaps";
+import {
+  linkCard,
+  linkedCards,
+  linkedFeedback,
+  pushToRoadmap,
+  searchCards,
+  unlinkCard,
+} from "./feedback-links";
+import {
+  createTag,
+  listCategories,
+  listColumns,
+  listRoadmaps,
+} from "./roadmaps";
 import { createWorkspace } from "./workspaces";
 
 let ctx: AccountContext;
@@ -507,5 +524,267 @@ describe("triage, bulk edits, boards and statuses", () => {
         kind: "open",
       }),
     ).rejects.toThrow(ForbiddenError);
+  });
+});
+
+describe("roadmap links, status sync, merge and duplicate", () => {
+  let wsA: WorkspaceContext;
+  let wsB: WorkspaceContext;
+  let boardA: string;
+  let columns: Awaited<ReturnType<typeof listColumns>>;
+
+  beforeAll(async () => {
+    wsA = { ...ctx, workspaceId, workspaceSlug: "fb" };
+    const accountB = await createTestAccount(db, "fb-link-b");
+    const ownerB = await createTestUser(db, "fb-link-b-owner");
+    accounts.push(accountB);
+    users.push(ownerB);
+    const ctxB = await addTestMember(db, accountB, ownerB, "owner");
+    const ws = await createWorkspace(db, ctxB, {
+      name: "Link B",
+      slug: "link-b",
+    });
+    wsB = { ...ctxB, workspaceId: ws.id, workspaceSlug: ws.slug };
+    boardA = (await listBoards(db, wsA))[0]?.id as string;
+    const [roadmap] = await listRoadmaps(db, wsA);
+    columns = await listColumns(db, wsA, roadmap?.id as string);
+  });
+
+  const column = (name: string) =>
+    columns.find((c) => c.name === name)?.id as string;
+  const kindOf = async (statusId: string) =>
+    (await listStatuses(db, wsA)).find((s) => s.id === statusId)?.kind;
+
+  it("push to roadmap creates one linked card and plans the feedback", async () => {
+    const item = await createFeedback(db, wsA, {
+      boardId: boardA,
+      title: "Webhooks",
+    });
+    await updateFeedback(db, wsA, {
+      id: item.id,
+      summaryJson: {
+        type: "doc",
+        content: [
+          { type: "paragraph", content: [{ type: "text", text: "Please" }] },
+        ],
+      },
+    });
+    const card = await pushToRoadmap(db, wsA, {
+      feedbackId: item.id,
+      columnId: column("Up next"),
+      title: "Outgoing webhooks",
+    });
+    expect(card).toMatchObject({
+      title: "Outgoing webhooks",
+      summaryText: "Please",
+    });
+    expect((await linkedCards(db, wsA, item.id)).map((c) => c.id)).toEqual([
+      card.id,
+    ]);
+    expect((await linkedFeedback(db, wsA, card.id)).map((f) => f.id)).toEqual([
+      item.id,
+    ]);
+    expect(await kindOf((await getFeedback(db, wsA, item.id)).statusId)).toBe(
+      "planned",
+    );
+    const board = await listBoardCards(db, wsA, card.roadmapId);
+    expect(board.find((c) => c.id === card.id)?.ideas).toBe(1);
+  });
+
+  it("moving the card to done completes linked feedback; moving back reopens it", async () => {
+    const item = await createFeedback(db, wsA, {
+      boardId: boardA,
+      title: "SSO",
+    });
+    const card = await pushToRoadmap(db, wsA, {
+      feedbackId: item.id,
+      columnId: column("Up next"),
+      title: "SSO",
+    });
+    await moveCard(db, wsA, {
+      id: card.id,
+      columnId: column("Done"),
+      prevId: null,
+      nextId: null,
+    });
+    let row = await getFeedback(db, wsA, item.id);
+    expect(await kindOf(row.statusId)).toBe("done");
+    expect(row.completedAt).not.toBeNull();
+
+    await moveCard(db, wsA, {
+      id: card.id,
+      columnId: column("In progress"),
+      prevId: null,
+      nextId: null,
+    });
+    row = await getFeedback(db, wsA, item.id);
+    expect(await kindOf(row.statusId)).toBe("in_progress");
+    expect(row.completedAt).toBeNull();
+
+    await setCardCompleted(db, wsA, card.id, true);
+    expect(await kindOf((await getFeedback(db, wsA, item.id)).statusId)).toBe(
+      "done",
+    );
+  });
+
+  it("linking keeps a manual status; linking twice is a no-op; unlink works", async () => {
+    const item = await createFeedback(db, wsA, {
+      boardId: boardA,
+      title: "Manual",
+    });
+    const inProgress = await firstStatusOfKind(db, wsA, "in_progress");
+    await updateFeedback(db, wsA, { id: item.id, statusId: inProgress?.id });
+    const [card] = await searchCards(db, wsA, "Outgoing");
+    await linkCard(db, wsA, item.id, card?.id as string);
+    await linkCard(db, wsA, item.id, card?.id as string);
+    expect((await getFeedback(db, wsA, item.id)).statusId).toBe(inProgress?.id);
+    expect(await linkedCards(db, wsA, item.id)).toHaveLength(1);
+    await unlinkCard(db, wsA, item.id, card?.id as string);
+    expect(await linkedCards(db, wsA, item.id)).toHaveLength(0);
+  });
+
+  it("another account can't push, link, list or merge across accounts", async () => {
+    const item = await createFeedback(db, wsA, {
+      boardId: boardA,
+      title: "Mine only",
+    });
+    const [cardB] = await searchCards(db, wsB, "");
+    await expect(
+      pushToRoadmap(db, wsB, {
+        feedbackId: item.id,
+        columnId: column("Up next"),
+        title: "x",
+      }),
+    ).rejects.toThrow(NotFoundError);
+    await expect(
+      pushToRoadmap(db, wsA, {
+        feedbackId: item.id,
+        columnId: (
+          await listColumns(
+            db,
+            wsB,
+            (
+              await listRoadmaps(db, wsB)
+            )[0]?.id as string,
+          )
+        )[0]?.id as string,
+        title: "x",
+      }),
+    ).rejects.toThrow(NotFoundError);
+    if (cardB) {
+      await expect(linkCard(db, wsA, item.id, cardB.id)).rejects.toThrow(
+        NotFoundError,
+      );
+    }
+    const [cardA] = await searchCards(db, wsA, "Outgoing");
+    expect(await linkedFeedback(db, wsB, cardA?.id as string)).toEqual([]);
+    expect(await searchCards(db, wsB, "Outgoing")).toEqual([]);
+    const other = await createFeedback(db, wsB, {
+      boardId: (await listBoards(db, wsB))[0]?.id as string,
+      title: "B",
+    });
+    await expect(mergeFeedback(db, wsA, item.id, other.id)).rejects.toThrow(
+      NotFoundError,
+    );
+    expect(
+      (await searchFeedback(db, wsB, "Mine only")).map((r) => r.id),
+    ).toEqual([]);
+  });
+
+  it("merge moves votes without duplicates, sums imported votes and archives the source", async () => {
+    const source = await createFeedback(db, wsA, {
+      boardId: boardA,
+      title: "Dup A",
+    });
+    const target = await createFeedback(db, wsA, {
+      boardId: boardA,
+      title: "Dup B",
+    });
+    await db
+      .update(feedbackItems)
+      .set({ importedVotes: 4 })
+      .where(eq(feedbackItems.id, source.id));
+    const vote = (feedbackId: string, visitorId: string) => ({
+      accountId: ctx.accountId,
+      workspaceId,
+      feedbackId,
+      visitorId,
+    });
+    await db
+      .insert(votes)
+      .values([
+        vote(source.id, "v-shared"),
+        vote(source.id, "v-only-source"),
+        vote(target.id, "v-shared"),
+      ]);
+    await db
+      .update(feedbackItems)
+      .set({ voteCount: 2 })
+      .where(eq(feedbackItems.id, source.id));
+    await db
+      .update(feedbackItems)
+      .set({ voteCount: 1 })
+      .where(eq(feedbackItems.id, target.id));
+    const [card] = await searchCards(db, wsA, "Outgoing");
+    await linkCard(db, wsA, source.id, card?.id as string);
+
+    const merged = await mergeFeedback(db, wsA, source.id, target.id);
+    expect(merged.voteCount).toBe(2);
+    expect(merged.importedVotes).toBe(4);
+    const rows = await db
+      .select()
+      .from(votes)
+      .where(eq(votes.feedbackId, target.id));
+    expect(rows.map((r) => r.visitorId).sort()).toEqual([
+      "v-only-source",
+      "v-shared",
+    ]);
+    const gone = await getFeedback(db, wsA, source.id);
+    expect(gone).toMatchObject({
+      mergedIntoId: target.id,
+      voteCount: 0,
+      importedVotes: 0,
+    });
+    expect(gone.archivedAt).not.toBeNull();
+    expect((await linkedCards(db, wsA, target.id)).map((c) => c.id)).toContain(
+      card?.id,
+    );
+    expect(await linkedCards(db, wsA, source.id)).toEqual([]);
+
+    await expect(mergeFeedback(db, wsA, target.id, target.id)).rejects.toThrow(
+      ConflictError,
+    );
+    await expect(mergeFeedback(db, wsA, target.id, source.id)).rejects.toThrow(
+      ConflictError,
+    );
+    expect((await searchFeedback(db, wsA, "Dup")).map((r) => r.id)).toEqual([
+      target.id,
+    ]);
+  });
+
+  it("duplicate copies content and tags but not votes", async () => {
+    const item = await createFeedback(db, wsA, {
+      boardId: boardA,
+      title: "Copy me",
+    });
+    const tag = await createTag(db, wsA, { name: "copy-tag" });
+    await updateFeedback(db, wsA, { id: item.id, tagIds: [tag.id], impact: 3 });
+    await db
+      .update(feedbackItems)
+      .set({ voteCount: 7 })
+      .where(eq(feedbackItems.id, item.id));
+    const copy = await duplicateFeedback(db, wsA, item.id);
+    expect(copy).toMatchObject({
+      title: "Copy me (copy)",
+      voteCount: 0,
+      impact: 3,
+      review: "approved",
+    });
+    expect((await getFeedbackDetail(db, wsA, copy.id)).tagIds).toEqual([
+      tag.id,
+    ]);
+    await expect(duplicateFeedback(db, wsB, item.id)).rejects.toThrow(
+      NotFoundError,
+    );
   });
 });

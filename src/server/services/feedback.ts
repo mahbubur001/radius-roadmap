@@ -32,17 +32,21 @@ import type { Db, DbOrTx } from "@/server/db/client";
 import {
   cardFeedbackLinks,
   categories,
+  comments,
   type FeedbackItem,
   type FeedbackStatusKind,
   feedbackBoards,
   feedbackItems,
   feedbackStatuses,
   feedbackTags,
+  follows,
   trackedUsers,
   user,
+  votes,
 } from "@/server/db/schema";
 import { likePattern } from "./cards";
 import {
+  ConflictError,
   isUniqueViolation,
   NotFoundError,
   type WorkspaceContext,
@@ -292,6 +296,176 @@ export async function deleteFeedback(
     .where(and(inWorkspace(feedbackItems, ctx), eq(feedbackItems.id, id)))
     .returning({ id: feedbackItems.id });
   if (!row) throw new NotFoundError("Feedback not found.");
+}
+
+// ── Merge and duplicate (doc 20 §1, doc 16 §8 #13) ───────────────────────
+
+/**
+ * Folds `sourceId` into `targetId`: votes (a voter who voted both keeps one
+ * vote), followers, comments, card links and tags move over; imported vote
+ * totals add up. The source is archived with `merged_into_id`, so its public
+ * URL can redirect. Items merged into the source earlier now point at the
+ * target. Cached counts are recomputed from the rows.
+ */
+export async function mergeFeedback(
+  db: Db,
+  ctx: WorkspaceContext,
+  sourceId: string,
+  targetId: string,
+) {
+  if (sourceId === targetId) {
+    throw new ConflictError("Pick another item to merge into.");
+  }
+  const [source, target] = await Promise.all([
+    getFeedback(db, ctx, sourceId),
+    getFeedback(db, ctx, targetId),
+  ]);
+  if (target.mergedIntoId) {
+    throw new ConflictError("That item was itself merged into another one.");
+  }
+  if (source.mergedIntoId) {
+    throw new ConflictError("This item was already merged.");
+  }
+
+  return db.transaction(async (tx) => {
+    // Votes: drop the source's duplicates of target votes, move the rest.
+    await tx.delete(votes).where(
+      and(
+        eq(votes.feedbackId, source.id),
+        sql`exists (select 1 from ${votes} t where t.feedback_id = ${target.id} and (
+          (${votes.trackedUserId} is not null and t.tracked_user_id = ${votes.trackedUserId})
+          or (${votes.trackedUserId} is null and t.tracked_user_id is null and t.visitor_id = ${votes.visitorId})
+        ))`,
+      ),
+    );
+    await tx
+      .update(votes)
+      .set({ feedbackId: target.id })
+      .where(eq(votes.feedbackId, source.id));
+
+    await tx.execute(sql`
+      insert into ${follows} (account_id, feedback_id, tracked_user_id, created_at)
+      select account_id, ${target.id}, tracked_user_id, created_at
+      from ${follows} where feedback_id = ${source.id}
+      on conflict do nothing`);
+    await tx.delete(follows).where(eq(follows.feedbackId, source.id));
+
+    await tx
+      .update(comments)
+      .set({ feedbackId: target.id })
+      .where(eq(comments.feedbackId, source.id));
+
+    await tx.execute(sql`
+      insert into ${cardFeedbackLinks} (account_id, workspace_id, card_id, feedback_id, created_by, created_at)
+      select account_id, workspace_id, card_id, ${target.id}, created_by, created_at
+      from ${cardFeedbackLinks} where feedback_id = ${source.id}
+      on conflict do nothing`);
+    await tx
+      .delete(cardFeedbackLinks)
+      .where(eq(cardFeedbackLinks.feedbackId, source.id));
+
+    await tx.execute(sql`
+      insert into ${feedbackTags} (feedback_id, tag_id)
+      select ${target.id}, tag_id from ${feedbackTags} where feedback_id = ${source.id}
+      on conflict do nothing`);
+
+    await tx
+      .update(feedbackItems)
+      .set({ mergedIntoId: target.id })
+      .where(
+        and(
+          inWorkspace(feedbackItems, ctx),
+          eq(feedbackItems.mergedIntoId, source.id),
+        ),
+      );
+
+    const [merged] = await tx
+      .update(feedbackItems)
+      .set({
+        importedVotes: sql`${feedbackItems.importedVotes} + ${source.importedVotes}`,
+        voteCount: sql`(select count(*)::int from ${votes} where ${votes.feedbackId} = ${target.id})`,
+        commentCount: sql`(select count(*)::int from ${comments} where ${comments.feedbackId} = ${target.id} and ${comments.review} = 'approved' and not ${comments.isInternal} and ${comments.deletedAt} is null)`,
+        updatedAt: new Date(),
+      })
+      .where(eq(feedbackItems.id, target.id))
+      .returning();
+    await tx
+      .update(feedbackItems)
+      .set({
+        mergedIntoId: target.id,
+        archivedAt: source.archivedAt ?? new Date(),
+        voteCount: 0,
+        importedVotes: 0,
+        commentCount: 0,
+        updatedAt: new Date(),
+      })
+      .where(eq(feedbackItems.id, source.id));
+    return merged as FeedbackItem;
+  });
+}
+
+/** A copy with the same content, status, category and tags; no votes. */
+export async function duplicateFeedback(
+  db: Db,
+  ctx: WorkspaceContext,
+  id: string,
+) {
+  const item = await getFeedback(db, ctx, id);
+  return db.transaction(async (tx) => {
+    const copy = await insertFeedback(tx, {
+      accountId: ctx.accountId,
+      workspaceId: ctx.workspaceId,
+      boardId: item.boardId,
+      statusId: item.statusId,
+      categoryId: item.categoryId,
+      title: `${item.title} (copy)`.slice(0, 200),
+      summaryJson: item.summaryJson,
+      summaryText: item.summaryText,
+      isPublic: item.isPublic,
+      impact: item.impact,
+      effort: item.effort,
+      review: "approved",
+      source: "admin",
+      authorUserId: ctx.userId,
+    });
+    await tx.execute(sql`
+      insert into ${feedbackTags} (feedback_id, tag_id)
+      select ${copy.id}, tag_id from ${feedbackTags} where feedback_id = ${item.id}`);
+    return copy;
+  });
+}
+
+/** Merge picker: other unmerged items matching `q`. */
+export async function searchFeedback(
+  db: Db,
+  ctx: WorkspaceContext,
+  q: string,
+  excludeId?: string,
+) {
+  return db
+    .select({
+      id: feedbackItems.id,
+      title: feedbackItems.title,
+      votes: sql<number>`${feedbackItems.voteCount} + ${feedbackItems.importedVotes}`,
+      boardName: feedbackBoards.name,
+    })
+    .from(feedbackItems)
+    .innerJoin(feedbackBoards, eq(feedbackBoards.id, feedbackItems.boardId))
+    .where(
+      and(
+        inWorkspace(feedbackItems, ctx),
+        isNull(feedbackItems.mergedIntoId),
+        excludeId ? not(eq(feedbackItems.id, excludeId)) : undefined,
+        q
+          ? or(
+              sql`${feedbackItems.search} @@ websearch_to_tsquery('english', ${q})`,
+              ilike(feedbackItems.title, likePattern(q)),
+            )
+          : undefined,
+      ),
+    )
+    .orderBy(desc(feedbackItems.updatedAt), asc(feedbackItems.id))
+    .limit(20);
 }
 
 // ── Triage (doc 20 §1 Triage inbox) ─────────────────────────────────────

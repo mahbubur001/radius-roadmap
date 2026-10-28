@@ -209,6 +209,7 @@ export function RoadmapView({
         votes: 0,
         tagIds: [],
         features: { done: 0, total: 0 },
+        ideas: 0,
       },
     ]);
     return true;

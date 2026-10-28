@@ -1,6 +1,6 @@
 "use client";
 
-import { Search } from "lucide-react";
+import { Lightbulb, Search } from "lucide-react";
 import { useEffect, useState } from "react";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -160,6 +160,15 @@ export function PublicBoard({
                       <p className="line-clamp-2 text-xs text-muted-foreground">
                         {card.preview}
                       </p>
+                    ) : null}
+                    {card.ideas ? (
+                      <span
+                        className="flex items-center gap-1 text-xs text-muted-foreground"
+                        title="Requested by your users"
+                      >
+                        <Lightbulb className="size-3.5" />
+                        {card.ideas} {card.ideas === 1 ? "request" : "requests"}
+                      </span>
                     ) : null}
                     {card.features?.length ? (
                       <div className="mt-1 h-1 rounded-full bg-muted">

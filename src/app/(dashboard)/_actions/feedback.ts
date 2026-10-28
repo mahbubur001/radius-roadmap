@@ -6,7 +6,12 @@ import {
   createFeedbackSchema,
   feedbackFlagSchema,
   feedbackIdSchema,
+  linkCardSchema,
+  mergeFeedbackSchema,
   moveStatusSchema,
+  noInputSchema,
+  pickerSearchSchema,
+  pushToRoadmapSchema,
   reviewFeedbackSchema,
   statusSchema,
   updateBoardSchema,
@@ -21,8 +26,11 @@ import {
   bulkUpdateFeedback,
   createFeedback,
   deleteFeedback,
+  duplicateFeedback,
   getFeedbackDetail,
+  mergeFeedback,
   reviewFeedback,
+  searchFeedback,
   setFeedbackArchived,
   setFeedbackCompleted,
   updateFeedback,
@@ -36,6 +44,14 @@ import {
   updateBoard,
   updateStatus,
 } from "@/server/services/feedback-boards";
+import {
+  linkCard,
+  linkedCards,
+  pushToRoadmap,
+  roadmapTargets,
+  searchCards,
+  unlinkCard,
+} from "@/server/services/feedback-links";
 import { listFeedbackVoters } from "@/server/services/votes";
 
 // Feedback changes what the public site may show (Phase 3 public pages), so
@@ -51,11 +67,12 @@ async function mutate<T>(ctx: WorkspaceContext, run: () => Promise<T>) {
 export const getFeedbackAction = workspaceAction(
   feedbackIdSchema,
   async (ctx, { id }) => {
-    const [item, voters] = await Promise.all([
+    const [item, voters, cards] = await Promise.all([
       getFeedbackDetail(db, ctx, id),
       listFeedbackVoters(db, ctx, id),
+      linkedCards(db, ctx, id),
     ]);
-    return { item, voters };
+    return { item, voters, cards };
   },
 );
 
@@ -165,4 +182,60 @@ export const moveStatusAction = workspaceAction(
 export const deleteStatusAction = workspaceAction(
   feedbackIdSchema,
   async (ctx, { id }) => mutate(ctx, () => deleteStatus(db, ctx, id)),
+);
+
+// ── Roadmap links, merge, duplicate (everyone with access) ──────────────
+
+export const roadmapTargetsAction = workspaceAction(
+  noInputSchema,
+  async (ctx) => roadmapTargets(db, ctx),
+);
+
+export const searchCardsAction = workspaceAction(
+  pickerSearchSchema,
+  async (ctx, { q }) => searchCards(db, ctx, q),
+);
+
+export const searchFeedbackAction = workspaceAction(
+  pickerSearchSchema,
+  async (ctx, { q, excludeId }) => searchFeedback(db, ctx, q, excludeId),
+);
+
+export const pushToRoadmapAction = workspaceAction(
+  pushToRoadmapSchema,
+  async (ctx, input) =>
+    mutate(ctx, async () => {
+      const card = await pushToRoadmap(db, ctx, input);
+      return { cardId: card.id };
+    }),
+);
+
+export const linkCardAction = workspaceAction(
+  linkCardSchema,
+  async (ctx, { feedbackId, cardId }) =>
+    mutate(ctx, () => linkCard(db, ctx, feedbackId, cardId)),
+);
+
+export const unlinkCardAction = workspaceAction(
+  linkCardSchema,
+  async (ctx, { feedbackId, cardId }) =>
+    mutate(ctx, () => unlinkCard(db, ctx, feedbackId, cardId)),
+);
+
+export const mergeFeedbackAction = workspaceAction(
+  mergeFeedbackSchema,
+  async (ctx, { sourceId, targetId }) =>
+    mutate(ctx, async () => {
+      const merged = await mergeFeedback(db, ctx, sourceId, targetId);
+      return { id: merged.id };
+    }),
+);
+
+export const duplicateFeedbackAction = workspaceAction(
+  feedbackIdSchema,
+  async (ctx, { id }) =>
+    mutate(ctx, async () => {
+      const copy = await duplicateFeedback(db, ctx, id);
+      return { id: copy.id };
+    }),
 );

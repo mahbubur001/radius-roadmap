@@ -9,6 +9,7 @@ import {
   MoreHorizontal,
   Trash2,
 } from "lucide-react";
+import Link from "next/link";
 import { useCallback, useEffect, useState } from "react";
 import { toast } from "sonner";
 import {
@@ -321,6 +322,9 @@ function CardEditor({
             <TabsTrigger value="votes">
               Votes ({card.voteCount + card.importedVotes})
             </TabsTrigger>
+            <TabsTrigger value="feedback">
+              Linked feedback ({detail.feedback.length})
+            </TabsTrigger>
           </TabsList>
 
           <TabsContent value="general" className="flex flex-col gap-4 pt-2">
@@ -441,6 +445,10 @@ function CardEditor({
 
           <TabsContent value="votes" className="pt-2">
             <VotersList voters={detail.voters} />
+          </TabsContent>
+
+          <TabsContent value="feedback" className="pt-2">
+            <LinkedFeedback workspace={workspace} items={detail.feedback} />
           </TabsContent>
         </Tabs>
       </div>
@@ -582,6 +590,52 @@ function Features({
           Add
         </Button>
       </form>
+    </div>
+  );
+}
+
+/** Feedback pushed to or linked with this card (doc 20 §1). */
+function LinkedFeedback({
+  workspace,
+  items,
+}: {
+  workspace: string;
+  items: Detail["feedback"];
+}) {
+  if (!items.length) {
+    return (
+      <p className="text-sm text-muted-foreground">
+        No feedback is linked yet. Use “Push to roadmap” or “Add to roadmap
+        card” on a feedback item.
+      </p>
+    );
+  }
+  const total = items.reduce((sum, f) => sum + f.votes, 0);
+  return (
+    <div className="flex flex-col gap-2 text-sm">
+      <p className="text-muted-foreground">
+        {items.length} {items.length === 1 ? "request" : "requests"} · {total}{" "}
+        {total === 1 ? "vote" : "votes"}
+      </p>
+      <ul className="flex flex-col divide-y rounded-md border">
+        {items.map((f) => (
+          <li key={f.id} className="flex items-center gap-2 px-3 py-2">
+            <span className="w-8 shrink-0 text-center font-medium">
+              {f.votes}
+            </span>
+            <Link
+              href={`/dashboard/${workspace}/feedback?state=all&feedback=${f.id}`}
+              className="min-w-0 flex-1 truncate hover:underline"
+            >
+              {f.title}
+            </Link>
+            {f.review === "pending" ? (
+              <Badge variant="secondary">Waiting for review</Badge>
+            ) : null}
+            {f.isPublic ? null : <Badge variant="outline">Private</Badge>}
+          </li>
+        ))}
+      </ul>
     </div>
   );
 }

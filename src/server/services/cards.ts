@@ -25,6 +25,7 @@ import { slugify } from "@/lib/schemas/workspace";
 import type { Db, DbOrTx } from "@/server/db/client";
 import {
   cardFeatures,
+  cardFeedbackLinks,
   cardTags,
   categories,
   type RoadmapCard,
@@ -37,6 +38,7 @@ import {
 } from "./context";
 import { byPosition, keyAfter, keyBetween } from "./positions";
 import { getColumn, getRoadmap, inWorkspace, ownTagIds } from "./roadmaps";
+import { syncCardFeedback } from "./status-sync";
 
 // Cards can be created, edited and moved by everyone with access to the
 // workspace (Phase 1 rules). Every query is scoped by account + workspace.
@@ -224,6 +226,15 @@ export async function moveCard(
     .set({ columnId: to.id, position, completedAt })
     .where(and(inWorkspace(roadmapCards, ctx), eq(roadmapCards.id, card.id)))
     .returning();
+  // Linked feedback follows the card into or out of done (doc 20 D5).
+  if (to.isDone !== from.isDone) {
+    await syncCardFeedback(
+      db,
+      ctx,
+      card.id,
+      to.isDone ? "completed" : "reopened",
+    );
+  }
   return row;
 }
 
@@ -239,6 +250,7 @@ export async function setCardCompleted(
     .where(and(inWorkspace(roadmapCards, ctx), eq(roadmapCards.id, id)))
     .returning();
   if (!row) throw new NotFoundError("Card not found.");
+  await syncCardFeedback(db, ctx, id, completed ? "completed" : "reopened");
   return row;
 }
 
@@ -282,6 +294,8 @@ export type BoardCard = {
   votes: number;
   tagIds: string[];
   features: { done: number; total: number };
+  /** Feedback linked to the card (the 💡 count on the board). */
+  ideas: number;
 };
 
 /** Cards for the admin board (archived cards excluded), in column order. */
@@ -344,6 +358,7 @@ export async function listBoardCards(
       completedAt: roadmapCards.completedAt,
       voteCount: roadmapCards.voteCount,
       importedVotes: roadmapCards.importedVotes,
+      ideas: sql<number>`(select count(*)::int from ${cardFeedbackLinks} where ${cardFeedbackLinks.cardId} = ${roadmapCards.id})`,
     })
     .from(roadmapCards)
     .where(and(...where))

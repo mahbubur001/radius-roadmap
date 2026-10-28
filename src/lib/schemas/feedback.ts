@@ -173,3 +173,26 @@ export const moveStatusSchema = z.object({
   prevId: id.nullable(),
   nextId: id.nullable(),
 });
+
+// ── Roadmap links, merge, duplicate (doc 20 §1) ─────────────────────────
+
+/** Creates a card in `columnId` from the feedback and links the two. */
+export const pushToRoadmapSchema = z.object({
+  feedbackId: id,
+  columnId: id,
+  title: z.string().trim().min(1, "Enter a title").max(200),
+});
+
+export const linkCardSchema = z.object({ feedbackId: id, cardId: id });
+
+/** `sourceId` is folded into `targetId` (votes, followers, comments, links). */
+export const mergeFeedbackSchema = z.object({ sourceId: id, targetId: id });
+
+/** Actions that only need the workspace. */
+export const noInputSchema = z.looseObject({});
+
+export const pickerSearchSchema = z.object({
+  q: z.string().trim().max(100).default(""),
+  /** Leave this item out of the results (merge picker). */
+  excludeId: id.optional(),
+});

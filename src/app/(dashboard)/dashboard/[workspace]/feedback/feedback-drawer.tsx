@@ -5,16 +5,24 @@ import {
   ArchiveRestore,
   CheckCircle2,
   Circle,
+  Copy,
+  Link2,
+  Map as MapIcon,
+  Merge,
   MoreHorizontal,
   Trash2,
+  X,
 } from "lucide-react";
+import Link from "next/link";
 import { useCallback, useEffect, useState } from "react";
 import { toast } from "sonner";
 import {
   deleteFeedbackAction,
+  duplicateFeedbackAction,
   getFeedbackAction,
   setFeedbackArchivedAction,
   setFeedbackCompletedAction,
+  unlinkCardAction,
   updateFeedbackAction,
 } from "@/app/(dashboard)/_actions/feedback";
 import { TagPicker } from "@/components/dashboard/tag-picker";
@@ -72,6 +80,11 @@ import {
   SIZES,
   type UpdateFeedbackInput,
 } from "@/lib/schemas/feedback";
+import {
+  LinkCardDialog,
+  MergeDialog,
+  PushToRoadmapDialog,
+} from "./feedback-link-dialogs";
 import type {
   BoardOption,
   CategoryOption,
@@ -99,6 +112,8 @@ type Shared = {
   onChanged: (id: string, change: Partial<FeedbackRow>) => void;
   onRemoved: (id: string) => void;
   onTagCreated: (tag: TagOption) => void;
+  /** Open another item (after merge or duplicate). */
+  onOpenItem: (id: string) => void;
 };
 
 export function FeedbackDrawer({
@@ -157,8 +172,11 @@ function FeedbackEditor({
   onChanged,
   onRemoved,
   onTagCreated,
+  onOpenItem,
 }: Shared & { detail: Detail }) {
   const { item } = detail;
+  const [cards, setCards] = useState(detail.cards);
+  const [dialog, setDialog] = useState<"push" | "link" | "merge" | null>(null);
   const [title, setTitle] = useState(item.title);
   const [boardId, setBoardId] = useState(item.boardId);
   const [statusId, setStatusId] = useState(item.statusId);
@@ -198,6 +216,31 @@ function FeedbackEditor({
     if (row) onChanged(item.id, row);
   }
 
+  // Pushing, linking and unlinking can move the status (doc 20 D5).
+  async function reloadLinks() {
+    const result = await getFeedbackAction({ workspace, id: item.id });
+    if (!result.ok) return;
+    const next = result.data.item;
+    setCards(result.data.cards);
+    setStatusId(next.statusId);
+    setCompleted(!!next.completedAt);
+    onChanged(item.id, {
+      statusId: next.statusId,
+      completed: !!next.completedAt,
+      linkedCards: result.data.cards.length,
+    });
+  }
+
+  async function unlink(cardId: string) {
+    const result = await unlinkCardAction({
+      workspace,
+      feedbackId: item.id,
+      cardId,
+    });
+    if (!result.ok) return toast.error(result.error);
+    await reloadLinks();
+  }
+
   const score = priorityScore(impact, effort);
   const bucket = priorityBucket(score);
 
@@ -228,6 +271,34 @@ function FeedbackEditor({
             </Button>
           </DropdownMenuTrigger>
           <DropdownMenuContent align="end">
+            <DropdownMenuItem onSelect={() => setDialog("push")}>
+              <MapIcon />
+              Push to roadmap…
+            </DropdownMenuItem>
+            <DropdownMenuItem onSelect={() => setDialog("link")}>
+              <Link2 />
+              Add to roadmap card…
+            </DropdownMenuItem>
+            <DropdownMenuSeparator />
+            <DropdownMenuItem onSelect={() => setDialog("merge")}>
+              <Merge />
+              Merge into…
+            </DropdownMenuItem>
+            <DropdownMenuItem
+              onSelect={async () => {
+                const result = await duplicateFeedbackAction({
+                  workspace,
+                  id: item.id,
+                });
+                if (!result.ok) return toast.error(result.error);
+                toast.success("Duplicated.");
+                onOpenItem(result.data.id);
+              }}
+            >
+              <Copy />
+              Duplicate
+            </DropdownMenuItem>
+            <DropdownMenuSeparator />
             <DropdownMenuItem
               onSelect={async () => {
                 const result = await setFeedbackCompletedAction({
@@ -300,6 +371,40 @@ function FeedbackEditor({
           </TabsList>
 
           <TabsContent value="general" className="flex flex-col gap-4 pt-2">
+            {cards.length ? (
+              <section
+                aria-label="On the roadmap"
+                className="flex flex-col gap-2 rounded-md border p-3"
+              >
+                <h3 className="text-sm font-medium">On the roadmap</h3>
+                <ul className="flex flex-col gap-1">
+                  {cards.map((c) => (
+                    <li key={c.id} className="flex items-center gap-2 text-sm">
+                      <MapIcon className="size-4 shrink-0 text-muted-foreground" />
+                      <Link
+                        href={`/dashboard/${workspace}/roadmap?r=${c.roadmapSlug}&card=${c.id}`}
+                        className="min-w-0 flex-1 truncate hover:underline"
+                      >
+                        {c.title}
+                      </Link>
+                      <span className="shrink-0 text-xs text-muted-foreground">
+                        {c.roadmapTitle} · {c.columnName}
+                      </span>
+                      <Button
+                        variant="ghost"
+                        size="icon"
+                        className="size-7"
+                        aria-label={`Unlink ${c.title}`}
+                        onClick={() => unlink(c.id)}
+                      >
+                        <X />
+                      </Button>
+                    </li>
+                  ))}
+                </ul>
+              </section>
+            ) : null}
+
             <div className="flex flex-col gap-2">
               <Label>Description</Label>
               <RichTextEditor
@@ -486,6 +591,32 @@ function FeedbackEditor({
           </TabsContent>
         </Tabs>
       </div>
+
+      <PushToRoadmapDialog
+        open={dialog === "push"}
+        onOpenChange={(open) => setDialog(open ? "push" : null)}
+        workspace={workspace}
+        feedbackId={item.id}
+        defaultTitle={title}
+        onDone={reloadLinks}
+      />
+      <LinkCardDialog
+        open={dialog === "link"}
+        onOpenChange={(open) => setDialog(open ? "link" : null)}
+        workspace={workspace}
+        feedbackId={item.id}
+        onDone={reloadLinks}
+      />
+      <MergeDialog
+        open={dialog === "merge"}
+        onOpenChange={(open) => setDialog(open ? "merge" : null)}
+        workspace={workspace}
+        feedbackId={item.id}
+        onMerged={(targetId) => {
+          onRemoved(item.id);
+          onOpenItem(targetId);
+        }}
+      />
 
       <AlertDialog open={confirmDelete} onOpenChange={setConfirmDelete}>
         <AlertDialogContent>

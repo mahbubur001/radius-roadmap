@@ -688,6 +688,7 @@ export function FeedbackView({
         onClose={closeItem}
         onChanged={patchItem}
         onRemoved={removeItem}
+        onOpenItem={openItem}
         onTagCreated={(tag) =>
           setTags((all) =>
             all.some((t) => t.id === tag.id)

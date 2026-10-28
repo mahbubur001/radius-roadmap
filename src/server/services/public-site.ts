@@ -7,8 +7,10 @@ import {
 import type { Db } from "@/server/db/client";
 import {
   cardFeatures,
+  cardFeedbackLinks,
   cardTags,
   categories,
+  feedbackItems,
   organization,
   roadmapCards,
   roadmapColumns,
@@ -139,6 +141,8 @@ export type PublicCard = {
   tags: string[];
   plannedFor: string | null;
   features: { title: string; done: boolean }[] | null;
+  /** Public, approved feedback linked to the card (the 💡 count). */
+  ideas: number;
 };
 
 type CardFilter = { roadmapId: string; q?: string; slug?: string };
@@ -185,6 +189,7 @@ async function publicCards(
       plannedFor: roadmapCards.plannedFor,
       categoryName: categories.name,
       categoryColor: categories.color,
+      ideas: sql<number>`(select count(*)::int from ${cardFeedbackLinks} inner join ${feedbackItems} on ${feedbackItems.id} = ${cardFeedbackLinks.feedbackId} where ${cardFeedbackLinks.cardId} = ${roadmapCards.id} and ${feedbackItems.isPublic} and ${feedbackItems.review} = 'approved' and ${feedbackItems.archivedAt} is null)`,
     })
     .from(roadmapCards)
     .innerJoin(roadmapColumns, eq(roadmapColumns.id, roadmapCards.columnId))
@@ -241,6 +246,7 @@ async function publicCards(
           .filter((f) => f.cardId === r.id)
           .map(({ title, done }) => ({ title, done }))
       : null,
+    ideas: r.ideas,
   }));
 }
 

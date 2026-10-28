@@ -34,6 +34,7 @@ import {
   updateFeature,
 } from "@/server/services/cards";
 import type { WorkspaceContext } from "@/server/services/context";
+import { linkedFeedback } from "@/server/services/feedback-links";
 import {
   createCategory,
   createColumn,
@@ -116,11 +117,12 @@ export const deleteColumnAction = workspaceAction(
 export const getCardAction = workspaceAction(
   cardIdSchema,
   async (ctx, { id }) => {
-    const [card, voters] = await Promise.all([
+    const [card, voters, feedback] = await Promise.all([
       getCardDetail(db, ctx, id),
       listVoters(db, ctx, id),
+      linkedFeedback(db, ctx, id),
     ]);
-    return { card, voters };
+    return { card, voters, feedback };
   },
 );
 

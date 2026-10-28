@@ -90,6 +90,86 @@ export const feedbackFilterSchema = z.object({
     ])
     .default("all"),
   state: z.enum(["open", "completed", "archived", "all"]).default("open"),
+  /** "pending" = the triage inbox (doc 20 D2). */
+  review: z.enum(["all", "pending"]).default("all"),
 });
 
 export type FeedbackFilter = z.input<typeof feedbackFilterSchema>;
+
+const ids = z.array(id).min(1).max(200);
+
+export const REVIEW_ACTIONS = {
+  approve: "Approve",
+  keep_private: "Keep private",
+  reject: "Reject",
+} as const;
+export type ReviewAction = keyof typeof REVIEW_ACTIONS;
+
+/** Triage: approve (publish), keep private (approved, team only), reject (archive). */
+export const reviewFeedbackSchema = z.object({
+  ids,
+  action: z.enum(
+    Object.keys(REVIEW_ACTIONS) as [ReviewAction, ...ReviewAction[]],
+  ),
+});
+
+/** Bulk edit from the inbox or the list. Tags are added, not replaced. */
+export const bulkUpdateFeedbackSchema = z.object({
+  ids,
+  statusId: id.optional(),
+  categoryId: id.nullable().optional(),
+  addTagIds: z.array(id).max(20).optional(),
+});
+
+// ── Boards and statuses (admin+) ────────────────────────────────────────
+
+export const STATUS_KINDS = {
+  open: "Open",
+  planned: "Planned",
+  in_progress: "In progress",
+  done: "Done (completes the item)",
+  declined: "Declined",
+} as const;
+export type StatusKind = keyof typeof STATUS_KINDS;
+
+const color = z.string().regex(/^#[0-9a-f]{6}$/i, "Pick a colour");
+
+export const createBoardSchema = z.object({
+  name: z.string().trim().min(2, "At least 2 characters").max(60),
+});
+
+export const updateBoardSchema = z.object({
+  id,
+  name: z.string().trim().min(2, "At least 2 characters").max(60),
+  slug: z
+    .string()
+    .trim()
+    .min(2, "At least 2 characters")
+    .max(48)
+    .regex(
+      /^[a-z0-9]+(?:-[a-z0-9]+)*$/,
+      "Lowercase letters, numbers and dashes",
+    ),
+  description: z
+    .string()
+    .trim()
+    .max(500)
+    .transform((v) => v || null)
+    .nullable(),
+  isPublic: z.boolean(),
+  autoPublish: z.boolean(),
+});
+
+export const statusSchema = z.object({
+  name: z.string().trim().min(1, "Enter a name").max(40),
+  color,
+  kind: z.enum(Object.keys(STATUS_KINDS) as [StatusKind, ...StatusKind[]]),
+});
+
+export const updateStatusSchema = statusSchema.extend({ id });
+
+export const moveStatusSchema = z.object({
+  id,
+  prevId: id.nullable(),
+  nextId: id.nullable(),
+});

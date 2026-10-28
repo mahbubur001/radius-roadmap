@@ -1,6 +1,7 @@
 import {
   and,
   asc,
+  count,
   desc,
   eq,
   exists,
@@ -16,11 +17,13 @@ import {
 import type { z } from "zod";
 import { richTextToPlain } from "@/lib/rich-text";
 import {
+  type bulkUpdateFeedbackSchema,
   type createFeedbackSchema,
   type FeedbackFilter,
   feedbackFilterSchema,
   PRIORITY_BUCKETS,
   priorityScore,
+  type ReviewAction,
   type UpdateFeedbackInput,
   updateFeedbackSchema,
 } from "@/lib/schemas/feedback";
@@ -291,6 +294,114 @@ export async function deleteFeedback(
   if (!row) throw new NotFoundError("Feedback not found.");
 }
 
+// ── Triage (doc 20 §1 Triage inbox) ─────────────────────────────────────
+
+/** Waiting in the inbox: pending and not archived. */
+export async function inboxCount(db: DbOrTx, ctx: WorkspaceContext) {
+  const [row] = await db
+    .select({ n: count() })
+    .from(feedbackItems)
+    .where(
+      and(
+        inWorkspace(feedbackItems, ctx),
+        eq(feedbackItems.review, "pending"),
+        isNull(feedbackItems.archivedAt),
+      ),
+    );
+  return row?.n ?? 0;
+}
+
+/**
+ * Approve publishes the item, keep private approves it for the team only,
+ * reject archives it. Ids from other workspaces are ignored. Returns the
+ * number of items changed.
+ */
+export async function reviewFeedback(
+  db: Db,
+  ctx: WorkspaceContext,
+  ids: string[],
+  action: ReviewAction,
+) {
+  const set: Partial<typeof feedbackItems.$inferInsert> = {
+    approve: { review: "approved" as const, isPublic: true, archivedAt: null },
+    keep_private: {
+      review: "approved" as const,
+      isPublic: false,
+      archivedAt: null,
+    },
+    reject: { review: "rejected" as const, archivedAt: new Date() },
+  }[action];
+  const rows = await db
+    .update(feedbackItems)
+    .set({ ...set, updatedAt: new Date() })
+    .where(and(inWorkspace(feedbackItems, ctx), inArray(feedbackItems.id, ids)))
+    .returning({ id: feedbackItems.id });
+  return rows.length;
+}
+
+/** Bulk status / category / add tags. Returns the number of items changed. */
+export async function bulkUpdateFeedback(
+  db: Db,
+  ctx: WorkspaceContext,
+  input: z.output<typeof bulkUpdateFeedbackSchema>,
+) {
+  if (
+    input.statusId === undefined &&
+    input.categoryId === undefined &&
+    !input.addTagIds?.length
+  ) {
+    return 0;
+  }
+  const set: Partial<typeof feedbackItems.$inferInsert> = {
+    updatedAt: new Date(),
+  };
+  if (input.statusId) {
+    const status = await getStatus(db, ctx, input.statusId);
+    set.statusId = status.id;
+    set.completedAt = status.kind === "done" ? new Date() : null;
+  }
+  if (input.categoryId !== undefined) {
+    if (input.categoryId) {
+      const [own] = await db
+        .select({ id: categories.id })
+        .from(categories)
+        .where(
+          and(
+            inWorkspace(categories, ctx),
+            eq(categories.id, input.categoryId),
+          ),
+        )
+        .limit(1);
+      if (!own) throw new NotFoundError("Category not found.");
+    }
+    set.categoryId = input.categoryId;
+  }
+  return db.transaction(async (tx) => {
+    const rows = await tx
+      .update(feedbackItems)
+      .set(set)
+      .where(
+        and(
+          inWorkspace(feedbackItems, ctx),
+          inArray(feedbackItems.id, input.ids),
+        ),
+      )
+      .returning({ id: feedbackItems.id });
+    const tagIds = await ownTagIds(tx, ctx, input.addTagIds ?? []);
+    if (rows.length && tagIds.length) {
+      await tx
+        .insert(feedbackTags)
+        .values(
+          rows.flatMap((r) =>
+            tagIds.map((tagId) => ({ feedbackId: r.id, tagId })),
+          ),
+        )
+        .onConflictDoNothing();
+    }
+    return rows.length;
+  });
+}
+
 // ── Admin list ──────────────────────────────────────────────────────────
 
 export type FeedbackRow = {
@@ -391,6 +502,8 @@ export async function listFeedback(
     );
   }
 
+  if (f.review === "pending") where.push(eq(feedbackItems.review, "pending"));
+
   const total = sql`${feedbackItems.voteCount} + ${feedbackItems.importedVotes}`;
   const order = {
     votes: [desc(total), desc(feedbackItems.createdAt)],
@@ -422,7 +535,8 @@ export async function listFeedback(
     })
     .from(feedbackItems)
     .where(and(...where))
-    .orderBy(...order)
+    // Ties (same timestamp or score) keep one order across refreshes.
+    .orderBy(...order, asc(feedbackItems.id))
     .limit(500);
 
   const ids = rows.map((r) => r.id);

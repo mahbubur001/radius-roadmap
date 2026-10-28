@@ -28,7 +28,8 @@ const items = [
   { href: "/public-settings", label: "Public settings", icon: Globe },
 ];
 
-export function SidebarNav() {
+/** `inbox`: feedback waiting for review, shown as a badge on Feedback. */
+export function SidebarNav({ inbox = 0 }: { inbox?: number }) {
   const { workspace } = useParams<{ workspace: string }>();
   const pathname = usePathname();
   const base = `/dashboard/${workspace}`;
@@ -43,17 +44,33 @@ export function SidebarNav() {
             <TooltipTrigger asChild>
               <Link
                 href={to}
-                aria-label={label}
+                aria-label={
+                  href === "/feedback" && inbox
+                    ? `${label}, ${inbox} waiting for review`
+                    : label
+                }
                 className={cn(
-                  "flex size-10 items-center justify-center rounded-md text-sidebar-foreground/70 hover:bg-sidebar-accent hover:text-sidebar-accent-foreground",
+                  "relative flex size-10 items-center justify-center rounded-md text-sidebar-foreground/70 hover:bg-sidebar-accent hover:text-sidebar-accent-foreground",
                   active && "bg-sidebar-accent text-sidebar-accent-foreground",
                   gap && "mt-4",
                 )}
               >
                 <Icon className="size-5" />
+                {href === "/feedback" && inbox ? (
+                  <span
+                    data-testid="inbox-badge"
+                    className="absolute -top-0.5 -right-0.5 flex h-4 min-w-4 items-center justify-center rounded-full bg-primary px-1 text-[10px] font-semibold text-primary-foreground"
+                  >
+                    {inbox > 99 ? "99+" : inbox}
+                  </span>
+                ) : null}
               </Link>
             </TooltipTrigger>
-            <TooltipContent side="right">{label}</TooltipContent>
+            <TooltipContent side="right">
+              {href === "/feedback" && inbox
+                ? `${label} · ${inbox} waiting for review`
+                : label}
+            </TooltipContent>
           </Tooltip>
         );
       })}

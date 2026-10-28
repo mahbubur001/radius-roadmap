@@ -1,19 +1,25 @@
 "use client";
 
-import {
-  ChevronUp,
-  Filter,
-  Lightbulb,
-  MessageSquare,
-  Plus,
-  Search,
-} from "lucide-react";
+import { Filter, Inbox, Plus, Search, Settings2, Shapes } from "lucide-react";
+import Link from "next/link";
 import { usePathname, useRouter, useSearchParams } from "next/navigation";
-import { useCallback, useEffect, useState, useTransition } from "react";
+import {
+  useCallback,
+  useEffect,
+  useMemo,
+  useState,
+  useTransition,
+} from "react";
 import { toast } from "sonner";
-import { createFeedbackAction } from "@/app/(dashboard)/_actions/feedback";
+import {
+  bulkUpdateFeedbackAction,
+  createBoardAction,
+  createFeedbackAction,
+  reviewFeedbackAction,
+} from "@/app/(dashboard)/_actions/feedback";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
+import { Checkbox } from "@/components/ui/checkbox";
 import {
   Dialog,
   DialogContent,
@@ -33,6 +39,7 @@ import {
   Select,
   SelectContent,
   SelectItem,
+  SelectSeparator,
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
@@ -40,14 +47,18 @@ import {
   FEEDBACK_SORTS,
   type FeedbackFilter,
   PRIORITY_BUCKETS,
-  priorityBucket,
+  REVIEW_ACTIONS,
+  type ReviewAction,
 } from "@/lib/schemas/feedback";
-import { ago } from "@/lib/time";
 import { cn } from "@/lib/utils";
+import { BoardSettingsDialog } from "./board-settings-dialog";
 import { FeedbackDrawer } from "./feedback-drawer";
-import type { FeedbackData, FeedbackRow } from "./types";
+import { BulkBar, FeedbackRowItem } from "./feedback-rows";
+import { StatusesDialog } from "./statuses-dialog";
+import type { FeedbackData, FeedbackMode, FeedbackRow } from "./types";
 
 const ALL = "all";
+const NEW_BOARD = "__new";
 
 /** URL param ↔ filter field. Defaults are left out of the URL. */
 const PARAMS = {
@@ -61,21 +72,44 @@ const PARAMS = {
   priority: "priority",
   state: "state",
 } as const;
-const DEFAULTS: Record<string, string> = {
+
+const LIST_DEFAULTS: Record<string, string> = {
   sort: "votes",
   vis: ALL,
   linked: ALL,
   priority: ALL,
   state: "open",
 };
+const INBOX_DEFAULTS: Record<string, string> = {
+  ...LIST_DEFAULTS,
+  sort: "oldest",
+};
+
+/** Keyboard shortcuts in the inbox: j/k move, x selects, a/p/r review. */
+const REVIEW_KEYS: Record<string, ReviewAction> = {
+  a: "approve",
+  p: "keep_private",
+  r: "reject",
+};
+
+function isTyping(target: EventTarget | null) {
+  const el = target as HTMLElement | null;
+  return (
+    !!el?.closest(
+      "input, textarea, select, [contenteditable], [role=dialog]",
+    ) || el?.getAttribute("role") === "combobox"
+  );
+}
 
 export function FeedbackView({
   data,
   filter,
+  mode,
   initialFeedbackId,
 }: {
   data: FeedbackData;
   filter: FeedbackFilter;
+  mode: FeedbackMode;
   initialFeedbackId?: string;
 }) {
   const router = useRouter();
@@ -83,23 +117,54 @@ export function FeedbackView({
   const searchParams = useSearchParams();
   const [pending, startTransition] = useTransition();
   const { workspace } = data;
+  const inbox = mode === "inbox";
+  const base = `/dashboard/${workspace}/feedback`;
+  const defaults = inbox ? INBOX_DEFAULTS : LIST_DEFAULTS;
 
   const [items, setItems] = useState(data.items);
   const [tags, setTags] = useState(data.tags);
+  const [statuses, setStatuses] = useState(data.statuses);
   useEffect(() => setItems(data.items), [data.items]);
   useEffect(() => setTags(data.tags), [data.tags]);
+  useEffect(() => setStatuses(data.statuses), [data.statuses]);
 
   const [q, setQ] = useState(filter.q ?? "");
   const [openId, setOpenId] = useState<string | null>(
     initialFeedbackId ?? null,
   );
   const [creating, setCreating] = useState(false);
+  // `?edit=board` opens the board settings (set after "New board", which
+  // navigates to the new board and so remounts this view).
+  const [boardSettingsOpen, setBoardSettingsOpen] = useState(
+    searchParams.get("edit") === "board",
+  );
+  const toggleBoardSettings = useCallback((open: boolean) => {
+    setBoardSettingsOpen(open);
+    if (open) return;
+    const url = new URL(window.location.href);
+    url.searchParams.delete("edit");
+    window.history.replaceState(null, "", url);
+  }, []);
+  const [statusesOpen, setStatusesOpen] = useState(false);
+  const [selected, setSelected] = useState<Set<string>>(new Set());
+  const [focus, setFocus] = useState(0);
+  const [busy, setBusy] = useState(false);
+
+  // Selection and focus only count rows still on screen (filters, reviews).
+  // Derived, not synced in an effect: an effect here loops while a server
+  // action's refresh is pending.
+  const shownIds = useMemo(() => new Set(items.map((i) => i.id)), [items]);
+  const selectedIds = useMemo(
+    () => [...selected].filter((id) => shownIds.has(id)),
+    [selected, shownIds],
+  );
+  const focusIndex = Math.min(focus, Math.max(items.length - 1, 0));
 
   const setParams = useCallback(
     (changes: Record<string, string | null>) => {
       const next = new URLSearchParams(searchParams.toString());
       for (const [key, value] of Object.entries(changes)) {
-        if (!value || value === ALL || DEFAULTS[key] === value)
+        if (!value || value === ALL || defaults[key] === value)
           next.delete(key);
         else next.set(key, value);
       }
@@ -110,7 +175,7 @@ export function FeedbackView({
         }),
       );
     },
-    [router, pathname, searchParams],
+    [router, pathname, searchParams, defaults],
   );
 
   // Search goes to the server after a short pause in typing.
@@ -137,8 +202,119 @@ export function FeedbackView({
     setItems((all) => all.filter((i) => i.id !== id));
   }, []);
 
-  const statusById = new Map(data.statuses.map((s) => [s.id, s]));
+  const review = useCallback(
+    async (ids: string[], action: ReviewAction) => {
+      if (!ids.length || busy) return;
+      setBusy(true);
+      const result = await reviewFeedbackAction({ workspace, ids, action });
+      setBusy(false);
+      if (!result.ok) return toast.error(result.error);
+      // Reviewed items leave the inbox; in the list they just change badges.
+      setItems((all) =>
+        inbox
+          ? all.filter((i) => !ids.includes(i.id))
+          : all.map((i) =>
+              ids.includes(i.id)
+                ? {
+                    ...i,
+                    review: action === "reject" ? "rejected" : "approved",
+                    isPublic:
+                      action === "approve"
+                        ? true
+                        : action === "keep_private"
+                          ? false
+                          : i.isPublic,
+                    archived: action === "reject" ? true : i.archived,
+                  }
+                : i,
+            ),
+      );
+      setSelected(new Set());
+      toast.success(
+        `${REVIEW_ACTIONS[action]}: ${result.data} ${result.data === 1 ? "item" : "items"}.`,
+      );
+      // The action invalidates the cache, so Next refreshes the page (and
+      // the sidebar's inbox count) by itself.
+    },
+    [workspace, inbox, busy],
+  );
+
+  async function bulk(change: {
+    statusId?: string;
+    categoryId?: string | null;
+  }) {
+    const ids = selectedIds;
+    if (!ids.length) return;
+    setBusy(true);
+    const result = await bulkUpdateFeedbackAction({
+      workspace,
+      ids,
+      ...change,
+    });
+    setBusy(false);
+    if (!result.ok) return toast.error(result.error);
+    const done =
+      change.statusId &&
+      statuses.find((s) => s.id === change.statusId)?.kind === "done";
+    setItems((all) =>
+      all.map((i) =>
+        ids.includes(i.id)
+          ? {
+              ...i,
+              ...change,
+              ...(change.statusId ? { completed: !!done } : {}),
+            }
+          : i,
+      ),
+    );
+    toast.success(
+      `Updated ${result.data} ${result.data === 1 ? "item" : "items"}.`,
+    );
+  }
+
+  // Inbox keyboard shortcuts.
+  useEffect(() => {
+    if (!inbox) return;
+    function onKey(e: KeyboardEvent) {
+      if (e.metaKey || e.ctrlKey || e.altKey || isTyping(e.target)) return;
+      const item = items[focusIndex];
+      if (e.key === "j" || e.key === "k") {
+        e.preventDefault();
+        const next = Math.max(
+          0,
+          Math.min(items.length - 1, focusIndex + (e.key === "j" ? 1 : -1)),
+        );
+        setFocus(next);
+        document
+          .querySelector(`[data-feedback-row="${items[next]?.id}"]`)
+          ?.scrollIntoView({ block: "nearest" });
+      } else if (e.key === "x" && item) {
+        setSelected((all) => {
+          const next = new Set(all);
+          if (next.has(item.id)) next.delete(item.id);
+          else next.add(item.id);
+          return next;
+        });
+      } else if (e.key === "Enter" && item) {
+        openItem(item.id);
+      } else if (REVIEW_KEYS[e.key] && item) {
+        e.preventDefault();
+        void review(
+          selectedIds.length ? selectedIds : [item.id],
+          REVIEW_KEYS[e.key] as ReviewAction,
+        );
+      }
+    }
+    window.addEventListener("keydown", onKey);
+    return () => window.removeEventListener("keydown", onKey);
+  }, [inbox, items, focusIndex, selectedIds, review, openItem]);
+
+  const statusById = useMemo(
+    () => new Map(statuses.map((s) => [s.id, s])),
+    [statuses],
+  );
   const categoryById = new Map(data.categories.map((c) => [c.id, c]));
+  const boardById = new Map(data.boards.map((b) => [b.id, b]));
   const board = data.boards.find((b) => b.id === data.boardId);
 
   const secondary = [
@@ -150,6 +326,16 @@ export function FeedbackView({
     filter.state !== "open" ? filter.state : null,
   ].filter(Boolean).length;
 
+  async function switchBoard(value: string) {
+    if (value !== NEW_BOARD) {
+      router.push(`${base}?b=${encodeURIComponent(value)}`);
+      return;
+    }
+    const result = await createBoardAction({ workspace, name: "New board" });
+    if (!result.ok) return toast.error(result.error);
+    router.push(`${base}?b=${result.data.slug}&edit=board`);
+  }
+
   if (!board) {
     return (
       <p className="text-sm text-muted-foreground">
@@ -158,18 +344,42 @@ export function FeedbackView({
     );
   }
 
+  const allSelected = items.length > 0 && selectedIds.length === items.length;
+
   return (
     <div className="flex flex-col gap-4">
+      <nav className="flex gap-1 border-b text-sm" aria-label="Feedback views">
+        <Link
+          href={base}
+          className={cn(
+            "-mb-px border-b-2 px-3 py-2",
+            inbox
+              ? "border-transparent text-muted-foreground hover:text-foreground"
+              : "border-primary font-medium",
+          )}
+        >
+          All feedback
+        </Link>
+        <Link
+          href={`${base}/inbox`}
+          className={cn(
+            "-mb-px flex items-center gap-1.5 border-b-2 px-3 py-2",
+            inbox
+              ? "border-primary font-medium"
+              : "border-transparent text-muted-foreground hover:text-foreground",
+          )}
+        >
+          <Inbox className="size-4" />
+          Inbox
+          {data.inboxCount ? (
+            <Badge variant="secondary">{data.inboxCount}</Badge>
+          ) : null}
+        </Link>
+      </nav>
+
       <div className="flex flex-wrap items-center gap-2">
-        {data.boards.length > 1 ? (
-          <Select
-            value={board.slug}
-            onValueChange={(b) =>
-              router.push(
-                `/dashboard/${workspace}/feedback?b=${encodeURIComponent(b)}`,
-              )
-            }
-          >
+        {inbox ? null : data.boards.length > 1 || data.canManage ? (
+          <Select value={board.slug} onValueChange={switchBoard}>
             <SelectTrigger aria-label="Board" className="w-48">
               <SelectValue />
             </SelectTrigger>
@@ -179,12 +389,23 @@ export function FeedbackView({
                   {b.name}
                 </SelectItem>
               ))}
+              {data.canManage ? (
+                <>
+                  <SelectSeparator />
+                  <SelectItem value={NEW_BOARD}>
+                    <Plus />
+                    New board
+                  </SelectItem>
+                </>
+              ) : null}
             </SelectContent>
           </Select>
         ) : (
           <h2 className="text-lg font-semibold">{board.name}</h2>
         )}
-        {board.isPublic ? null : <Badge variant="outline">Private board</Badge>}
+        {!inbox && !board.isPublic ? (
+          <Badge variant="outline">Private board</Badge>
+        ) : null}
 
         <div className="relative">
           <Search className="pointer-events-none absolute top-2.5 left-2.5 size-4 text-muted-foreground" />
@@ -199,7 +420,7 @@ export function FeedbackView({
         </div>
 
         <Select
-          value={filter.sort ?? "votes"}
+          value={filter.sort ?? defaults.sort}
           onValueChange={(sort) => setParams({ sort })}
         >
           <SelectTrigger aria-label="Sort" className="w-44">
@@ -223,7 +444,7 @@ export function FeedbackView({
           </SelectTrigger>
           <SelectContent>
             <SelectItem value={ALL}>All statuses</SelectItem>
-            {data.statuses.map((s) => (
+            {statuses.map((s) => (
               <SelectItem key={s.id} value={s.id}>
                 <span
                   className="size-2.5 rounded-full"
@@ -329,121 +550,121 @@ export function FeedbackView({
           </PopoverContent>
         </Popover>
 
-        <div className="ml-auto">
-          <Button size="sm" onClick={() => setCreating(true)}>
-            <Plus />
-            New feedback
-          </Button>
+        <div className="ml-auto flex items-center gap-2">
+          {data.canManage ? (
+            <>
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={() => setStatusesOpen(true)}
+              >
+                <Shapes />
+                Statuses
+              </Button>
+              {inbox ? null : (
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={() => setBoardSettingsOpen(true)}
+                >
+                  <Settings2 />
+                  Edit board
+                </Button>
+              )}
+            </>
+          ) : null}
+          {inbox ? null : (
+            <Button size="sm" onClick={() => setCreating(true)}>
+              <Plus />
+              New feedback
+            </Button>
+          )}
         </div>
       </div>
 
-      <ul
+      {selectedIds.length ? (
+        <BulkBar
+          count={selectedIds.length}
+          inbox={inbox}
+          statuses={statuses}
+          categories={data.categories}
+          busy={busy}
+          onReview={(action) => review(selectedIds, action)}
+          onStatus={(statusId) => bulk({ statusId })}
+          onCategory={(categoryId) => bulk({ categoryId })}
+          onClear={() => setSelected(new Set())}
+        />
+      ) : inbox && items.length ? (
+        <p className="text-xs text-muted-foreground">
+          Shortcuts: <kbd>j</kbd>/<kbd>k</kbd> move, <kbd>x</kbd> select,{" "}
+          <kbd>Enter</kbd> open, <kbd>a</kbd> approve, <kbd>p</kbd> keep
+          private, <kbd>r</kbd> reject.
+        </p>
+      ) : null}
+
+      <div
         className={cn(
-          "flex flex-col divide-y rounded-lg border transition-opacity",
+          "flex flex-col rounded-lg border transition-opacity",
           pending && "opacity-60",
         )}
-        aria-busy={pending}
       >
-        {items.length === 0 ? (
-          <li className="p-6 text-center text-sm text-muted-foreground">
-            {filter.q || secondary || filter.statusId
-              ? "No feedback matches these filters."
-              : "No feedback yet. Add the first item, or share your public board."}
-          </li>
+        {items.length ? (
+          <div className="flex items-center gap-3 border-b px-3 py-2 text-xs text-muted-foreground">
+            <Checkbox
+              checked={
+                allSelected
+                  ? true
+                  : selectedIds.length
+                    ? "indeterminate"
+                    : false
+              }
+              aria-label="Select all"
+              onCheckedChange={(on) =>
+                setSelected(
+                  on === true ? new Set(items.map((i) => i.id)) : new Set(),
+                )
+              }
+            />
+            {items.length} {items.length === 1 ? "item" : "items"}
+          </div>
         ) : null}
-        {items.map((item) => {
-          const status = statusById.get(item.statusId);
-          const category = item.categoryId
-            ? categoryById.get(item.categoryId)
-            : null;
-          const bucket = priorityBucket(item.priority);
-          return (
-            <li key={item.id}>
-              <button
-                type="button"
-                onClick={() => openItem(item.id)}
-                className="flex w-full items-start gap-3 p-3 text-left hover:bg-muted/50 focus-visible:bg-muted/50 focus-visible:outline-none"
-              >
-                <span className="flex w-12 shrink-0 flex-col items-center rounded-md border py-1 text-sm font-medium">
-                  <ChevronUp className="size-4 text-muted-foreground" />
-                  {item.votes}
-                </span>
-                <span className="flex min-w-0 flex-1 flex-col gap-1">
-                  <span className="flex flex-wrap items-center gap-1.5">
-                    {status ? (
-                      <Badge
-                        variant="outline"
-                        className="gap-1.5"
-                        style={{ borderColor: status.color }}
-                      >
-                        <span
-                          className="size-2 rounded-full"
-                          style={{ backgroundColor: status.color }}
-                        />
-                        {status.name}
-                      </Badge>
-                    ) : null}
-                    {item.review === "pending" ? (
-                      <Badge variant="secondary">Waiting for review</Badge>
-                    ) : null}
-                    {item.review === "rejected" ? (
-                      <Badge variant="outline">Rejected</Badge>
-                    ) : null}
-                    {item.isPublic ? null : (
-                      <Badge variant="outline">Private</Badge>
-                    )}
-                    {item.archived ? (
-                      <Badge variant="outline">Archived</Badge>
-                    ) : null}
-                    {category ? (
-                      <span className="flex items-center gap-1 text-xs text-muted-foreground">
-                        <span
-                          className="size-2 rounded-full"
-                          style={{ backgroundColor: category.color }}
-                        />
-                        {category.name}
-                      </span>
-                    ) : null}
-                  </span>
-                  <span className="truncate font-medium">{item.title}</span>
-                  {item.summaryText ? (
-                    <span className="line-clamp-1 text-sm text-muted-foreground">
-                      {item.summaryText}
-                    </span>
-                  ) : null}
-                </span>
-                <span className="flex shrink-0 flex-col items-end gap-1 text-xs text-muted-foreground">
-                  <span suppressHydrationWarning>
-                    {ago(new Date(item.updatedAt))}
-                  </span>
-                  <span className="flex items-center gap-2">
-                    {bucket ? (
-                      <Badge variant="secondary">
-                        {PRIORITY_BUCKETS[bucket].label} · {item.priority}
-                      </Badge>
-                    ) : null}
-                    {item.linkedCards ? (
-                      <span
-                        className="flex items-center gap-0.5"
-                        title="Linked to a roadmap card"
-                      >
-                        <Lightbulb className="size-3.5" />
-                        {item.linkedCards}
-                      </span>
-                    ) : null}
-                    {item.comments ? (
-                      <span className="flex items-center gap-0.5">
-                        <MessageSquare className="size-3.5" />
-                        {item.comments}
-                      </span>
-                    ) : null}
-                  </span>
-                </span>
-              </button>
+        <ul className="flex flex-col divide-y" aria-busy={pending}>
+          {items.length === 0 ? (
+            <li className="p-6 text-center text-sm text-muted-foreground">
+              {inbox
+                ? "You're all caught up. New submissions from your public board land here."
+                : filter.q || secondary || filter.statusId
+                  ? "No feedback matches these filters."
+                  : "No feedback yet. Add the first item, or share your public board."}
             </li>
-          );
-        })}
-      </ul>
+          ) : null}
+          {items.map((item, index) => (
+            <FeedbackRowItem
+              key={item.id}
+              item={item}
+              status={statusById.get(item.statusId)}
+              category={
+                item.categoryId ? categoryById.get(item.categoryId) : null
+              }
+              board={inbox ? boardById.get(item.boardId) : undefined}
+              selected={selected.has(item.id)}
+              focused={inbox && index === focusIndex}
+              onSelect={(on) =>
+                setSelected((all) => {
+                  const next = new Set(all);
+                  if (on) next.add(item.id);
+                  else next.delete(item.id);
+                  return next;
+                })
+              }
+              onOpen={() => {
+                setFocus(index);
+                openItem(item.id);
+              }}
+            />
+          ))}
+        </ul>
+      </div>
 
       <NewFeedbackDialog
         open={creating}
@@ -461,7 +682,7 @@ export function FeedbackView({
         workspaceId={data.workspaceId}
         feedbackId={openId}
         boards={data.boards}
-        statuses={data.statuses}
+        statuses={statuses}
         categories={data.categories}
         tags={tags}
         onClose={closeItem}
@@ -475,6 +696,28 @@ export function FeedbackView({
           )
         }
       />
+
+      {data.canManage ? (
+        <>
+          <StatusesDialog
+            open={statusesOpen}
+            onOpenChange={setStatusesOpen}
+            workspace={workspace}
+            statuses={statuses}
+            onChange={setStatuses}
+          />
+          {inbox ? null : (
+            <BoardSettingsDialog
+              key={board.id}
+              open={boardSettingsOpen}
+              onOpenChange={toggleBoardSettings}
+              workspace={workspace}
+              board={board}
+              canDelete={data.boards.length > 1}
+            />
+          )}
+        </>
+      ) : null}
     </div>
   );
 }

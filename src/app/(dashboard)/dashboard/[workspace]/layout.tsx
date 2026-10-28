@@ -6,6 +6,7 @@ import { Skeleton } from "@/components/ui/skeleton";
 import { db } from "@/server/db/client";
 import { listMyAccounts } from "@/server/services/accounts";
 import { seesAllWorkspaces } from "@/server/services/context";
+import { inboxCount } from "@/server/services/feedback";
 import {
   getWorkspaceBySlug,
   listWorkspaces,
@@ -28,7 +29,7 @@ export default function WorkspaceLayout({
           <Switcher slug={slug} />
         </Suspense>
         <Suspense fallback={null}>
-          <SidebarNav />
+          <Nav slug={slug} />
         </Suspense>
       </aside>
       <div className="flex min-w-0 flex-1 flex-col">
@@ -61,6 +62,11 @@ async function Switcher({ slug }: { slug: Promise<string> }) {
       }))}
     />
   );
+}
+
+async function Nav({ slug }: { slug: Promise<string> }) {
+  const ctx = await requireWorkspace(await slug);
+  return <SidebarNav inbox={await inboxCount(db, ctx)} />;
 }
 
 async function WorkspaceName({ slug }: { slug: Promise<string> }) {

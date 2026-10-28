@@ -10,7 +10,9 @@ export type BoardOption = {
   id: string;
   slug: string;
   name: string;
+  description: string | null;
   isPublic: boolean;
+  autoPublish: boolean;
 };
 
 export type StatusOption = {
@@ -22,12 +24,17 @@ export type StatusOption = {
 
 export type CategoryOption = { id: string; name: string; color: string };
 
+/** The full list, or the triage inbox (pending items, every board). */
+export type FeedbackMode = "list" | "inbox";
+
 export type FeedbackData = {
   workspace: string;
   workspaceId: string;
   canManage: boolean;
   boards: BoardOption[];
   boardId: string | null;
+  /** Items waiting for review (sidebar badge, Inbox tab). */
+  inboxCount: number;
   statuses: StatusOption[];
   categories: CategoryOption[];
   tags: TagOption[];

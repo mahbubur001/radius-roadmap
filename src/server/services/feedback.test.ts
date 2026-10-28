@@ -17,23 +17,37 @@ import {
 } from "@/test/factories";
 import {
   type AccountContext,
+  ConflictError,
+  ForbiddenError,
   NotFoundError,
   type WorkspaceContext,
 } from "./context";
 import {
+  bulkUpdateFeedback,
   createFeedback,
   deleteFeedback,
   firstStatusOfKind,
   getFeedback,
   getFeedbackDetail,
+  inboxCount,
   listBoards,
   listFeedback,
   listStatuses,
+  reviewFeedback,
   setFeedbackArchived,
   setFeedbackCompleted,
   updateFeedback,
 } from "./feedback";
-import { DEFAULT_BOARD, DEFAULT_STATUSES } from "./feedback-boards";
+import {
+  createBoard,
+  createStatus,
+  DEFAULT_BOARD,
+  DEFAULT_STATUSES,
+  deleteBoard,
+  deleteStatus,
+  moveStatus,
+  updateBoard,
+} from "./feedback-boards";
 import { createTag, listCategories } from "./roadmaps";
 import { createWorkspace } from "./workspaces";
 
@@ -329,5 +343,169 @@ describe("feedback service", () => {
     expect(
       (await listFeedback(db, wsA, { state: "archived" })).map((r) => r.id),
     ).toContain(sink.id);
+  });
+});
+
+describe("triage, bulk edits, boards and statuses", () => {
+  let wsA: WorkspaceContext;
+  let wsB: WorkspaceContext;
+  let memberA: WorkspaceContext;
+  let boardA: string;
+
+  beforeAll(async () => {
+    wsA = { ...ctx, workspaceId, workspaceSlug: "fb" };
+    const accountB = await createTestAccount(db, "fb-tri-b");
+    const ownerB = await createTestUser(db, "fb-tri-b-owner");
+    const mate = await createTestUser(db, "fb-tri-member");
+    accounts.push(accountB);
+    users.push(ownerB, mate);
+    const ctxB = await addTestMember(db, accountB, ownerB, "owner");
+    const ws = await createWorkspace(db, ctxB, {
+      name: "Tri B",
+      slug: "tri-b",
+    });
+    wsB = { ...ctxB, workspaceId: ws.id, workspaceSlug: ws.slug };
+    const m = await addTestMember(db, ctx.accountId, mate, "member");
+    memberA = { ...m, workspaceId, workspaceSlug: "fb" };
+    boardA = (await listBoards(db, wsA))[0]?.id as string;
+  });
+
+  async function pending(title: string) {
+    const item = await createFeedback(db, wsA, { boardId: boardA, title });
+    await db
+      .update(feedbackItems)
+      .set({ review: "pending" })
+      .where(eq(feedbackItems.id, item.id));
+    return item;
+  }
+
+  it("counts the inbox and approves, keeps private or rejects in bulk", async () => {
+    const before = await inboxCount(db, wsA);
+    const [a, b, c] = [
+      await pending("A"),
+      await pending("B"),
+      await pending("C"),
+    ];
+    expect(await inboxCount(db, wsA)).toBe(before + 3);
+    const inbox = await listFeedback(db, wsA, {
+      review: "pending",
+      state: "all",
+    });
+    expect(inbox.map((r) => r.id)).toEqual(
+      expect.arrayContaining([a.id, b.id, c.id]),
+    );
+
+    expect(await reviewFeedback(db, wsA, [a.id], "approve")).toBe(1);
+    expect(await reviewFeedback(db, wsA, [b.id], "keep_private")).toBe(1);
+    expect(await reviewFeedback(db, wsA, [c.id], "reject")).toBe(1);
+    expect(await inboxCount(db, wsA)).toBe(before);
+
+    const [ra, rb, rc] = await Promise.all(
+      [a, b, c].map((i) => getFeedback(db, wsA, i.id)),
+    );
+    expect(ra).toMatchObject({ review: "approved", isPublic: true });
+    expect(rb).toMatchObject({ review: "approved", isPublic: false });
+    expect(rc?.review).toBe("rejected");
+    expect(rc?.archivedAt).not.toBeNull();
+  });
+
+  it("another account can't review, bulk edit or count this inbox", async () => {
+    const item = await pending("Not yours");
+    expect(await reviewFeedback(db, wsB, [item.id], "approve")).toBe(0);
+    expect(
+      await bulkUpdateFeedback(db, wsB, { ids: [item.id], categoryId: null }),
+    ).toBe(0);
+    expect((await getFeedback(db, wsA, item.id)).review).toBe("pending");
+    expect(await inboxCount(db, wsB)).toBe(0);
+  });
+
+  it("bulk sets status and category and adds tags", async () => {
+    const [x, y] = [await pending("X"), await pending("Y")];
+    const done = await firstStatusOfKind(db, wsA, "done");
+    const [category] = await listCategories(db, wsA);
+    const tag = await createTag(db, wsA, { name: "bulk-tag" });
+    const n = await bulkUpdateFeedback(db, wsA, {
+      ids: [x.id, y.id],
+      statusId: done?.id,
+      categoryId: category?.id,
+      addTagIds: [tag.id],
+    });
+    expect(n).toBe(2);
+    const detail = await getFeedbackDetail(db, wsA, x.id);
+    expect(detail).toMatchObject({
+      statusId: done?.id,
+      categoryId: category?.id,
+    });
+    expect(detail.completedAt).not.toBeNull();
+    expect(detail.tagIds).toContain(tag.id);
+    // Adding the same tag again is a no-op, not an error.
+    await bulkUpdateFeedback(db, wsA, { ids: [x.id], addTagIds: [tag.id] });
+  });
+
+  it("boards: admin-only settings; can't delete a board with items or the last one", async () => {
+    await expect(
+      createBoard(db, memberA, { name: "Members can't" }),
+    ).rejects.toThrow(ForbiddenError);
+    const board = await createBoard(db, wsA, { name: "Bug reports" });
+    expect(board.slug).toBe("bug-reports");
+    await expect(createBoard(db, wsA, { name: "Bug reports" })).rejects.toThrow(
+      ConflictError,
+    );
+    const updated = await updateBoard(db, wsA, {
+      id: board.id,
+      name: "Bugs",
+      slug: "bugs",
+      description: null,
+      isPublic: false,
+      autoPublish: true,
+    });
+    expect(updated).toMatchObject({
+      slug: "bugs",
+      isPublic: false,
+      autoPublish: true,
+    });
+    await expect(
+      updateBoard(db, wsB, { ...updated, description: null }),
+    ).rejects.toThrow(NotFoundError);
+
+    await createFeedback(db, wsA, { boardId: board.id, title: "Crash" });
+    await expect(deleteBoard(db, wsA, board.id)).rejects.toThrow(ConflictError);
+    const [onlyB] = await listBoards(db, wsB);
+    await expect(deleteBoard(db, wsB, onlyB?.id as string)).rejects.toThrow(
+      ConflictError,
+    );
+  });
+
+  it("statuses: create, reorder, and only delete unused ones", async () => {
+    const status = await createStatus(db, wsA, {
+      name: "Needs info",
+      color: "#f59e0b",
+      kind: "open",
+    });
+    const first = (await listStatuses(db, wsA))[0];
+    await moveStatus(db, wsA, {
+      id: status.id,
+      prevId: null,
+      nextId: first?.id ?? null,
+    });
+    expect((await listStatuses(db, wsA))[0]?.id).toBe(status.id);
+
+    const item = await createFeedback(db, wsA, { boardId: boardA, title: "Q" });
+    await updateFeedback(db, wsA, { id: item.id, statusId: status.id });
+    await expect(deleteStatus(db, wsA, status.id)).rejects.toThrow(
+      ConflictError,
+    );
+    await updateFeedback(db, wsA, { id: item.id, statusId: first?.id });
+    await deleteStatus(db, wsA, status.id);
+    await expect(deleteStatus(db, wsB, first?.id as string)).rejects.toThrow(
+      NotFoundError,
+    );
+    await expect(
+      createStatus(db, memberA, {
+        name: "Nope",
+        color: "#000000",
+        kind: "open",
+      }),
+    ).rejects.toThrow(ForbiddenError);
   });
 });

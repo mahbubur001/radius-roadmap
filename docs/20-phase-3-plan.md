@@ -204,6 +204,9 @@ Feedback pages use the same `"use cache"` loaders with `cacheTag("ws:<id>")`; ev
 10. Embed `data-page="feedback"`, Home dashboard tiles.
 11. Playwright flows; update CLAUDE.md, doc 14 (new deps, if any) and PROGRESS.md.
 
+## As built (2026-10-28)
+- Step 1: schema in `src/server/db/schema/feedback.ts`, migration `0003` (tables, enums, `votes.feedback_id` + `votes_one_target_check`, new event types) and `0004` (data: default board + statuses for workspaces created before Phase 3). New workspaces are seeded by `seedFeedback` (`src/server/services/feedback-boards.ts`) from `seedWorkspace`. `claimVisitorVotes` already drops duplicate feedback votes. Tests: `src/server/services/feedback.test.ts`. Cross-account isolation tests come with the services in step 2.
+
 ## Done when
 - [ ] Feedback boards, statuses, categories and tags work; the admin list filters, sorts and searches; the drawer autosaves.
 - [ ] New public submissions land in the triage inbox with a visible count and an email alert, and can be approved, kept private, rejected or merged in bulk.

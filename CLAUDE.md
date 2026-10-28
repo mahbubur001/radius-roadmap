@@ -119,6 +119,7 @@ Keep this list in sync with `package.json`. Deploy files: `ecosystem.config.cjs`
 - Biome formats and lints; run `pnpm check` before finishing. TypeScript strict, no `any`.
 - Server Components by default; add `"use client"` only where needed.
 - UI uses shadcn/ui components in `src/components/ui`; theme colors come from CSS variables (for white-labelling). No hard-coded brand colors.
+- Everything clickable shows the pointer cursor. `globals.css` restores it for `button` and `[role="button"]` (Tailwind v4 Preflight removed it); menu and select items use `cursor-pointer`. Never add `cursor-default` to an interactive element; add `cursor-pointer` to any other clickable element (custom rows, cards, labels acting as buttons).
 
 ### Secrets
 - Env vars are validated in `src/lib/env.ts` (`@t3-oss/env-nextjs`). Add new ones there and to `.env.example`. Never commit `.env*` (except `.env.example`).

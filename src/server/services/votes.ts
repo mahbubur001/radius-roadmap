@@ -1,6 +1,16 @@
-import { and, count, desc, eq, inArray, isNull, sql } from "drizzle-orm";
+import {
+  and,
+  count,
+  desc,
+  eq,
+  inArray,
+  isNotNull,
+  isNull,
+  sql,
+} from "drizzle-orm";
 import type { Db, DbOrTx } from "@/server/db/client";
 import {
+  feedbackItems,
   roadmapCards,
   trackedUsers,
   type VoteSource,
@@ -47,6 +57,13 @@ async function bump(tx: DbOrTx, cardId: string, by: number) {
       importedVotes: roadmapCards.importedVotes,
     });
   return (row?.voteCount ?? 0) + (row?.importedVotes ?? 0);
+}
+
+async function bumpFeedback(tx: DbOrTx, feedbackId: string, by: number) {
+  await tx
+    .update(feedbackItems)
+    .set({ voteCount: sql`greatest(${feedbackItems.voteCount} + ${by}, 0)` })
+    .where(eq(feedbackItems.id, feedbackId));
 }
 
 /**
@@ -108,12 +125,13 @@ export async function votedCardIds(
             ),
       ),
     );
-  return rows.map((r) => r.cardId);
+  return rows.flatMap((r) => (r.cardId ? [r.cardId] : []));
 }
 
 /**
  * On sign-in, the visitor's anonymous votes become the voter's. Where the
- * voter had already voted the same card, the anonymous duplicate is dropped.
+ * voter had already voted the same card or feedback item, the anonymous
+ * duplicate is dropped.
  */
 export async function claimVisitorVotes(
   db: Db,
@@ -127,20 +145,32 @@ export async function claimVisitorVotes(
       isNull(votes.trackedUserId),
       eq(votes.visitorId, visitorId),
     );
-    const already = tx
-      .select({ cardId: votes.cardId })
+    const own = and(
+      eq(votes.accountId, ctx.accountId),
+      eq(votes.trackedUserId, trackedUserId),
+    );
+    const cards = tx
+      .select({ id: votes.cardId })
       .from(votes)
-      .where(
-        and(
-          eq(votes.accountId, ctx.accountId),
-          eq(votes.trackedUserId, trackedUserId),
-        ),
-      );
-    const dropped = await tx
+      .where(and(own, isNotNull(votes.cardId)));
+    const feedback = tx
+      .select({ id: votes.feedbackId })
+      .from(votes)
+      .where(and(own, isNotNull(votes.feedbackId)));
+    const droppedCards = await tx
       .delete(votes)
-      .where(and(anonymous, inArray(votes.cardId, already)))
+      .where(and(anonymous, inArray(votes.cardId, cards)))
       .returning({ cardId: votes.cardId });
-    for (const { cardId } of dropped) await bump(tx, cardId, -1);
+    const droppedFeedback = await tx
+      .delete(votes)
+      .where(and(anonymous, inArray(votes.feedbackId, feedback)))
+      .returning({ feedbackId: votes.feedbackId });
+    for (const { cardId } of droppedCards) {
+      if (cardId) await bump(tx, cardId, -1);
+    }
+    for (const { feedbackId } of droppedFeedback) {
+      if (feedbackId) await bumpFeedback(tx, feedbackId, -1);
+    }
     await tx.update(votes).set({ trackedUserId }).where(anonymous);
   });
 }

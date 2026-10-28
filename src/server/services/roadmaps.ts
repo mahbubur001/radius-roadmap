@@ -29,6 +29,7 @@ import {
   NotFoundError,
   type WorkspaceContext,
 } from "./context";
+import { seedFeedback } from "./feedback-boards";
 import { byPosition, keyAfter, keyBetween } from "./positions";
 
 // Every query is scoped by ctx.accountId AND ctx.workspaceId. The
@@ -109,7 +110,10 @@ async function insertRoadmap(
   return roadmap;
 }
 
-/** Defaults for a new workspace: LoopedIn's categories + one roadmap. */
+/**
+ * Defaults for a new workspace: LoopedIn's categories, one roadmap, and one
+ * feedback board with the default statuses.
+ */
 export async function seedWorkspace(
   db: DbOrTx,
   accountId: string,
@@ -123,6 +127,7 @@ export async function seedWorkspace(
     }),
   );
   await insertRoadmap(db, accountId, workspaceId, "Roadmap");
+  await seedFeedback(db, accountId, workspaceId);
 }
 
 // ── Roadmaps ────────────────────────────────────────────────────────────

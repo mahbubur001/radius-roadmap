@@ -39,7 +39,7 @@
   - Real 404 / 308 statuses for public sites, checked in `src/proxy.ts` (`publicPathStatus`).
   - Playwright flows 1–5 (`e2e/roadmap.spec.ts`).
 - Rate-limit bypass fixed: `cf-*` headers trusted only with `TRUST_CLOUDFLARE=1` (new env var); `src/server/rate-limit.test.ts`.
-- **Checks:** `pnpm lint`, `typecheck`, `test` (98 tests), `test:e2e` (11 tests, incl. Phase 2 flows 1–5 in `e2e/roadmap.spec.ts`) and `build` pass.
+- **Checks:** `pnpm lint`, `typecheck`, `test` (104 tests), `test:e2e` (11 tests, incl. Phase 2 flows 1–5 in `e2e/roadmap.spec.ts`) and `build` pass.
 - **Git:** everything is pushed to `origin/main`. Latest code commit `a280db4` (Playwright flows, embed height fix, proxy 404s); the commit after it only updates this file.
 - **Second Mac (user `radiustheme`):** set up 2026-10-28. Homebrew Postgres 18 (role `radiustheme`, no `postgres` role, so `DATABASE_URL=postgres://radiustheme@localhost:5432/radius_roadmap`) + Redis. `~/.zshrc` has `PNPM_HOME=/Users/mahbubur/...` copied from the first Mac, so pnpm fails with EACCES until it's fixed to `$HOME/Library/pnpm`.
 - **First Mac (user `mahbubur`):** Homebrew Postgres 18 + Redis, `EMAIL_TRANSPORT=console`, `STORAGE_DRIVER=local`, `PUBLIC_ROOT_DOMAIN=localhost:3000` in `.env.local`. The dev workspace `demo-product` was renamed "Radius Roadmap" (slug unchanged). The local dev DB also holds many test accounts made by Playwright; they're harmless.
@@ -50,7 +50,7 @@ Resume here. On a new session say: *"Read docs/PROGRESS.md and continue from Nex
 2. **Owner (blocking):** export the Radius roadmap from LoopedIn (Roadmap → More → Export) and put the file in `docs/samples/`.
 3. Then build **step 10**, the LoopedIn import page at `/<workspace>/roadmap/import?r=<roadmap-slug>` (papaparse, preview step, idempotent by `external_ref`, totals into `imported_votes`), its Vitest test and Playwright flow 6.
 4. Tick the last "Done when" items in doc 19, mark Phase 2 done here, commit + push.
-5. **Phase 3 approved 2026-10-28 (D1–D7, all recommendations).** Build doc 20 §7 steps 1–8 while waiting for the exports. D7 also needs the LoopedIn **feedback** export (Boards → More → Export) in `docs/samples/`.
+5. **Phase 3 approved 2026-10-28 (D1–D7, all recommendations).** Build doc 20 §7 steps 1–8 while waiting for the exports. **Step 1 (schema + migrations 0003/0004) done 2026-10-28; next is step 2** (feedback services + admin list, filters, drawer). D7 also needs the LoopedIn **feedback** export (Boards → More → Export) in `docs/samples/`.
 
 ## Decisions (approved)
 - Stack per doc 14:

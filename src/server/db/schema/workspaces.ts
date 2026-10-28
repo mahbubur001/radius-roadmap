@@ -17,6 +17,12 @@ export type WorkspaceSettings = {
   darkModeDefault?: boolean;
   /** Let search engines index the public pages (on by default). */
   indexPublicPages?: boolean;
+  /** Public comments on feedback (doc 20 D3). Off by default. */
+  commentsEnabled?: boolean;
+  /** Voters can follow feedback items. Off by default. */
+  followsEnabled?: boolean;
+  /** Hold public comments for approval. */
+  approveComments?: boolean;
 };
 
 /**

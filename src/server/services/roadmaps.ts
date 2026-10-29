@@ -31,6 +31,7 @@ import {
 } from "./context";
 import { seedFeedback } from "./feedback-boards";
 import { byPosition, keyAfter, keyBetween } from "./positions";
+import { seedUpdateCategories } from "./update-categories";
 
 // Every query is scoped by ctx.accountId AND ctx.workspaceId. The
 // WorkspaceContext comes from requireWorkspace(), which already checked the
@@ -128,6 +129,7 @@ export async function seedWorkspace(
   );
   await insertRoadmap(db, accountId, workspaceId, "Roadmap");
   await seedFeedback(db, accountId, workspaceId);
+  await seedUpdateCategories(db, accountId, workspaceId);
 }
 
 // ── Roadmaps ────────────────────────────────────────────────────────────

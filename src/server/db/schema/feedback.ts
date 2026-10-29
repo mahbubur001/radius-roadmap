@@ -299,6 +299,8 @@ export const notificationPreferences = pgTable(
       .references(() => user.id, { onDelete: "cascade" }),
     newFeedback: notificationFrequency().notNull(),
     newComment: notificationFrequency().notNull(),
+    /** Phase 4 (doc 23): a new confirmed update subscriber. */
+    newSubscriber: notificationFrequency().notNull().default("off"),
     updatedAt: timestamp({ withTimezone: true })
       .notNull()
       .defaultNow()

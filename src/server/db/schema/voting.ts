@@ -79,6 +79,9 @@ export const eventType = pgEnum("event_type", [
   "feedback_view",
   "feedback_submit",
   "comment",
+  "update_view",
+  "reaction",
+  "subscribe",
 ]);
 
 /** Analytics v1 (doc 19 §3.7). Charts query this directly for now. */

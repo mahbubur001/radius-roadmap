@@ -26,6 +26,8 @@ export type WorkspaceSettings = {
   /** Public site modules (doc 22 P2). Missing = shown. */
   showRoadmap?: boolean;
   showIdeas?: boolean;
+  /** Phase 4 (doc 23 U7). Missing = shown. */
+  showUpdates?: boolean;
   /** Linked from the idea form's terms checkbox (shown only when set). */
   termsUrl?: string | null;
   privacyUrl?: string | null;

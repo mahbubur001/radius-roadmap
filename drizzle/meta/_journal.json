@@ -50,6 +50,13 @@
       "when": 1793260030210,
       "tag": "0006_objectives_rename",
       "breakpoints": true
+    },
+    {
+      "idx": 7,
+      "version": "7",
+      "when": 1793266511036,
+      "tag": "0007_updates",
+      "breakpoints": true
     }
   ]
 }

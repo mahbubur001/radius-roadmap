@@ -510,6 +510,7 @@ export function RoadmapView({
             open={settingsOpen}
             onOpenChange={setSettingsOpen}
             workspace={workspace}
+            workspaceId={data.workspaceId}
             roadmap={data.roadmap}
             columns={columns}
             publicUrl={data.publicUrl}

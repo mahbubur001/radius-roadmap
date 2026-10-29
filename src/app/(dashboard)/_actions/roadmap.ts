@@ -5,7 +5,6 @@ import {
   cardFlagSchema,
   cardIdSchema,
   createCardSchema,
-  createColumnSchema,
   createFeatureSchema,
   createRoadmapSchema,
   moveCardSchema,
@@ -13,13 +12,12 @@ import {
   objectiveSchema,
   requestAttachmentSchema,
   roadmapIdSchema,
+  roadmapSettingsSchema,
   tagSchema,
   transferCardSchema,
   updateCardSchema,
-  updateColumnSchema,
   updateFeatureSchema,
   updateObjectiveSchema,
-  updateRoadmapSchema,
 } from "@/lib/schemas/roadmap";
 import { MAX_ATTACHMENT_BYTES } from "@/lib/schemas/upload";
 import { workspaceAction } from "@/server/action";
@@ -57,18 +55,15 @@ import {
 } from "@/server/services/feedback-links";
 import { exportRoadmapCsv } from "@/server/services/roadmap-export";
 import {
-  createColumn,
   createObjective,
   createRoadmap,
   createTag,
-  deleteColumn,
   deleteObjective,
   deleteRoadmap,
   deleteTag,
   moveColumn,
-  updateColumn,
+  saveRoadmapSettings,
   updateObjective,
-  updateRoadmap,
 } from "@/server/services/roadmaps";
 import {
   hasTeamCardVote,
@@ -100,11 +95,20 @@ export const createRoadmapAction = workspaceAction(
     }),
 );
 
-export const updateRoadmapAction = workspaceAction(
-  updateRoadmapSchema,
+export const saveRoadmapSettingsAction = workspaceAction(
+  roadmapSettingsSchema,
   async (ctx, input) =>
     mutate(ctx, async () => {
-      await updateRoadmap(db, ctx, input);
+      const { columns } = await saveRoadmapSettings(db, ctx, input);
+      return {
+        columns: columns.map(({ id, name, position, isPublic, isDone }) => ({
+          id,
+          name,
+          position,
+          isPublic,
+          isDone,
+        })),
+      };
     }),
 );
 
@@ -113,31 +117,9 @@ export const deleteRoadmapAction = workspaceAction(
   async (ctx, { id }) => mutate(ctx, () => deleteRoadmap(db, ctx, id)),
 );
 
-export const createColumnAction = workspaceAction(
-  createColumnSchema,
-  async (ctx, input) =>
-    mutate(ctx, async () => {
-      const column = await createColumn(db, ctx, input);
-      return { id: column?.id ?? "" };
-    }),
-);
-
-export const updateColumnAction = workspaceAction(
-  updateColumnSchema,
-  async (ctx, input) =>
-    mutate(ctx, async () => {
-      await updateColumn(db, ctx, input);
-    }),
-);
-
 export const moveColumnAction = workspaceAction(
   moveColumnSchema,
   async (ctx, input) => mutate(ctx, () => moveColumn(db, ctx, input)),
-);
-
-export const deleteColumnAction = workspaceAction(
-  cardIdSchema,
-  async (ctx, { id }) => mutate(ctx, () => deleteColumn(db, ctx, id)),
 );
 
 // ── Cards (everyone with access) ────────────────────────────────────────

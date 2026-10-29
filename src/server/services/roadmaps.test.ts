@@ -6,6 +6,7 @@ import {
   createTestAccount,
   createTestUser,
 } from "@/test/factories";
+import { currentSettings } from "@/test/roadmap-settings";
 import {
   addFeature,
   createCard,
@@ -25,18 +26,17 @@ import {
   type WorkspaceContext,
 } from "./context";
 import {
-  createColumn,
   createObjective,
   createRoadmap,
   createTag,
-  deleteColumn,
   deleteRoadmap,
+  getRoadmap,
   listColumns,
   listObjectives,
   listRoadmaps,
   listTags,
   moveColumn,
-  updateRoadmap,
+  saveRoadmapSettings,
 } from "./roadmaps";
 import { createWorkspace } from "./workspaces";
 
@@ -168,28 +168,12 @@ describe("roles", () => {
     });
     await updateCard(db, memberA, { id: card.id, title: "Edited" });
     await expect(
-      createColumn(db, memberA, { roadmapId: roadmap.id, name: "Nope" }),
-    ).rejects.toBeInstanceOf(ForbiddenError);
-    await expect(
       createObjective(db, memberA, { name: "Nope", color: "#000000" }),
     ).rejects.toBeInstanceOf(ForbiddenError);
     await expect(
-      updateRoadmap(db, memberA, {
-        id: roadmap.id,
+      saveRoadmapSettings(db, memberA, {
+        ...(await currentSettings(db, wsA, roadmap.id)),
         internalTitle: "Nope",
-        publicTitle: null,
-        internalSummary: null,
-        publicSummary: null,
-        isPublic: true,
-        display: {
-          showVotes: true,
-          showObjectives: true,
-          showTags: true,
-          showDates: true,
-          showDescriptions: true,
-          showCompleted: true,
-          showFeatures: true,
-        },
       }),
     ).rejects.toBeInstanceOf(ForbiddenError);
   });
@@ -295,18 +279,6 @@ describe("cards", () => {
     expect(detail.summaryText).toBe("Bidding on listings");
     const found = await listBoardCards(db, wsA, roadmap.id, { q: "bidding" });
     expect(found.map((c) => c.id)).toContain(card.id);
-  });
-
-  it("refuses to delete a column that still has cards", async () => {
-    const { roadmap, columns } = await firstRoadmap(wsA);
-    await expect(
-      deleteColumn(db, wsA, columns[0]?.id ?? ""),
-    ).rejects.toBeInstanceOf(ConflictError);
-    const empty = await createColumn(db, wsA, {
-      roadmapId: roadmap.id,
-      name: "Empty",
-    });
-    await deleteColumn(db, wsA, empty?.id ?? "");
   });
 
   it("reorders columns", async () => {
@@ -427,5 +399,85 @@ describe("duplicate, move to and copy to", () => {
         }),
       ).rejects.toBeInstanceOf(NotFoundError);
     }
+  });
+});
+
+describe("roadmap settings (doc 24)", () => {
+  it("saves details, both display sets and the ordered columns at once", async () => {
+    const roadmap = await createRoadmap(db, wsA, { title: "Settings" });
+    const before = await currentSettings(db, wsA, roadmap.id);
+    const [first, second, third, done] = before.columns;
+    if (!first || !second || !third || !done) throw new Error("no columns");
+    const summary = {
+      type: "doc",
+      content: [
+        { type: "paragraph", content: [{ type: "text", text: "For buyers" }] },
+      ],
+    };
+    await saveRoadmapSettings(db, wsA, {
+      ...before,
+      publicTitle: "Public plan",
+      publicSummaryJson: summary,
+      notifyOnComplete: false,
+      internalDisplay: { ...before.internalDisplay, showVotes: false },
+      columns: [
+        { ...done, name: "Shipped" },
+        { name: "Ideas", isPublic: false, isDone: false },
+        second,
+        first,
+      ],
+    });
+    const after = await currentSettings(db, wsA, roadmap.id);
+    expect(after).toMatchObject({
+      publicTitle: "Public plan",
+      notifyOnComplete: false,
+      internalDisplay: { showVotes: false },
+      display: { showVotes: true },
+    });
+    expect((await getRoadmap(db, wsA, roadmap.id)).publicSummary).toBe(
+      "For buyers",
+    );
+    expect(after.columns.map((c) => c.name)).toEqual([
+      "Shipped",
+      "Ideas",
+      second.name,
+      first.name,
+    ]);
+    expect(after.columns[0]).toMatchObject({ id: done.id, isDone: true });
+    expect(after.columns.map((c) => c.id)).not.toContain(third.id);
+  });
+
+  it("saves nothing when a deleted column still has cards", async () => {
+    const roadmap = await createRoadmap(db, wsA, { title: "Busy" });
+    const before = await currentSettings(db, wsA, roadmap.id);
+    const [first, ...rest] = before.columns;
+    await createCard(db, wsA, {
+      roadmapId: roadmap.id,
+      columnId: first?.id ?? "",
+      title: "Blocking",
+    });
+    await expect(
+      saveRoadmapSettings(db, wsA, {
+        ...before,
+        internalTitle: "Renamed",
+        columns: rest,
+      }),
+    ).rejects.toBeInstanceOf(ConflictError);
+    expect(await currentSettings(db, wsA, roadmap.id)).toEqual(before);
+  });
+
+  it("another account can't save this roadmap or use its columns", async () => {
+    const { roadmap } = await firstRoadmap(wsA);
+    const settings = await currentSettings(db, wsA, roadmap.id);
+    await expect(saveRoadmapSettings(db, wsB, settings)).rejects.toBeInstanceOf(
+      NotFoundError,
+    );
+    const { roadmap: theirs } = await firstRoadmap(wsB);
+    await expect(
+      saveRoadmapSettings(db, wsB, {
+        ...(await currentSettings(db, wsB, theirs.id)),
+        columns: settings.columns,
+      }),
+    ).rejects.toBeInstanceOf(NotFoundError);
   });
 });

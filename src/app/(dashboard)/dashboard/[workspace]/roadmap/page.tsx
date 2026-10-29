@@ -1,7 +1,8 @@
 import type { Metadata } from "next";
 import { Suspense } from "react";
 import { Skeleton } from "@/components/ui/skeleton";
-import { defaultDisplay } from "@/lib/schemas/roadmap";
+import { renderRichText } from "@/lib/rich-text";
+import { defaultDisplay, defaultInternalDisplay } from "@/lib/schemas/roadmap";
 import { db } from "@/server/db/client";
 import { publicRoadmapUrl } from "@/server/public-url";
 import { getAccount } from "@/server/services/accounts";
@@ -84,10 +85,16 @@ async function Roadmap({
           slug: roadmap.slug,
           internalTitle: roadmap.internalTitle,
           publicTitle: roadmap.publicTitle,
-          internalSummary: roadmap.internalSummary,
-          publicSummary: roadmap.publicSummary,
+          internalSummaryJson: roadmap.internalSummaryJson,
+          publicSummaryJson: roadmap.publicSummaryJson,
+          internalSummaryHtml: renderRichText(roadmap.internalSummaryJson),
           isPublic: roadmap.isPublic,
+          notifyOnComplete: roadmap.notifyOnComplete,
           display: { ...defaultDisplay, ...roadmap.display },
+          internalDisplay: {
+            ...defaultInternalDisplay,
+            ...roadmap.internalDisplay,
+          },
         },
         columns: columns.map((c) => ({
           id: c.id,

@@ -1,7 +1,6 @@
 import { randomUUID } from "node:crypto";
 import { eq } from "drizzle-orm";
 import { afterAll, beforeAll, describe, expect, it } from "vitest";
-import { defaultDisplay } from "@/lib/schemas/roadmap";
 import { db } from "@/server/db/client";
 import { roadmapCards, voterLoginCodes, votes } from "@/server/db/schema";
 import {
@@ -10,6 +9,7 @@ import {
   createTestAccount,
   createTestUser,
 } from "@/test/factories";
+import { currentSettings } from "@/test/roadmap-settings";
 import { createCard, updateCard } from "./cards";
 import {
   ConflictError,
@@ -26,12 +26,7 @@ import {
   publicPathStatus,
   resolveSite,
 } from "./public-site";
-import {
-  createRoadmap,
-  listColumns,
-  updateColumn,
-  updateRoadmap,
-} from "./roadmaps";
+import { createRoadmap, listColumns, saveRoadmapSettings } from "./roadmaps";
 import {
   guestSignIn,
   MAX_CODE_ATTEMPTS,
@@ -146,19 +141,16 @@ describe("public site visibility", () => {
         ?.id ?? "",
     );
     if (!column) throw new Error("no column");
-    await updateColumn(db, wsA, {
-      id: column.id,
-      name: column.name,
-      isPublic: false,
-      isDone: column.isDone,
+    const settings = await currentSettings(db, wsA, column.roadmapId);
+    const withColumn = (isPublic: boolean) => ({
+      ...settings,
+      columns: settings.columns.map((c) =>
+        c.id === column.id ? { ...c, isPublic } : c,
+      ),
     });
+    await saveRoadmapSettings(db, wsA, withColumn(false));
     expect(await getVotableCard(db, pubA, card.id)).toBeNull();
-    await updateColumn(db, wsA, {
-      id: column.id,
-      name: column.name,
-      isPublic: true,
-      isDone: column.isDone,
-    });
+    await saveRoadmapSettings(db, wsA, withColumn(true));
     expect(await getVotableCard(db, pubA, card.id)).not.toBeNull();
   });
 
@@ -168,14 +160,9 @@ describe("public site visibility", () => {
       slug: roadmap.slug,
     });
     expect(board?.id).toBe(roadmap.id);
-    await updateRoadmap(db, wsA, {
-      id: roadmap.id,
-      internalTitle: roadmap.internalTitle,
-      publicTitle: "",
-      internalSummary: "",
-      publicSummary: "",
+    await saveRoadmapSettings(db, wsA, {
+      ...(await currentSettings(db, wsA, roadmap.id)),
       isPublic: false,
-      display: { ...defaultDisplay, ...roadmap.display },
     });
     expect(
       await getPublicRoadmap(db, pubA, wsA.workspaceId, { slug: roadmap.slug }),

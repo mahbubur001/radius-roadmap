@@ -1,17 +1,17 @@
 import { and, asc, count, eq, inArray, max, type SQL } from "drizzle-orm";
 import type { AnyPgColumn } from "drizzle-orm/pg-core";
 import type { z } from "zod";
+import { richTextToPlain } from "@/lib/rich-text";
 import {
-  type createColumnSchema,
   type createRoadmapSchema,
   defaultDisplay,
+  defaultInternalDisplay,
   type moveColumnSchema,
   type objectiveSchema,
+  type RoadmapSettingsInput,
+  roadmapSettingsSchema,
   type tagSchema,
-  type UpdateRoadmapInput,
-  type updateColumnSchema,
   type updateObjectiveSchema,
-  updateRoadmapSchema,
 } from "@/lib/schemas/roadmap";
 import { slugify } from "@/lib/schemas/workspace";
 import type { Db, DbOrTx } from "@/server/db/client";
@@ -98,6 +98,7 @@ async function insertRoadmap(
       internalTitle: title,
       position: keyAfter(last?.p),
       display: defaultDisplay,
+      internalDisplay: defaultInternalDisplay,
     })
     .returning();
   if (!roadmap) throw new Error("Failed to create roadmap.");
@@ -181,20 +182,100 @@ export async function createRoadmap(
   );
 }
 
-export async function updateRoadmap(
+/**
+ * Saves the Edit roadmap modal in one transaction (doc 24 R1): details,
+ * display toggles and the full ordered column list. Columns that still have
+ * cards can't be deleted, so nothing is saved then.
+ */
+export async function saveRoadmapSettings(
   db: Db,
   ctx: WorkspaceContext,
-  input: UpdateRoadmapInput,
+  input: RoadmapSettingsInput,
 ) {
   assertRole(ctx, "admin");
-  const { id, ...data } = updateRoadmapSchema.parse(input);
-  const [row] = await db
-    .update(roadmaps)
-    .set(data)
-    .where(and(inWorkspace(roadmaps, ctx), eq(roadmaps.id, id)))
-    .returning();
-  if (!row) throw new NotFoundError("Roadmap not found.");
-  return row;
+  const { id, columns, internalSummaryJson, publicSummaryJson, ...data } =
+    roadmapSettingsSchema.parse(input);
+  return db.transaction(async (tx) => {
+    const [row] = await tx
+      .update(roadmaps)
+      .set({
+        ...data,
+        internalSummaryJson,
+        publicSummaryJson,
+        internalSummary: richTextToPlain(internalSummaryJson) || null,
+        publicSummary: richTextToPlain(publicSummaryJson) || null,
+      })
+      .where(and(inWorkspace(roadmaps, ctx), eq(roadmaps.id, id)))
+      .returning();
+    if (!row) throw new NotFoundError("Roadmap not found.");
+
+    const existing = await listColumns(tx, ctx, id);
+    const known = new Set(existing.map((c) => c.id));
+    const kept = new Set(columns.flatMap((c) => (c.id ? [c.id] : [])));
+    if ([...kept].some((columnId) => !known.has(columnId))) {
+      throw new NotFoundError("Column not found.");
+    }
+    const removed = existing.filter((c) => !kept.has(c.id));
+    if (removed.length) {
+      const [cards] = await tx
+        .select({ n: count() })
+        .from(roadmapCards)
+        .where(
+          and(
+            inWorkspace(roadmapCards, ctx),
+            inArray(
+              roadmapCards.columnId,
+              removed.map((c) => c.id),
+            ),
+          ),
+        );
+      if ((cards?.n ?? 0) > 0) {
+        const names = removed.map((c) => `"${c.name}"`).join(", ");
+        throw new ConflictError(
+          `Move or delete the cards in ${names} before deleting it.`,
+        );
+      }
+      await tx.delete(roadmapColumns).where(
+        and(
+          inWorkspace(roadmapColumns, ctx),
+          inArray(
+            roadmapColumns.id,
+            removed.map((c) => c.id),
+          ),
+        ),
+      );
+    }
+
+    let position: string | null = null;
+    for (const column of columns) {
+      position = keyAfter(position);
+      const values = {
+        name: column.name,
+        isPublic: column.isPublic,
+        isDone: column.isDone,
+        position,
+      };
+      if (column.id) {
+        await tx
+          .update(roadmapColumns)
+          .set(values)
+          .where(
+            and(
+              inWorkspace(roadmapColumns, ctx),
+              eq(roadmapColumns.id, column.id),
+            ),
+          );
+      } else {
+        await tx.insert(roadmapColumns).values({
+          ...values,
+          accountId: ctx.accountId,
+          workspaceId: ctx.workspaceId,
+          roadmapId: id,
+        });
+      }
+    }
+    return { roadmap: row, columns: await listColumns(tx, ctx, id) };
+  });
 }
 
 export async function deleteRoadmap(db: Db, ctx: WorkspaceContext, id: string) {
@@ -235,43 +316,6 @@ export async function getColumn(db: DbOrTx, ctx: WorkspaceContext, id: string) {
   return row;
 }
 
-export async function createColumn(
-  db: Db,
-  ctx: WorkspaceContext,
-  input: z.output<typeof createColumnSchema>,
-) {
-  assertRole(ctx, "admin");
-  await getRoadmap(db, ctx, input.roadmapId);
-  const columns = await listColumns(db, ctx, input.roadmapId);
-  const [row] = await db
-    .insert(roadmapColumns)
-    .values({
-      accountId: ctx.accountId,
-      workspaceId: ctx.workspaceId,
-      roadmapId: input.roadmapId,
-      name: input.name,
-      position: keyAfter(columns.at(-1)?.position),
-    })
-    .returning();
-  return row;
-}
-
-export async function updateColumn(
-  db: Db,
-  ctx: WorkspaceContext,
-  input: z.output<typeof updateColumnSchema>,
-) {
-  assertRole(ctx, "admin");
-  const { id, ...data } = input;
-  const [row] = await db
-    .update(roadmapColumns)
-    .set(data)
-    .where(and(inWorkspace(roadmapColumns, ctx), eq(roadmapColumns.id, id)))
-    .returning();
-  if (!row) throw new NotFoundError("Column not found.");
-  return row;
-}
-
 export async function moveColumn(
   db: Db,
   ctx: WorkspaceContext,
@@ -294,23 +338,6 @@ export async function moveColumn(
       and(inWorkspace(roadmapColumns, ctx), eq(roadmapColumns.id, column.id)),
     );
   return position;
-}
-
-export async function deleteColumn(db: Db, ctx: WorkspaceContext, id: string) {
-  assertRole(ctx, "admin");
-  const column = await getColumn(db, ctx, id);
-  const [cards] = await db
-    .select({ n: count() })
-    .from(roadmapCards)
-    .where(
-      and(inWorkspace(roadmapCards, ctx), eq(roadmapCards.columnId, column.id)),
-    );
-  if ((cards?.n ?? 0) > 0) {
-    throw new ConflictError("Move or delete this column's cards first.");
-  }
-  await db
-    .delete(roadmapColumns)
-    .where(and(inWorkspace(roadmapColumns, ctx), eq(roadmapColumns.id, id)));
 }
 
 // ── Objectives and tags ─────────────────────────────────────────────────

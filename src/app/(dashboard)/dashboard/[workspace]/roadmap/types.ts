@@ -1,3 +1,4 @@
+import type { RichTextValue } from "@/components/form/rich-text-editor";
 import type { RoadmapDisplaySettings } from "@/lib/schemas/roadmap";
 import type { BoardCard } from "@/server/services/cards";
 
@@ -18,10 +19,14 @@ export type BoardRoadmap = {
   slug: string;
   internalTitle: string;
   publicTitle: string | null;
-  internalSummary: string | null;
-  publicSummary: string | null;
+  internalSummaryJson: RichTextValue;
+  publicSummaryJson: RichTextValue;
+  /** Rendered (sanitised) HTML of the internal summary. */
+  internalSummaryHtml: string;
   isPublic: boolean;
+  notifyOnComplete: boolean;
   display: RoadmapDisplaySettings;
+  internalDisplay: RoadmapDisplaySettings;
 };
 
 export type ObjectiveOption = { id: string; name: string; color: string };

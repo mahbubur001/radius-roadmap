@@ -26,8 +26,17 @@ const tsvector = customType<{ data: string }>({
   },
 });
 
-/** Public display toggles of a roadmap. Missing keys use `defaultDisplay`. */
+/**
+ * Display toggles of a roadmap: `display` for the public site,
+ * `internal_display` for the dashboard (doc 24 R2). Missing keys use
+ * `defaultDisplay` / `defaultInternalDisplay`.
+ */
 export type RoadmapDisplay = {
+  showTitle?: boolean;
+  showSummary?: boolean;
+  showAttachments?: boolean;
+  showFeatureProgress?: boolean;
+  showImageHeaders?: boolean;
   showVotes?: boolean;
   showObjectives?: boolean;
   showTags?: boolean;
@@ -56,11 +65,18 @@ export const roadmaps = pgTable(
     slug: text().notNull(),
     internalTitle: text().notNull(),
     publicTitle: text(),
+    /** Plain text of the summaries (previews); the JSON is the source. */
     internalSummary: text(),
     publicSummary: text(),
+    /** Tiptap JSON (doc 24 R3). */
+    internalSummaryJson: jsonb().$type<Record<string, unknown>>(),
+    publicSummaryJson: jsonb().$type<Record<string, unknown>>(),
     isPublic: boolean().notNull().default(true),
+    /** Email followers when a card is completed (doc 24 R4). */
+    notifyOnComplete: boolean().notNull().default(true),
     position: position(),
     display: jsonb().$type<RoadmapDisplay>().notNull().default({}),
+    internalDisplay: jsonb().$type<RoadmapDisplay>().notNull().default({}),
     createdAt: timestamp({ withTimezone: true }).notNull().defaultNow(),
     updatedAt: timestamp({ withTimezone: true })
       .notNull()
@@ -149,6 +165,10 @@ export const roadmapCards = pgTable(
     plannedFor: date({ mode: "string" }),
     isPublic: boolean().notNull().default(true),
     completedAt: timestamp({ withTimezone: true }),
+    /** Followers were emailed about completion (once per card, doc 24 R4). */
+    completionNotifiedAt: timestamp({ withTimezone: true }),
+    /** Storage key of the card's header image (doc 24 R5). */
+    headerImageKey: text(),
     archivedAt: timestamp({ withTimezone: true }),
     position: position(),
     /** Cached count of rows in `votes` (updated in the vote transaction). */

@@ -16,56 +16,95 @@ const optionalText = (max: number) =>
     .nullable();
 
 export const roadmapDisplaySchema = z.object({
+  showTitle: z.boolean(),
+  showSummary: z.boolean(),
+  showTags: z.boolean(),
+  showAttachments: z.boolean(),
   showVotes: z.boolean(),
   showObjectives: z.boolean(),
-  showTags: z.boolean(),
-  showDates: z.boolean(),
+  /** "Card details" in LoopedIn. */
   showDescriptions: z.boolean(),
-  showCompleted: z.boolean(),
   showFeatures: z.boolean(),
+  showFeatureProgress: z.boolean(),
+  showDates: z.boolean(),
+  showImageHeaders: z.boolean(),
+  showCompleted: z.boolean(),
 });
 
 export type RoadmapDisplaySettings = z.infer<typeof roadmapDisplaySchema>;
 
+/** Public site defaults. */
 export const defaultDisplay: RoadmapDisplaySettings = {
+  showTitle: true,
+  showSummary: true,
+  showTags: true,
+  showAttachments: false,
   showVotes: true,
   showObjectives: true,
-  showTags: true,
-  showDates: false,
   showDescriptions: true,
-  showCompleted: true,
   showFeatures: true,
+  showFeatureProgress: true,
+  showDates: false,
+  showImageHeaders: true,
+  showCompleted: true,
+};
+
+/** Dashboard defaults: the team sees everything (doc 24 R2). */
+export const defaultInternalDisplay: RoadmapDisplaySettings = {
+  showTitle: true,
+  showSummary: false,
+  showTags: true,
+  showAttachments: true,
+  showVotes: true,
+  showObjectives: true,
+  showDescriptions: true,
+  showFeatures: true,
+  showFeatureProgress: true,
+  showDates: true,
+  showImageHeaders: true,
+  showCompleted: true,
 };
 
 export const createRoadmapSchema = z.object({
   title: z.string().trim().min(2, "At least 2 characters").max(80),
 });
 
-export const updateRoadmapSchema = z.object({
+const richText = z
+  .record(z.string(), z.unknown())
+  .refine((v) => v.type === "doc", "Invalid content")
+  .refine((v) => JSON.stringify(v).length <= 100_000, "Too long");
+
+/**
+ * Everything in the Edit roadmap modal, saved at once (doc 24 R1).
+ * `columns` is the full, ordered list: rows without an id are created,
+ * existing columns missing from it are deleted.
+ */
+export const roadmapSettingsSchema = z.object({
   id,
   internalTitle: z.string().trim().min(2, "At least 2 characters").max(80),
   publicTitle: optionalText(80),
-  internalSummary: optionalText(500),
-  publicSummary: optionalText(500),
+  internalSummaryJson: richText.nullable(),
+  publicSummaryJson: richText.nullable(),
   isPublic: z.boolean(),
+  notifyOnComplete: z.boolean(),
   display: roadmapDisplaySchema,
+  internalDisplay: roadmapDisplaySchema,
+  columns: z
+    .array(
+      z.object({
+        id: id.optional(),
+        name: z.string().trim().min(1, "Name every column").max(40),
+        isPublic: z.boolean(),
+        isDone: z.boolean(),
+      }),
+    )
+    .min(1, "Keep at least one column")
+    .max(12, "At most 12 columns"),
 });
 
-export type UpdateRoadmapInput = z.input<typeof updateRoadmapSchema>;
+export type RoadmapSettingsInput = z.input<typeof roadmapSettingsSchema>;
 
 export const roadmapIdSchema = z.object({ id });
-
-export const createColumnSchema = z.object({
-  roadmapId: id,
-  name: z.string().trim().min(1, "Enter a name").max(40),
-});
-
-export const updateColumnSchema = z.object({
-  id,
-  name: z.string().trim().min(1, "Enter a name").max(40),
-  isPublic: z.boolean(),
-  isDone: z.boolean(),
-});
 
 export const moveColumnSchema = z.object({
   id,
@@ -78,11 +117,6 @@ export const createCardSchema = z.object({
   columnId: id,
   title: z.string().trim().min(1, "Enter a title").max(200),
 });
-
-const richText = z
-  .record(z.string(), z.unknown())
-  .refine((v) => v.type === "doc", "Invalid content")
-  .refine((v) => JSON.stringify(v).length <= 100_000, "Too long");
 
 /** Autosave patch: only the fields that changed are sent. */
 export const updateCardSchema = z.object({

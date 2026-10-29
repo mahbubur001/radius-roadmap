@@ -1,6 +1,6 @@
 # 25 — Phase 5 plan: Articles (knowledge base)
 
-Status: **APPROVED 2026-10-29** (A1–A7 as recommended). Building steps 1 → 6.
+Status: **APPROVED 2026-10-29** (A1–A7 as recommended). **Built 2026-10-29** (see "As built").
 
 Phase 5 adds LoopedIn's last public module: **Articles**, a help centre / knowledge base for each workspace. It completes the public site's tab row (Roadmap · Updates · Ideas · Articles).
 
@@ -70,8 +70,21 @@ Sources:
 6. **e2e + docs:** write → publish → public index/category/article/search → rate; doc "As built", PROGRESS.
 
 ## 6. Done when
-- [ ] A team member can create categories and articles, publish them, and order them.
-- [ ] The public Articles tab shows featured, recent, categories and search; drafts and private articles never show.
-- [ ] Visitors can rate articles once each (changeable); admin and Home show the stats.
-- [ ] Another account can't read or change anything (tests).
-- [ ] Checks green (unit, e2e, lint, typecheck, build).
+- [x] A team member can create categories and articles, publish them, and order them.
+- [x] The public Articles tab shows featured, recent, categories and search; drafts and private articles never show.
+- [x] Visitors can rate articles once each (changeable); admin and Home show the stats.
+- [x] Another account can't read or change anything (tests).
+- [x] Checks green (unit, e2e, lint, typecheck, build).
+
+## 7. As built (2026-10-29)
+
+- **Schema (`0010_articles`):** as §3; `event_type` gains `article_view` and `article_rating`. Rating counts are cached on `articles` (likes / neutrals / dislikes) and updated in the rating transaction; a rating never bumps the article's "Updated" date.
+- **Services:** `article-categories.ts` (admin-only; slug follows the name), `articles.ts` (slug follows the title until the first publish; "category" is never used as a slug because `/articles/category/…` is the category page; stats window computed in SQL), `public-articles.ts` (`articleIsPublic`, home/category/article loaders, search, path status, sitemap, rateable check), `article-ratings.ts`.
+- **Search (A6):** whole words via the stemmed index (`plainto_tsquery('english')`) **or** typed words as prefixes against an unstemmed `simple` vector computed on the fly (stemming breaks prefixes: "sett" vs "set") **or** a title substring. Ranked by the stemmed match. Fine for knowledge-base sizes; add an index if a KB grows to thousands of articles.
+- **Admin:** `/dashboard/<ws>/articles` (5 tiles, Published/Drafts tabs, search, category sidebar with counts and Uncategorised, drag to reorder inside a category with the shared `SortableList`), categories dialog (icon, name, description, drag order, delete keeps articles), editor `/articles/[id]` (autosave, Publish/Unpublish, category, excerpt, Featured, Public, Duplicate, Delete).
+- **Public:** `/articles` (centred search, Featured, Recent articles, Categories grid; `?q=` shows results), `/articles/category/<slug>` (category sidebar, breadcrumb, ordered list), `/articles/<slug>` (breadcrumb, updated date, body, "Was this helpful?", more in this category). Proxy 404s through `articlePathStatus`; sitemap lists the module and articles. Public site settings: **Articles** switch and tab name.
+- **Ratings (A4):** `POST /api/public/article-ratings` (rate limited 60/hour per IP, no sign-in), the visitor's own answers come from `/api/public/me` (`ratings`), never cached.
+- **Home:** Article views (period), Published articles, "Articles rated helpful" (% likes of all ratings).
+- **Video (A7) change:** instead of `@tiptap/extension-youtube` (YouTube only, stores raw URLs) we built a small `video` node (`src/components/form/video-node.ts`) storing `{ provider, id }` for YouTube and Vimeo; `src/lib/video.ts` parses links and builds `youtube-nocookie` / Vimeo `dnt` player URLs; the server renderer drops anything else; emails get a "Watch the video" link. Works in cards, posts, ideas and articles. **No new dependency.**
+- **Fix found on the way:** the editor now sends a plain JSON copy of its document. Tiptap's attrs objects for custom nodes were serialized by server actions as `"$T"` temporary references and lost.
+- **Tests:** `articles.test.ts`, `public-articles.test.ts`, `src/lib/video.test.ts`; e2e `e2e/articles.spec.ts`. 207 unit, 27 e2e.

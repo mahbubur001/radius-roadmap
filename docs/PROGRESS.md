@@ -28,6 +28,7 @@
 - Public site redesign + "Objective" naming (approved + steps 1–4 built 2026-10-29): `docs/22-public-site-redesign.md`
 - Phase 4 plan (Updates, subscribers, emails; approved + built 2026-10-29): `docs/23-phase-4-plan.md`
 - Edit roadmap redesign (LoopedIn modal, internal/public display, header images, completion emails; approved + built 2026-10-29): `docs/24-edit-roadmap-plan.md`
+- Phase 5 plan (Articles / knowledge base; approved + built 2026-10-29): `docs/25-phase-5-plan.md`
 - Stack versions as built: `docs/14-dev-tools.md` → "Versions as built"
 
 ## Current status
@@ -51,9 +52,10 @@
   - Playwright flows 1–5 (`e2e/roadmap.spec.ts`).
 - Rate-limit bypass fixed: `cf-*` headers trusted only with `TRUST_CLOUDFLARE=1` (new env var); `src/server/rate-limit.test.ts`.
 - **2026-10-29, Edit roadmap (doc 24):** LoopedIn-style modal saved in one transaction (staged columns, Discard), Internal/Public display toggles, rich summaries, card header images, completion emails to card followers, public site logo switch + tab names. Migration `0009`.
-- **Checks:** `pnpm lint`, `typecheck`, `test` (191 tests), `test:e2e` (26 tests in `e2e/roadmap.spec.ts`, `feedback.spec.ts`, `ideas.spec.ts`, `team.spec.ts`) and `build` pass.
+- **2026-10-29, Phase 5 Articles (doc 25):** admin Articles (tiles, categories with icons, drag order, editor), public Articles tab (search, featured, recent, categories, category + article pages), "Was this helpful?" ratings, article views, Home tiles, YouTube/Vimeo embeds in all rich text. Migration `0010`.
+- **Checks:** `pnpm lint`, `typecheck`, `test` (207 tests), `test:e2e` (27 tests in `e2e/roadmap.spec.ts`, `feedback.spec.ts`, `ideas.spec.ts`, `team.spec.ts`) and `build` pass.
 - **Git:** doc 21 work is committed locally on `main` (sidebar `668679c`, step A `e853923`, step B `92ae9fa`, step C + docs after it). **Not pushed yet.**
-- **Migrations to run on the other Mac:** `0005`–`0009` (`pnpm db:migrate`), then restart `pnpm worker:dev`.
+- **Migrations to run on the other Mac:** `0005`–`0010` (`pnpm db:migrate`), then restart `pnpm worker:dev`.
 - **Dev tip:** Turbopack's dev cache sometimes serves stale code after edits (seen twice: CSS and a new service export). If a change doesn't show up, stop `pnpm dev`, delete `.next/dev`, and start it again.
 - **Dev test account on this Mac:** `claude-dev@example.test` / `devpassword123` (account `claude-dev`, workspace `dev-product`). Local dev DB only.
 - **Second Mac (user `radiustheme`):** set up 2026-10-28. Homebrew Postgres 18 (role `radiustheme`, no `postgres` role, so `DATABASE_URL=postgres://radiustheme@localhost:5432/radius_roadmap`) + Redis. `~/.zshrc` has `PNPM_HOME=/Users/mahbubur/...` copied from the first Mac, so pnpm (and the lefthook pre-commit hook) fails with EACCES until it's fixed to `$HOME/Library/pnpm` (workaround: prefix commands with `PNPM_HOME=$HOME/Library/pnpm`). Playwright Chromium installed 2026-10-28.
@@ -61,12 +63,13 @@
 
 ## Next step
 Resume here. On a new session say: *"Read docs/PROGRESS.md and continue from Next step."*
-1. **Phase 5 plan** (Knowledge base / Articles, doc 06 and doc 22 §2.5): write the plan doc (25) for approval. Articles get their own `article_categories`; public Article tab (centered search, Recent articles, Categories) — the last LoopedIn tab.
+1. **Phase 6 plan** (Billing with Stripe + plan limits from doc 11, the embeddable widget, custom domains, white-label; doc 17/18 roadmap): write the plan doc (26) for approval. Phase 6 is large, so the plan should split it into sub-phases and ask which comes first.
 2. **Owner (blocking for the imports):** export from LoopedIn and put both files in `docs/samples/`: the roadmap (Roadmap → More → Export) and the feedback (Boards → More → Export).
 3. With the exports: Phase 2 step 10 (LoopedIn roadmap import at `/dashboard/<workspace>/roadmap/import?r=<roadmap-slug>`: papaparse, preview step, idempotent by `external_ref`, totals into `imported_votes`, Vitest + Playwright flow 6), then Phase 3 step 9 (feedback import + CSV export). Tick doc 19 "Done when" and mark Phase 2 done.
 4. Open follow-ups: a strict Content-Security-Policy on public pages (they now share the dashboard's origin, doc 19 "D1 revised"); optional redirect from old dashboard URLs `/<workspace>/…` to `/dashboard/<workspace>/…`.
 
 ## Decisions (approved)
+- **2026-10-29, owner: Phase 5 per doc 25 A1–A7** (one knowledge base per workspace, `/articles/<slug>` URLs, draft/published only, 3-face ratings, emoji category icons, Postgres search, video embeds). Video is our own small Tiptap node instead of `@tiptap/extension-youtube` (no new dependency).
 - **2026-10-29, owner: Edit roadmap per doc 24 R1–R7.** Workspace-wide settings (logo, comments, follows, embed, tab names) stay in Public site settings; card completion emails go to team card followers only (idea followers already get the status-change email).
 - **2026-10-28, owner: public pages on the app domain, LoopedIn-style** (`<app>/<account>/<workspace>`), dashboard under `/dashboard/<workspace>`, account subdomains removed. Replaces doc 19 D1; details in doc 19 "D1 revised".
 - Stack per doc 14:
@@ -110,7 +113,7 @@ Resume here. On a new session say: *"Read docs/PROGRESS.md and continue from Nex
 - [ ] Phase 3 — Feedback + triage + import (steps 1–8 built; step 9 import waits for the LoopedIn export)
 - [x] Roadmap admin redesign — doc 21 (steps A–C)
 - [x] Phase 4 — Updates + email (doc 23, built 2026-10-29)
-- [ ] Phase 5 — Knowledge base
+- [x] Phase 5 — Knowledge base (doc 25, built 2026-10-29)
 - [ ] Phase 6 — Billing, widget, domains, white-label
 
 ## Open questions
@@ -142,3 +145,4 @@ Resume here. On a new session say: *"Read docs/PROGRESS.md and continue from Nex
 | 2026-10-29 | radiustheme (Mac 2) | Phase 4 step 6: follow emails (status changed via a debounced sweep + notified_status_id, migration 0008; shipped on publish), verified addresses only, signed unfollow. 181 unit + 25 e2e | Phase 4 step 7 (reactions + Home tiles) |
 | 2026-10-29 | radiustheme (Mac 2) | Phase 4 step 7: emoji reactions on posts, update views tracked, Home tiles. **Phase 4 done.** 182 unit + 25 e2e | Phase 5 plan (Articles) |
 | 2026-10-29 | radiustheme (Mac 2) | Edit roadmap redesign (doc 24, approved): LoopedIn modal (one-transaction save, staged columns, Discard), Internal/Public display toggles, rich summaries, card header images, completion emails, public logo switch + tab names; migration 0009. 191 unit + 26 e2e | Phase 5 plan (Articles) |
+| 2026-10-29 | radiustheme (Mac 2) | Phase 5 Articles (doc 25, approved): schema 0010, admin list + categories + editor, public Articles tab (search, featured, recent, categories, pages), ratings, views, Home tiles, video embeds. **Phase 5 done.** 207 unit + 27 e2e | Phase 6 plan |

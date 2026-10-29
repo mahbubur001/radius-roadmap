@@ -1,4 +1,5 @@
 import { Suspense } from "react";
+import { Sidebar } from "@/components/dashboard/sidebar";
 import { SidebarNav } from "@/components/dashboard/sidebar-nav";
 import { UserMenu } from "@/components/dashboard/user-menu";
 import { WorkspaceSwitcher } from "@/components/dashboard/workspace-switcher";
@@ -24,14 +25,14 @@ export default function WorkspaceLayout({
 
   return (
     <div className="flex min-h-svh">
-      <aside className="sticky top-0 flex h-svh w-16 flex-col items-center gap-6 border-r bg-sidebar py-4">
+      <Sidebar>
         <Suspense fallback={<Skeleton className="size-9 rounded-md" />}>
           <Switcher slug={slug} />
         </Suspense>
         <Suspense fallback={null}>
           <Nav slug={slug} />
         </Suspense>
-      </aside>
+      </Sidebar>
       <div className="flex min-w-0 flex-1 flex-col">
         <header className="flex h-14 items-center justify-between border-b px-6">
           <Suspense fallback={<Skeleton className="h-5 w-40" />}>
@@ -41,7 +42,7 @@ export default function WorkspaceLayout({
             <CurrentUser slug={slug} />
           </Suspense>
         </header>
-        <main className="flex-1 p-6">{children}</main>
+        <main className="flex-1 bg-muted/40 p-6">{children}</main>
       </div>
     </div>
   );

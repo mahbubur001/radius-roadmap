@@ -1,6 +1,6 @@
 "use client";
 
-import { Check, Plus, Settings } from "lucide-react";
+import { Check, ChevronDown, Plus, Settings } from "lucide-react";
 import Link from "next/link";
 import { useState } from "react";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
@@ -13,7 +13,9 @@ import {
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
 import { initials } from "@/lib/initials";
+import { cn } from "@/lib/utils";
 import { CreateWorkspaceDialog } from "./create-workspace-dialog";
+import { useSidebarCollapsed } from "./sidebar";
 
 export type SwitcherWorkspace = {
   id: string;
@@ -32,6 +34,7 @@ export function WorkspaceSwitcher({
   canManage: boolean;
 }) {
   const [creating, setCreating] = useState(false);
+  const collapsed = useSidebarCollapsed();
   const active = workspaces.find((w) => w.slug === current);
 
   return (
@@ -39,9 +42,20 @@ export function WorkspaceSwitcher({
       <DropdownMenu>
         <DropdownMenuTrigger
           aria-label="Switch workspace"
-          className="rounded-md outline-none focus-visible:ring-2 focus-visible:ring-ring"
+          className={cn(
+            "flex min-w-0 items-center gap-2 rounded-md text-left text-sidebar-foreground outline-none focus-visible:ring-2 focus-visible:ring-sidebar-ring",
+            !collapsed && "w-full p-1 hover:bg-sidebar-accent/60",
+          )}
         >
           <WorkspaceAvatar workspace={active} />
+          {collapsed ? null : (
+            <>
+              <span className="flex-1 truncate text-sm font-semibold">
+                {active?.name}
+              </span>
+              <ChevronDown className="size-4 shrink-0" />
+            </>
+          )}
         </DropdownMenuTrigger>
         <DropdownMenuContent side="right" align="start" className="w-64">
           <DropdownMenuLabel>Workspaces</DropdownMenuLabel>
@@ -86,11 +100,18 @@ function WorkspaceAvatar({
   small?: boolean;
 }) {
   return (
-    <Avatar className={small ? "size-6 rounded-md" : "size-9 rounded-md"}>
+    <Avatar className={small ? "size-6 rounded-md" : "size-9 rounded-full"}>
       {workspace?.logoUrl ? (
         <AvatarImage src={workspace.logoUrl} alt="" />
       ) : null}
-      <AvatarFallback className="rounded-md bg-primary text-xs font-semibold text-primary-foreground">
+      <AvatarFallback
+        className={cn(
+          "text-xs font-semibold",
+          small
+            ? "rounded-md bg-primary text-primary-foreground"
+            : "rounded-full bg-sidebar-foreground text-sidebar",
+        )}
+      >
         {initials(workspace?.name ?? "?")}
       </AvatarFallback>
     </Avatar>

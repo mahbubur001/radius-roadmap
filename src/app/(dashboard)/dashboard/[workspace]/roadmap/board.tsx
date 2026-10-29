@@ -25,17 +25,18 @@ import {
 import { CSS } from "@dnd-kit/utilities";
 import {
   CheckCircle2,
+  ChevronUp,
   EyeOff,
   GripVertical,
   Lightbulb,
   Lock,
   Plus,
-  ThumbsUp,
 } from "lucide-react";
 import { useId, useMemo, useRef, useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { cn } from "@/lib/utils";
+import { ObjectivePicker } from "./objective-picker";
 import {
   type BoardCard,
   type BoardColumn,
@@ -67,10 +68,13 @@ export function Board({
   visible,
   categories,
   canManage,
+  summaryView,
   onMoveCard,
   onMoveColumn,
   onOpenCard,
   onQuickAdd,
+  onSetObjective,
+  onCreateObjective,
 }: {
   columns: BoardColumn[];
   cards: BoardCard[];
@@ -78,10 +82,14 @@ export function Board({
   visible: Set<string>;
   categories: CategoryOption[];
   canManage: boolean;
+  /** Show card summaries on the board. */
+  summaryView: boolean;
   onMoveCard: (move: CardMove) => void;
   onMoveColumn: (move: ColumnMove) => void;
   onOpenCard: (id: string) => void;
   onQuickAdd: (columnId: string, title: string) => Promise<boolean>;
+  onSetObjective: (cardId: string, categoryId: string | null) => void;
+  onCreateObjective?: (name: string) => Promise<CategoryOption | null>;
 }) {
   const sortedColumns = useMemo(() => [...columns].sort(byPosition), [columns]);
   const layoutFromProps = useMemo(() => {
@@ -252,8 +260,11 @@ export function Board({
                   <SortableCard
                     key={id}
                     card={card}
-                    category={categories.find((c) => c.id === card.categoryId)}
+                    categories={categories}
+                    summaryView={summaryView}
                     onOpen={onOpenCard}
+                    onSetObjective={onSetObjective}
+                    onCreateObjective={onCreateObjective}
                   />
                 ) : null;
               })}
@@ -266,6 +277,7 @@ export function Board({
           <CardFace
             card={activeCard}
             category={categories.find((c) => c.id === activeCard.categoryId)}
+            summaryView={summaryView}
             className="rotate-2 shadow-lg"
           />
         ) : null}
@@ -316,11 +328,11 @@ function Column({
       aria-label={column.name}
       data-testid={`column-${column.name}`}
       className={cn(
-        "flex w-72 shrink-0 flex-col rounded-lg bg-muted/50",
+        "flex w-80 shrink-0 flex-col rounded-lg border bg-muted/40",
         sortable.isDragging && "opacity-50",
       )}
     >
-      <header className="flex items-center gap-1 px-3 py-2">
+      <header className="flex items-center gap-1.5 px-3 pt-3 pb-2">
         {canManage ? (
           <button
             type="button"
@@ -332,7 +344,7 @@ function Column({
             <GripVertical className="size-4" />
           </button>
         ) : null}
-        <h3 className="text-sm font-medium">{column.name}</h3>
+        <h3 className="text-base font-semibold">{column.name}</h3>
         <span className="text-xs text-muted-foreground">{total}</span>
         {!column.isPublic ? (
           <EyeOff
@@ -341,9 +353,8 @@ function Column({
           />
         ) : null}
         <Button
-          variant="ghost"
           size="icon"
-          className="ml-auto size-7"
+          className="ml-auto size-7 rounded-full"
           aria-label={`Add card to ${column.name}`}
           onClick={() => {
             setAdding(true);
@@ -354,7 +365,7 @@ function Column({
         </Button>
       </header>
       <SortableContext items={cardIds} strategy={verticalListSortingStrategy}>
-        <div className="flex min-h-24 flex-1 flex-col gap-2 px-2 pb-2">
+        <div className="flex min-h-24 flex-1 flex-col gap-2.5 px-3 pb-3">
           {children}
           {adding ? (
             <form
@@ -388,97 +399,134 @@ function Column({
 
 function SortableCard({
   card,
-  category,
+  categories,
+  summaryView,
   onOpen,
+  onSetObjective,
+  onCreateObjective,
 }: {
   card: BoardCard;
-  category: CategoryOption | undefined;
+  categories: CategoryOption[];
+  summaryView: boolean;
   onOpen: (id: string) => void;
+  onSetObjective: (cardId: string, categoryId: string | null) => void;
+  onCreateObjective?: (name: string) => Promise<CategoryOption | null>;
 }) {
   const sortable = useSortable({ id: card.id });
   return (
-    <button
-      type="button"
+    <div
       ref={sortable.setNodeRef}
       style={{
         transform: CSS.Translate.toString(sortable.transform),
         transition: sortable.transition,
       }}
-      className={cn(
-        "block w-full rounded-md text-left focus-visible:ring-2 focus-visible:ring-ring focus-visible:outline-none",
-        sortable.isDragging && "opacity-40",
-      )}
-      {...sortable.attributes}
-      {...sortable.listeners}
-      aria-label={card.title}
-      onClick={() => onOpen(card.id)}
+      className={cn("relative", sortable.isDragging && "opacity-40")}
     >
-      <CardFace card={card} category={category} />
-    </button>
+      <button
+        type="button"
+        className="block w-full rounded-md text-left focus-visible:ring-2 focus-visible:ring-ring focus-visible:outline-none"
+        {...sortable.attributes}
+        {...sortable.listeners}
+        aria-label={card.title}
+        onClick={() => onOpen(card.id)}
+      >
+        <CardFace
+          card={card}
+          category={categories.find((c) => c.id === card.categoryId)}
+          summaryView={summaryView}
+          objectiveSlot
+        />
+      </button>
+      {/* Outside the card's button: a button can't contain another one. */}
+      <ObjectivePicker
+        objectives={categories}
+        value={card.categoryId}
+        onChange={(id) => onSetObjective(card.id, id)}
+        onCreate={onCreateObjective}
+        className="absolute top-3 left-5 max-w-[calc(100%-2.5rem)]"
+      />
+    </div>
   );
 }
 
 function CardFace({
   card,
   category,
+  summaryView,
+  objectiveSlot,
   className,
 }: {
   card: BoardCard;
   category: CategoryOption | undefined;
+  summaryView: boolean;
+  /** Leave room for the objective picker drawn over the card. */
+  objectiveSlot?: boolean;
   className?: string;
 }) {
   const { done, total } = card.features;
   return (
     <article
       className={cn(
-        "cursor-pointer overflow-hidden rounded-md border bg-card text-card-foreground shadow-xs hover:border-ring",
+        "flex cursor-pointer flex-col gap-2 rounded-md border border-l-4 bg-card py-3 pr-3 pl-4 text-card-foreground shadow-xs hover:border-ring",
         className,
       )}
+      style={category ? { borderLeftColor: category.color } : undefined}
     >
-      {category ? (
-        <div className="h-1" style={{ backgroundColor: category.color }} />
-      ) : null}
-      <div className="flex flex-col gap-2 p-3">
-        {category ? (
-          <span className="text-xs text-muted-foreground">{category.name}</span>
-        ) : null}
-        <p className="text-sm font-medium leading-snug">
-          {card.completed ? (
-            <CheckCircle2 className="mr-1 inline size-3.5 text-primary" />
+      {objectiveSlot ? (
+        <span className="h-4" />
+      ) : (
+        <span className="flex items-center gap-1.5 text-xs font-medium">
+          {category ? (
+            <span
+              className="size-2 rounded-full"
+              style={{ backgroundColor: category.color }}
+            />
           ) : null}
-          {card.title}
+          {category?.name ?? "No objective"}
+        </span>
+      )}
+      <p className="font-semibold leading-snug">
+        {card.completed ? (
+          <CheckCircle2 className="mr-1 inline size-4 text-primary" />
+        ) : null}
+        {card.title}
+      </p>
+      {summaryView && card.summaryText ? (
+        <p className="line-clamp-3 text-xs text-muted-foreground">
+          {card.summaryText}
         </p>
-        {total > 0 ? (
-          <div className="h-1 rounded-full bg-muted">
+      ) : null}
+      {total > 0 ? (
+        <div className="flex items-center gap-2 text-xs text-muted-foreground">
+          <div className="h-1 flex-1 rounded-full bg-muted">
             <div
               className="h-1 rounded-full bg-primary"
               style={{ width: `${Math.round((done / total) * 100)}%` }}
             />
           </div>
-        ) : null}
-        <div className="flex items-center gap-3 text-xs text-muted-foreground">
-          <span className="flex items-center gap-1" title="Votes">
-            <ThumbsUp className="size-3.5" />
-            {card.votes}
-          </span>
-          {total > 0 ? (
-            <span>
-              {done}/{total}
-            </span>
-          ) : null}
-          {card.ideas ? (
-            <span
-              className="flex items-center gap-1"
-              title={`${card.ideas} linked feedback`}
-            >
-              <Lightbulb className="size-3.5" />
-              {card.ideas}
-            </span>
-          ) : null}
-          {!card.isPublic ? (
-            <Lock className="ml-auto size-3.5" aria-label="Private card" />
-          ) : null}
+          {done}/{total}
         </div>
+      ) : null}
+      <div className="flex items-center gap-3 text-xs text-muted-foreground">
+        <span
+          className="flex items-center gap-1 rounded border bg-background px-2 py-0.5 font-medium"
+          title="Votes"
+        >
+          <ChevronUp className="size-3.5" />
+          {card.votes}
+        </span>
+        {card.ideas ? (
+          <span
+            className="flex items-center gap-1"
+            title={`${card.ideas} linked feedback`}
+          >
+            <Lightbulb className="size-3.5" />
+            {card.ideas}
+          </span>
+        ) : null}
+        {!card.isPublic ? (
+          <Lock className="ml-auto size-3.5" aria-label="Private card" />
+        ) : null}
       </div>
     </article>
   );

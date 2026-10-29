@@ -52,13 +52,13 @@ export function FeedbackRowItem({
     <li
       data-feedback-row={item.id}
       className={cn(
-        "flex items-start gap-3 p-3 hover:bg-muted/50",
-        (selected || focused) && "bg-muted/50",
-        focused && "ring-2 ring-ring/50 ring-inset",
+        "flex items-start gap-3 rounded-lg border bg-card p-4 shadow-xs hover:border-ring/50",
+        selected && "border-ring/50 bg-muted/40",
+        focused && "ring-2 ring-ring/50",
       )}
     >
       <Checkbox
-        className="mt-3"
+        className="mt-4"
         checked={selected}
         aria-label={`Select ${item.title}`}
         onCheckedChange={(on) => onSelect(on === true)}
@@ -66,42 +66,38 @@ export function FeedbackRowItem({
       <button
         type="button"
         onClick={onOpen}
-        className="flex min-w-0 flex-1 items-start gap-3 text-left focus-visible:outline-none"
+        className="flex min-w-0 flex-1 items-start gap-4 text-left focus-visible:outline-none"
       >
-        <span className="flex w-12 shrink-0 flex-col items-center rounded-md border py-1 text-sm font-medium">
+        <span className="flex w-12 shrink-0 flex-col items-center rounded-md border bg-background py-1.5 text-sm font-semibold">
           <ChevronUp className="size-4 text-muted-foreground" />
           {item.votes}
         </span>
-        <span className="flex min-w-0 flex-1 flex-col gap-1">
-          <span className="flex flex-wrap items-center gap-1.5">
+        <span className="flex min-w-0 flex-1 flex-col gap-1.5">
+          <span className="flex flex-wrap items-center gap-x-3 gap-y-1 text-xs">
             {status ? (
-              <Badge
-                variant="outline"
-                className="gap-1.5"
-                style={{ borderColor: status.color }}
-              >
+              <span className="flex items-center gap-1.5 font-medium">
                 <span
                   className="size-2 rounded-full"
                   style={{ backgroundColor: status.color }}
                 />
                 {status.name}
-              </Badge>
+              </span>
             ) : null}
+            {item.isPublic ? null : (
+              <span className="text-muted-foreground">Private</span>
+            )}
             {item.review === "pending" ? (
               <Badge variant="secondary">Waiting for review</Badge>
             ) : null}
             {item.review === "rejected" ? (
               <Badge variant="outline">Rejected</Badge>
             ) : null}
-            {item.isPublic ? null : <Badge variant="outline">Private</Badge>}
             {item.archived ? <Badge variant="outline">Archived</Badge> : null}
             {board ? (
-              <span className="text-xs text-muted-foreground">
-                {board.name}
-              </span>
+              <span className="text-muted-foreground">{board.name}</span>
             ) : null}
             {category ? (
-              <span className="flex items-center gap-1 text-xs text-muted-foreground">
+              <span className="flex items-center gap-1 text-muted-foreground">
                 <span
                   className="size-2 rounded-full"
                   style={{ backgroundColor: category.color }}
@@ -110,36 +106,36 @@ export function FeedbackRowItem({
               </span>
             ) : null}
           </span>
-          <span className="truncate font-medium">{item.title}</span>
+          <span className="truncate text-base font-semibold">{item.title}</span>
           {item.summaryText ? (
-            <span className="line-clamp-1 text-sm text-muted-foreground">
+            <span className="line-clamp-2 text-sm text-muted-foreground">
               {item.summaryText}
             </span>
           ) : null}
-        </span>
-        <span className="flex shrink-0 flex-col items-end gap-1 text-xs text-muted-foreground">
-          <span suppressHydrationWarning>{ago(new Date(item.updatedAt))}</span>
-          <span className="flex items-center gap-2">
-            {bucket ? (
-              <Badge variant="secondary">
-                {PRIORITY_BUCKETS[bucket].label} · {item.priority}
-              </Badge>
-            ) : null}
-            {item.linkedCards ? (
-              <span
-                className="flex items-center gap-0.5"
-                title="Linked to a roadmap card"
-              >
-                <Lightbulb className="size-3.5" />
-                {item.linkedCards}
-              </span>
-            ) : null}
-            {item.comments ? (
-              <span className="flex items-center gap-0.5">
+          <span className="mt-1 flex items-center gap-3 text-xs text-muted-foreground">
+            <span suppressHydrationWarning>
+              Last updated {ago(new Date(item.updatedAt))}
+            </span>
+            <span className="ml-auto flex items-center gap-3">
+              {bucket ? (
+                <Badge variant="secondary">
+                  {PRIORITY_BUCKETS[bucket].label} · {item.priority}
+                </Badge>
+              ) : null}
+              {item.linkedCards ? (
+                <span
+                  className="flex items-center gap-1"
+                  title="Linked to a roadmap card"
+                >
+                  <Lightbulb className="size-3.5" />
+                  {item.linkedCards}
+                </span>
+              ) : null}
+              <span className="flex items-center gap-1" title="Comments">
                 <MessageSquare className="size-3.5" />
                 {item.comments}
               </span>
-            ) : null}
+            </span>
           </span>
         </span>
       </button>

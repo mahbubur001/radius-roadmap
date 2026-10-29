@@ -485,6 +485,23 @@ export async function inboxCount(db: DbOrTx, ctx: WorkspaceContext) {
   return row?.n ?? 0;
 }
 
+/** Open items per board (the list's default "open" view), for the board tabs. */
+export async function boardCounts(db: DbOrTx, ctx: WorkspaceContext) {
+  const rows = await db
+    .select({ boardId: feedbackItems.boardId, n: count() })
+    .from(feedbackItems)
+    .where(
+      and(
+        inWorkspace(feedbackItems, ctx),
+        isNull(feedbackItems.archivedAt),
+        isNull(feedbackItems.completedAt),
+        not(eq(feedbackItems.review, "rejected")),
+      ),
+    )
+    .groupBy(feedbackItems.boardId);
+  return Object.fromEntries(rows.map((r) => [r.boardId, r.n]));
+}
+
 /**
  * Approve publishes the item, keep private approves it for the team only,
  * reject archives it. Ids from other workspaces are ignored. Returns the

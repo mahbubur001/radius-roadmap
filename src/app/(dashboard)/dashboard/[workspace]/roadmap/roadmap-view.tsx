@@ -1,37 +1,65 @@
 "use client";
 
 import { generateKeyBetween } from "fractional-indexing";
-import { ExternalLink, Plus, Search, Settings2, Shapes } from "lucide-react";
+import {
+  CheckCircle2,
+  ChevronDown,
+  ExternalLink,
+  Filter,
+  List,
+  MoreVertical,
+  Plus,
+  Search,
+  Settings2,
+  Shapes,
+  Upload,
+} from "lucide-react";
 import Link from "next/link";
-import { useRouter } from "next/navigation";
+import { useRouter, useSearchParams } from "next/navigation";
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { toast } from "sonner";
 import {
   createCardAction,
+  createCategoryAction,
   createRoadmapAction,
   moveCardAction,
   moveColumnAction,
+  updateCardAction,
 } from "@/app/(dashboard)/_actions/roadmap";
+import { useStoredFlag } from "@/components/dashboard/use-stored-flag";
+import { SWATCHES } from "@/components/form/color-picker";
+import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
-import { Label } from "@/components/ui/label";
 import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectSeparator,
-  SelectTrigger,
-  SelectValue,
-} from "@/components/ui/select";
-import { Switch } from "@/components/ui/switch";
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuSeparator,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
+import { Input } from "@/components/ui/input";
 import { Board, type CardMove, type ColumnMove } from "./board";
 import { CardDrawer } from "./card-drawer";
 import { CategoriesDialog } from "./categories-dialog";
+import {
+  activeFilterCount,
+  FiltersPanel,
+  filtersFromParams,
+  filtersToParams,
+  matchesFilters,
+  type RoadmapFilters,
+} from "./filters-panel";
 import { RoadmapSettingsDialog } from "./roadmap-settings-dialog";
-import { type BoardCard, type BoardData, byPosition } from "./types";
+import {
+  type BoardCard,
+  type BoardData,
+  byPosition,
+  type CategoryOption,
+} from "./types";
 
-const ALL = "all";
-const NEW_ROADMAP = "__new";
+/** Toolbar toggles: muted when off, outlined when on. */
+const TOGGLE =
+  "text-muted-foreground aria-pressed:text-foreground aria-pressed:ring-1 aria-pressed:ring-ring/60";
 
 /** Client-side position for an optimistic move; the server's value wins. */
 function guessPosition(prev?: string, next?: string) {
@@ -60,11 +88,17 @@ export function RoadmapView({
   useEffect(() => setCategories(data.categories), [data.categories]);
   useEffect(() => setTags(data.tags), [data.tags]);
 
+  const searchParams = useSearchParams();
   const [q, setQ] = useState("");
-  const [categoryId, setCategoryId] = useState(ALL);
-  const [tagId, setTagId] = useState(ALL);
-  const [visibility, setVisibility] = useState(ALL);
-  const [showCompleted, setShowCompleted] = useState(true);
+  const [filters, setFilters] = useState<RoadmapFilters>(() =>
+    filtersFromParams(searchParams),
+  );
+  const filterCount = activeFilterCount(filters);
+  const [showFilters, setShowFilters] = useState(filterCount > 0);
+  const [summaryView, setSummaryView] = useStoredFlag(
+    "rr-roadmap-summary",
+    true,
+  );
   const [openCardId, setOpenCardId] = useState<string | null>(
     initialCardId ?? null,
   );
@@ -81,14 +115,18 @@ export function RoadmapView({
               c.title.toLowerCase().includes(needle) ||
               (c.publicTitle ?? "").toLowerCase().includes(needle) ||
               c.summaryText.toLowerCase().includes(needle)) &&
-            (categoryId === ALL || c.categoryId === categoryId) &&
-            (tagId === ALL || c.tagIds.includes(tagId)) &&
-            (visibility === ALL || c.isPublic === (visibility === "public")) &&
-            (showCompleted || !c.completed),
+            matchesFilters(c, filters),
         )
         .map((c) => c.id),
     );
-  }, [cards, q, categoryId, tagId, visibility, showCompleted]);
+  }, [cards, q, filters]);
+
+  // Mirror the filters in the URL so a filtered board can be shared.
+  useEffect(() => {
+    const url = new URL(window.location.href);
+    filtersToParams(filters, url.searchParams);
+    window.history.replaceState(null, "", url);
+  }, [filters]);
 
   // Keep ?card=<id> in the URL so a card can be linked and survives reload.
   const openCard = useCallback((id: string | null) => {
@@ -106,6 +144,35 @@ export function RoadmapView({
   const removeCard = useCallback((id: string) => {
     setCards((all) => all.filter((c) => c.id !== id));
   }, []);
+
+  async function setObjective(cardId: string, categoryId: string | null) {
+    const before = cards.find((c) => c.id === cardId)?.categoryId ?? null;
+    patchCard(cardId, { categoryId });
+    const result = await updateCardAction({
+      workspace,
+      id: cardId,
+      categoryId,
+    });
+    if (!result.ok) {
+      patchCard(cardId, { categoryId: before });
+      toast.error(result.error);
+    }
+  }
+
+  const createObjective = useCallback(
+    async (name: string): Promise<CategoryOption | null> => {
+      const color = SWATCHES[categories.length % SWATCHES.length] ?? "#2563eb";
+      const result = await createCategoryAction({ workspace, name, color });
+      if (!result.ok) {
+        toast.error(result.error);
+        return null;
+      }
+      const created = { id: result.data.id, name, color };
+      setCategories((all) => [...all, created]);
+      return created;
+    },
+    [workspace, categories.length],
+  );
 
   async function moveCard(move: CardMove) {
     const before = cards;
@@ -215,11 +282,7 @@ export function RoadmapView({
     return true;
   }
 
-  async function switchRoadmap(value: string) {
-    if (value !== NEW_ROADMAP) {
-      router.push(`/dashboard/${workspace}/roadmap?r=${value}`);
-      return;
-    }
+  async function newRoadmap() {
     const result = await createRoadmapAction({
       workspace,
       title: "New roadmap",
@@ -236,125 +299,124 @@ export function RoadmapView({
     <div className="flex flex-col gap-4">
       <div className="flex flex-wrap items-center gap-2">
         {data.roadmaps.length > 1 || data.canManage ? (
-          <Select value={data.roadmap.slug} onValueChange={switchRoadmap}>
-            <SelectTrigger aria-label="Roadmap" className="w-48">
-              <SelectValue />
-            </SelectTrigger>
-            <SelectContent>
-              {data.roadmaps.map((r) => (
-                <SelectItem key={r.id} value={r.slug}>
-                  {r.title}
-                </SelectItem>
-              ))}
-              {data.canManage ? (
-                <>
-                  <SelectSeparator />
-                  <SelectItem value={NEW_ROADMAP}>
-                    <Plus />
-                    New roadmap
-                  </SelectItem>
-                </>
-              ) : null}
-            </SelectContent>
-          </Select>
+          <h1 className="text-xl font-semibold">
+            <DropdownMenu>
+              <DropdownMenuTrigger className="flex items-center gap-1.5 rounded-md outline-none focus-visible:ring-2 focus-visible:ring-ring">
+                {data.roadmap.internalTitle}
+                <ChevronDown className="size-4 text-muted-foreground" />
+              </DropdownMenuTrigger>
+              <DropdownMenuContent align="start" className="w-56">
+                {data.roadmaps.map((r) => (
+                  <DropdownMenuItem key={r.id} asChild>
+                    <Link href={`/dashboard/${workspace}/roadmap?r=${r.slug}`}>
+                      {r.title}
+                    </Link>
+                  </DropdownMenuItem>
+                ))}
+                {data.canManage ? (
+                  <>
+                    <DropdownMenuSeparator />
+                    <DropdownMenuItem onSelect={newRoadmap}>
+                      <Plus />
+                      New roadmap
+                    </DropdownMenuItem>
+                  </>
+                ) : null}
+              </DropdownMenuContent>
+            </DropdownMenu>
+          </h1>
         ) : (
-          <h2 className="text-lg font-semibold">
+          <h1 className="text-xl font-semibold">
             {data.roadmap.internalTitle}
-          </h2>
+          </h1>
         )}
 
+        <div className="ml-auto flex flex-wrap items-center gap-2">
+          <Button
+            variant="secondary"
+            className={TOGGLE}
+            aria-pressed={showFilters}
+            onClick={() => setShowFilters((on) => !on)}
+          >
+            <Filter />
+            Toggle filters
+            {filterCount ? (
+              <Badge variant="outline">{filterCount}</Badge>
+            ) : null}
+          </Button>
+          <Button
+            variant="secondary"
+            className={TOGGLE}
+            aria-pressed={filters.showCompleted}
+            onClick={() =>
+              setFilters((f) => ({ ...f, showCompleted: !f.showCompleted }))
+            }
+          >
+            <CheckCircle2 />
+            Completed cards
+          </Button>
+          {data.canManage ? (
+            <Button variant="secondary" onClick={() => setSettingsOpen(true)}>
+              <Settings2 />
+              Edit roadmap
+            </Button>
+          ) : null}
+          <Button
+            variant="secondary"
+            className={TOGGLE}
+            aria-pressed={summaryView}
+            onClick={() => setSummaryView(!summaryView)}
+          >
+            <List />
+            Summary view
+          </Button>
+          <DropdownMenu>
+            <DropdownMenuTrigger asChild>
+              <Button variant="secondary">
+                More
+                <MoreVertical />
+              </Button>
+            </DropdownMenuTrigger>
+            <DropdownMenuContent align="end">
+              {data.canManage ? (
+                <>
+                  <DropdownMenuItem onSelect={() => setCategoriesOpen(true)}>
+                    <Shapes />
+                    Objectives and tags
+                  </DropdownMenuItem>
+                  <DropdownMenuItem asChild>
+                    <Link
+                      href={`/dashboard/${workspace}/roadmap/import?r=${data.roadmap.slug}`}
+                    >
+                      <Upload />
+                      Import roadmap
+                    </Link>
+                  </DropdownMenuItem>
+                  <DropdownMenuSeparator />
+                </>
+              ) : null}
+              <DropdownMenuItem asChild>
+                <a href={data.publicUrl} target="_blank" rel="noreferrer">
+                  <ExternalLink />
+                  View public roadmap
+                </a>
+              </DropdownMenuItem>
+            </DropdownMenuContent>
+          </DropdownMenu>
+        </div>
+      </div>
+
+      <div className="flex justify-end">
         <div className="relative">
           <Search className="pointer-events-none absolute top-2.5 left-2.5 size-4 text-muted-foreground" />
           <Input
             type="search"
             aria-label="Search cards"
-            placeholder="Search cards"
-            className="w-56 pl-8"
+            placeholder="Search…"
+            className="w-56 border-transparent bg-transparent pl-8 shadow-none focus-visible:border-input"
             value={q}
             onChange={(e) => setQ(e.target.value)}
           />
-        </div>
-
-        <Select value={categoryId} onValueChange={setCategoryId}>
-          <SelectTrigger aria-label="Filter by category" className="w-44">
-            <SelectValue />
-          </SelectTrigger>
-          <SelectContent>
-            <SelectItem value={ALL}>All categories</SelectItem>
-            {categories.map((c) => (
-              <SelectItem key={c.id} value={c.id}>
-                {c.name}
-              </SelectItem>
-            ))}
-          </SelectContent>
-        </Select>
-
-        {tags.length ? (
-          <Select value={tagId} onValueChange={setTagId}>
-            <SelectTrigger aria-label="Filter by tag" className="w-36">
-              <SelectValue />
-            </SelectTrigger>
-            <SelectContent>
-              <SelectItem value={ALL}>All tags</SelectItem>
-              {tags.map((t) => (
-                <SelectItem key={t.id} value={t.id}>
-                  {t.name}
-                </SelectItem>
-              ))}
-            </SelectContent>
-          </Select>
-        ) : null}
-
-        <Select value={visibility} onValueChange={setVisibility}>
-          <SelectTrigger aria-label="Filter by visibility" className="w-36">
-            <SelectValue />
-          </SelectTrigger>
-          <SelectContent>
-            <SelectItem value={ALL}>Public + private</SelectItem>
-            <SelectItem value="public">Public only</SelectItem>
-            <SelectItem value="private">Private only</SelectItem>
-          </SelectContent>
-        </Select>
-
-        <Label className="flex items-center gap-2 font-normal">
-          <Switch checked={showCompleted} onCheckedChange={setShowCompleted} />
-          Show completed
-        </Label>
-
-        <div className="ml-auto flex items-center gap-2">
-          {data.canManage ? (
-            <>
-              <Button
-                variant="outline"
-                size="sm"
-                onClick={() => setCategoriesOpen(true)}
-              >
-                <Shapes />
-                Categories
-              </Button>
-              <Button
-                variant="outline"
-                size="sm"
-                onClick={() => setSettingsOpen(true)}
-              >
-                <Settings2 />
-                Edit roadmap
-              </Button>
-              <Button variant="outline" size="sm" asChild>
-                <Link
-                  href={`/dashboard/${workspace}/roadmap/import?r=${data.roadmap.slug}`}
-                >
-                  Import
-                </Link>
-              </Button>
-            </>
-          ) : null}
-          <Button variant="outline" size="sm" asChild>
-            <a href={data.publicUrl} target="_blank" rel="noreferrer">
-              <ExternalLink />
-              View public
-            </a>
-          </Button>
         </div>
       </div>
 
@@ -368,17 +430,32 @@ export function RoadmapView({
         </p>
       ) : null}
 
-      <Board
-        columns={columns}
-        cards={cards}
-        visible={visible}
-        categories={categories}
-        canManage={data.canManage}
-        onMoveCard={moveCard}
-        onMoveColumn={moveColumn}
-        onOpenCard={openCard}
-        onQuickAdd={quickAdd}
-      />
+      <div className="flex items-start gap-4">
+        {showFilters ? (
+          <FiltersPanel
+            filters={filters}
+            onChange={setFilters}
+            objectives={categories}
+            tags={tags}
+          />
+        ) : null}
+        <div className="min-w-0 flex-1">
+          <Board
+            columns={columns}
+            cards={cards}
+            visible={visible}
+            categories={categories}
+            canManage={data.canManage}
+            summaryView={summaryView}
+            onMoveCard={moveCard}
+            onMoveColumn={moveColumn}
+            onOpenCard={openCard}
+            onQuickAdd={quickAdd}
+            onSetObjective={setObjective}
+            onCreateObjective={data.canManage ? createObjective : undefined}
+          />
+        </div>
+      </div>
 
       <CardDrawer
         workspace={workspace}

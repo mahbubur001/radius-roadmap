@@ -24,6 +24,7 @@ import {
   type WorkspaceContext,
 } from "./context";
 import {
+  boardCounts,
   bulkUpdateFeedback,
   createFeedback,
   deleteFeedback,
@@ -434,6 +435,16 @@ describe("triage, bulk edits, boards and statuses", () => {
     ).toBe(0);
     expect((await getFeedback(db, wsA, item.id)).review).toBe("pending");
     expect(await inboxCount(db, wsB)).toBe(0);
+  });
+
+  it("counts open items per board, scoped to the workspace", async () => {
+    const before = (await boardCounts(db, wsA))[boardA] ?? 0;
+    const open = await createFeedback(db, wsA, { boardId: boardA, title: "O" });
+    const done = await createFeedback(db, wsA, { boardId: boardA, title: "D" });
+    await setFeedbackArchived(db, wsA, done.id, true);
+    expect((await boardCounts(db, wsA))[boardA]).toBe(before + 1);
+    expect((await boardCounts(db, wsB))[boardA]).toBeUndefined();
+    await deleteFeedback(db, wsA, open.id);
   });
 
   it("bulk sets status and category and adds tags", async () => {

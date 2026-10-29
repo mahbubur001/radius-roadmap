@@ -26,9 +26,10 @@ test("bulk status change, statuses editor, and a second board", async ({
   const id = randomUUID().slice(0, 8);
   const { slug } = await signUpOwner(page, id);
   await page.goto(`/dashboard/${slug}/feedback`);
-  // Owners get the board switcher (with "New board") instead of a heading.
-  await expect(page.getByRole("combobox", { name: "Board" })).toHaveText(
-    "Feature requests",
+  // Each board is a tab with its open-item count.
+  const boards = page.getByRole("navigation", { name: "Boards" });
+  await expect(boards.locator("[aria-current=page]")).toHaveText(
+    "Feature requests (0)",
   );
 
   await addFeedback(page, "Export to CSV");
@@ -55,7 +56,8 @@ test("bulk status change, statuses editor, and a second board", async ({
   await expect(page.getByRole("button", { name: "Dark mode" })).toBeVisible();
 
   // Statuses editor: add one and it shows up in the status filter.
-  await page.getByRole("button", { name: "Statuses" }).click();
+  await page.getByRole("button", { name: "More" }).click();
+  await page.getByRole("menuitem", { name: "Statuses" }).click();
   const statuses = page.getByRole("dialog");
   await statuses
     .getByRole("textbox", { name: "New status" })
@@ -70,8 +72,8 @@ test("bulk status change, statuses editor, and a second board", async ({
   await page.keyboard.press("Escape");
 
   // A second board, renamed in its settings.
-  await page.getByRole("combobox", { name: "Board" }).click();
-  await page.getByRole("option", { name: "New board" }).click();
+  await page.getByRole("button", { name: "More" }).click();
+  await page.getByRole("menuitem", { name: "New board" }).click();
   const settings = page.getByRole("dialog");
   await expect(
     settings.getByRole("heading", { name: "Edit board" }),
@@ -80,8 +82,8 @@ test("bulk status change, statuses editor, and a second board", async ({
   await settings.getByRole("textbox", { name: "URL" }).fill("bugs");
   await settings.getByRole("button", { name: "Save board" }).click();
   await expect(page).toHaveURL(/\?b=bugs$/);
-  await expect(page.getByRole("combobox", { name: "Board" })).toHaveText(
-    "Bug reports",
+  await expect(boards.locator("[aria-current=page]")).toHaveText(
+    "Bug reports (0)",
   );
   await expect(page.getByText("No feedback yet.")).toBeVisible();
 });
@@ -141,9 +143,11 @@ test("push to roadmap, 💡 on the card, card completion syncs, merge", async ({
   const card = page.getByRole("button", { name: "Webhooks", exact: true });
   await expect(card).toBeVisible();
   await expect(page.getByTitle("1 linked feedback")).toBeVisible();
+  await page.getByRole("button", { name: "More" }).click();
   const publicHref = await page
-    .getByRole("link", { name: "View public" })
+    .getByRole("menuitem", { name: "View public roadmap" })
     .getAttribute("href");
+  await page.keyboard.press("Escape");
   await card.click();
   const cardDrawer = page.getByRole("dialog");
   await cardDrawer.getByRole("tab", { name: "Linked feedback (1)" }).click();

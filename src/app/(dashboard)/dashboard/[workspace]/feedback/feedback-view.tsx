@@ -1,6 +1,16 @@
 "use client";
 
-import { Filter, Inbox, Plus, Search, Settings2, Shapes } from "lucide-react";
+import {
+  Filter,
+  Globe,
+  Inbox,
+  Lock,
+  MoreVertical,
+  Plus,
+  Search,
+  Settings2,
+  Shapes,
+} from "lucide-react";
 import Link from "next/link";
 import { usePathname, useRouter, useSearchParams } from "next/navigation";
 import {
@@ -28,18 +38,18 @@ import {
   DialogHeader,
   DialogTitle,
 } from "@/components/ui/dialog";
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import {
-  Popover,
-  PopoverContent,
-  PopoverTrigger,
-} from "@/components/ui/popover";
 import {
   Select,
   SelectContent,
   SelectItem,
-  SelectSeparator,
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
@@ -58,7 +68,6 @@ import { StatusesDialog } from "./statuses-dialog";
 import type { FeedbackData, FeedbackMode, FeedbackRow } from "./types";
 
 const ALL = "all";
-const NEW_BOARD = "__new";
 
 /** URL param ↔ filter field. Defaults are left out of the URL. */
 const PARAMS = {
@@ -146,6 +155,12 @@ export function FeedbackView({
     window.history.replaceState(null, "", url);
   }, []);
   const [statusesOpen, setStatusesOpen] = useState(false);
+  // Open by default when the URL already narrows the list.
+  const [showFilters, setShowFilters] = useState(
+    [...searchParams.keys()].some(
+      (k) => k !== "b" && k !== "q" && k !== "feedback" && k !== "edit",
+    ),
+  );
   const [selected, setSelected] = useState<Set<string>>(new Set());
   const [focus, setFocus] = useState(0);
   const [busy, setBusy] = useState(false);
@@ -317,7 +332,9 @@ export function FeedbackView({
   const boardById = new Map(data.boards.map((b) => [b.id, b]));
   const board = data.boards.find((b) => b.id === data.boardId);
 
-  const secondary = [
+  const filterCount = [
+    filter.sort && filter.sort !== defaults.sort ? filter.sort : null,
+    filter.statusId,
     filter.categoryId,
     filter.tagId,
     filter.visibility !== ALL ? filter.visibility : null,
@@ -326,11 +343,7 @@ export function FeedbackView({
     filter.state !== "open" ? filter.state : null,
   ].filter(Boolean).length;
 
-  async function switchBoard(value: string) {
-    if (value !== NEW_BOARD) {
-      router.push(`${base}?b=${encodeURIComponent(value)}`);
-      return;
-    }
+  async function newBoard() {
     const result = await createBoardAction({ workspace, name: "New board" });
     if (!result.ok) return toast.error(result.error);
     router.push(`${base}?b=${result.data.slug}&edit=board`);
@@ -346,28 +359,49 @@ export function FeedbackView({
 
   const allSelected = items.length > 0 && selectedIds.length === items.length;
 
+  const tab = (active: boolean) =>
+    cn(
+      "-mb-px flex shrink-0 items-center gap-1.5 border-b-2 px-3 py-2",
+      active
+        ? "border-primary font-semibold"
+        : "border-transparent text-muted-foreground hover:text-foreground",
+    );
+
   return (
-    <div className="flex flex-col gap-4">
-      <nav className="flex gap-1 border-b text-sm" aria-label="Feedback views">
-        <Link
-          href={base}
-          className={cn(
-            "-mb-px border-b-2 px-3 py-2",
-            inbox
-              ? "border-transparent text-muted-foreground hover:text-foreground"
-              : "border-primary font-medium",
-          )}
-        >
-          All feedback
-        </Link>
+    <div className="flex flex-col gap-5">
+      <div className="flex flex-col gap-1">
+        <h1 className="text-xl font-semibold">Feedback</h1>
+        <p className="text-sm text-muted-foreground">
+          {inbox
+            ? "New submissions from every board, waiting for review."
+            : board.description || "Ideas and requests from your users."}
+        </p>
+      </div>
+
+      <nav
+        className="flex gap-1 overflow-x-auto border-b text-sm"
+        aria-label="Boards"
+      >
+        {data.boards.map((b) => {
+          const active = !inbox && b.id === board.id;
+          return (
+            <Link
+              key={b.id}
+              href={`${base}?b=${encodeURIComponent(b.slug)}`}
+              aria-current={active ? "page" : undefined}
+              className={tab(active)}
+            >
+              {b.name} ({b.openCount})
+              {b.isPublic ? null : (
+                <Lock className="size-3.5" aria-label="Private board" />
+              )}
+            </Link>
+          );
+        })}
         <Link
           href={`${base}/inbox`}
-          className={cn(
-            "-mb-px flex items-center gap-1.5 border-b-2 px-3 py-2",
-            inbox
-              ? "border-primary font-medium"
-              : "border-transparent text-muted-foreground hover:text-foreground",
-          )}
+          aria-current={inbox ? "page" : undefined}
+          className={cn(tab(inbox), "ml-auto")}
         >
           <Inbox className="size-4" />
           Inbox
@@ -378,209 +412,183 @@ export function FeedbackView({
       </nav>
 
       <div className="flex flex-wrap items-center gap-2">
-        {inbox ? null : data.boards.length > 1 || data.canManage ? (
-          <Select value={board.slug} onValueChange={switchBoard}>
-            <SelectTrigger aria-label="Board" className="w-48">
-              <SelectValue />
-            </SelectTrigger>
-            <SelectContent>
-              {data.boards.map((b) => (
-                <SelectItem key={b.id} value={b.slug}>
-                  {b.name}
-                </SelectItem>
-              ))}
-              {data.canManage ? (
-                <>
-                  <SelectSeparator />
-                  <SelectItem value={NEW_BOARD}>
-                    <Plus />
-                    New board
-                  </SelectItem>
-                </>
-              ) : null}
-            </SelectContent>
-          </Select>
-        ) : (
-          <h2 className="text-lg font-semibold">{board.name}</h2>
+        {inbox ? null : (
+          <Button onClick={() => setCreating(true)}>
+            <Plus />
+            New feedback
+          </Button>
         )}
-        {!inbox && !board.isPublic ? (
-          <Badge variant="outline">Private board</Badge>
-        ) : null}
 
-        <div className="relative">
-          <Search className="pointer-events-none absolute top-2.5 left-2.5 size-4 text-muted-foreground" />
-          <Input
-            type="search"
-            aria-label="Search feedback"
-            placeholder="Search feedback"
-            className="w-56 pl-8"
-            value={q}
-            onChange={(e) => setQ(e.target.value)}
-          />
-        </div>
-
-        <Select
-          value={filter.sort ?? defaults.sort}
-          onValueChange={(sort) => setParams({ sort })}
-        >
-          <SelectTrigger aria-label="Sort" className="w-44">
-            <SelectValue />
-          </SelectTrigger>
-          <SelectContent>
-            {Object.entries(FEEDBACK_SORTS).map(([key, label]) => (
-              <SelectItem key={key} value={key}>
-                {label}
-              </SelectItem>
-            ))}
-          </SelectContent>
-        </Select>
-
-        <Select
-          value={filter.statusId ?? ALL}
-          onValueChange={(status) => setParams({ status })}
-        >
-          <SelectTrigger aria-label="Filter by status" className="w-40">
-            <SelectValue />
-          </SelectTrigger>
-          <SelectContent>
-            <SelectItem value={ALL}>All statuses</SelectItem>
-            {statuses.map((s) => (
-              <SelectItem key={s.id} value={s.id}>
-                <span
-                  className="size-2.5 rounded-full"
-                  style={{ backgroundColor: s.color }}
-                />
-                {s.name}
-              </SelectItem>
-            ))}
-          </SelectContent>
-        </Select>
-
-        <Popover>
-          <PopoverTrigger asChild>
-            <Button variant="outline" size="sm">
-              <Filter />
-              Filters
-              {secondary ? (
-                <Badge variant="secondary">{secondary}</Badge>
-              ) : null}
-            </Button>
-          </PopoverTrigger>
-          <PopoverContent align="start" className="grid w-72 gap-3">
-            <FilterSelect
-              label="Show"
-              value={filter.state ?? "open"}
-              onChange={(state) => setParams({ state })}
-              options={[
-                ["open", "Open"],
-                ["completed", "Completed"],
-                ["archived", "Archived and rejected"],
-                [ALL, "Everything"],
-              ]}
-            />
-            <FilterSelect
-              label="Category"
-              value={filter.categoryId ?? ALL}
-              onChange={(category) => setParams({ category })}
-              options={[
-                [ALL, "All categories"],
-                ...data.categories.map((c) => [c.id, c.name] as const),
-              ]}
-            />
-            {tags.length ? (
-              <FilterSelect
-                label="Tag"
-                value={filter.tagId ?? ALL}
-                onChange={(tag) => setParams({ tag })}
-                options={[
-                  [ALL, "All tags"],
-                  ...tags.map((t) => [t.id, t.name] as const),
-                ]}
-              />
-            ) : null}
-            <FilterSelect
-              label="Visibility"
-              value={filter.visibility ?? ALL}
-              onChange={(vis) => setParams({ vis })}
-              options={[
-                [ALL, "Public + private"],
-                ["public", "Public only"],
-                ["private", "Private only"],
-              ]}
-            />
-            <FilterSelect
-              label="Roadmap card"
-              value={filter.linked ?? ALL}
-              onChange={(linked) => setParams({ linked })}
-              options={[
-                [ALL, "Linked or not"],
-                ["linked", "Linked to a card"],
-                ["unlinked", "Not linked"],
-              ]}
-            />
-            <FilterSelect
-              label="Priority"
-              value={filter.priority ?? ALL}
-              onChange={(priority) => setParams({ priority })}
-              options={[
-                [ALL, "Any priority"],
-                ...Object.entries(PRIORITY_BUCKETS).map(
-                  ([key, b]) => [key, b.label] as const,
-                ),
-                ["none", "No score yet"],
-              ]}
-            />
-            {secondary ? (
-              <Button
-                variant="ghost"
-                size="sm"
-                onClick={() =>
-                  setParams(
-                    Object.fromEntries(
-                      Object.values(PARAMS)
-                        .filter((p) => !["q", "sort", "status"].includes(p))
-                        .map((p) => [p, null]),
-                    ),
-                  )
-                }
-              >
-                Clear filters
-              </Button>
-            ) : null}
-          </PopoverContent>
-        </Popover>
-
-        <div className="ml-auto flex items-center gap-2">
-          {data.canManage ? (
-            <>
-              <Button
-                variant="outline"
-                size="sm"
-                onClick={() => setStatusesOpen(true)}
-              >
-                <Shapes />
-                Statuses
-              </Button>
-              {inbox ? null : (
-                <Button
-                  variant="outline"
-                  size="sm"
-                  onClick={() => setBoardSettingsOpen(true)}
-                >
-                  <Settings2 />
-                  Edit board
-                </Button>
-              )}
-            </>
-          ) : null}
+        <div className="ml-auto flex flex-wrap items-center gap-2">
           {inbox ? null : (
-            <Button size="sm" onClick={() => setCreating(true)}>
-              <Plus />
-              New feedback
-            </Button>
+            <span className="flex items-center gap-1.5 rounded-full bg-muted px-3 py-1 text-xs font-medium">
+              {board.isPublic ? (
+                <Globe className="size-3.5" />
+              ) : (
+                <Lock className="size-3.5" />
+              )}
+              {board.isPublic ? "Public board" : "Private board"}
+            </span>
           )}
+
+          <div className="relative">
+            <Search className="pointer-events-none absolute top-2.5 left-2.5 size-4 text-muted-foreground" />
+            <Input
+              type="search"
+              aria-label="Search feedback"
+              placeholder="Search…"
+              className="w-48 border-transparent bg-transparent pl-8 shadow-none focus-visible:border-input"
+              value={q}
+              onChange={(e) => setQ(e.target.value)}
+            />
+          </div>
+
+          <Button
+            variant="secondary"
+            aria-expanded={showFilters}
+            onClick={() => setShowFilters((on) => !on)}
+          >
+            <Filter />
+            {showFilters ? "Hide filters" : "Show filters"}
+            {filterCount ? (
+              <Badge variant="outline">{filterCount}</Badge>
+            ) : null}
+          </Button>
+
+          {data.canManage && !inbox ? (
+            <Button
+              variant="secondary"
+              onClick={() => setBoardSettingsOpen(true)}
+            >
+              <Settings2 />
+              Edit board
+            </Button>
+          ) : null}
+
+          {data.canManage ? (
+            <DropdownMenu>
+              <DropdownMenuTrigger asChild>
+                <Button variant="secondary">
+                  More
+                  <MoreVertical />
+                </Button>
+              </DropdownMenuTrigger>
+              <DropdownMenuContent align="end">
+                <DropdownMenuItem onSelect={() => setStatusesOpen(true)}>
+                  <Shapes />
+                  Statuses
+                </DropdownMenuItem>
+                <DropdownMenuItem onSelect={newBoard}>
+                  <Plus />
+                  New board
+                </DropdownMenuItem>
+              </DropdownMenuContent>
+            </DropdownMenu>
+          ) : null}
         </div>
       </div>
+
+      {showFilters ? (
+        <div className="grid grid-cols-2 gap-3 rounded-lg border bg-card p-3 md:grid-cols-4">
+          <FilterSelect
+            label="Sort"
+            value={filter.sort ?? defaults.sort ?? "votes"}
+            onChange={(sort) => setParams({ sort })}
+            options={Object.entries(FEEDBACK_SORTS)}
+          />
+          <FilterSelect
+            label="Status"
+            ariaLabel="Filter by status"
+            value={filter.statusId ?? ALL}
+            onChange={(status) => setParams({ status })}
+            options={[
+              [ALL, "All statuses"],
+              ...statuses.map((st) => [st.id, st.name] as const),
+            ]}
+          />
+          <FilterSelect
+            label="Show"
+            value={filter.state ?? "open"}
+            onChange={(state) => setParams({ state })}
+            options={[
+              ["open", "Open"],
+              ["completed", "Completed"],
+              ["archived", "Archived and rejected"],
+              [ALL, "Everything"],
+            ]}
+          />
+          <FilterSelect
+            label="Category"
+            value={filter.categoryId ?? ALL}
+            onChange={(category) => setParams({ category })}
+            options={[
+              [ALL, "All categories"],
+              ...data.categories.map((c) => [c.id, c.name] as const),
+            ]}
+          />
+          {tags.length ? (
+            <FilterSelect
+              label="Tag"
+              value={filter.tagId ?? ALL}
+              onChange={(tag) => setParams({ tag })}
+              options={[
+                [ALL, "All tags"],
+                ...tags.map((t) => [t.id, t.name] as const),
+              ]}
+            />
+          ) : null}
+          <FilterSelect
+            label="Visibility"
+            value={filter.visibility ?? ALL}
+            onChange={(vis) => setParams({ vis })}
+            options={[
+              [ALL, "Public + private"],
+              ["public", "Public only"],
+              ["private", "Private only"],
+            ]}
+          />
+          <FilterSelect
+            label="Roadmap card"
+            value={filter.linked ?? ALL}
+            onChange={(linked) => setParams({ linked })}
+            options={[
+              [ALL, "Linked or not"],
+              ["linked", "Linked to a card"],
+              ["unlinked", "Not linked"],
+            ]}
+          />
+          <FilterSelect
+            label="Priority"
+            value={filter.priority ?? ALL}
+            onChange={(priority) => setParams({ priority })}
+            options={[
+              [ALL, "Any priority"],
+              ...Object.entries(PRIORITY_BUCKETS).map(
+                ([key, b]) => [key, b.label] as const,
+              ),
+              ["none", "No score yet"],
+            ]}
+          />
+          {filterCount ? (
+            <Button
+              variant="ghost"
+              size="sm"
+              className="self-end justify-self-start"
+              onClick={() =>
+                setParams(
+                  Object.fromEntries(
+                    Object.values(PARAMS)
+                      .filter((p) => p !== "q")
+                      .map((p) => [p, null]),
+                  ),
+                )
+              }
+            >
+              Clear filters
+            </Button>
+          ) : null}
+        </div>
+      ) : null}
 
       {selectedIds.length ? (
         <BulkBar
@@ -604,12 +612,12 @@ export function FeedbackView({
 
       <div
         className={cn(
-          "flex flex-col rounded-lg border transition-opacity",
+          "flex flex-col gap-3 transition-opacity",
           pending && "opacity-60",
         )}
       >
         {items.length ? (
-          <div className="flex items-center gap-3 border-b px-3 py-2 text-xs text-muted-foreground">
+          <div className="flex items-center gap-3 px-4 text-xs text-muted-foreground">
             <Checkbox
               checked={
                 allSelected
@@ -628,12 +636,12 @@ export function FeedbackView({
             {items.length} {items.length === 1 ? "item" : "items"}
           </div>
         ) : null}
-        <ul className="flex flex-col divide-y" aria-busy={pending}>
+        <ul className="flex flex-col gap-3" aria-busy={pending}>
           {items.length === 0 ? (
-            <li className="p-6 text-center text-sm text-muted-foreground">
+            <li className="rounded-lg border bg-card p-6 text-center text-sm text-muted-foreground">
               {inbox
                 ? "You're all caught up. New submissions from your public board land here."
-                : filter.q || secondary || filter.statusId
+                : filter.q || filterCount
                   ? "No feedback matches these filters."
                   : "No feedback yet. Add the first item, or share your public board."}
             </li>
@@ -725,11 +733,13 @@ export function FeedbackView({
 
 function FilterSelect({
   label,
+  ariaLabel = label,
   value,
   onChange,
   options,
 }: {
   label: string;
+  ariaLabel?: string;
   value: string;
   onChange: (value: string) => void;
   options: (readonly [string, string])[];
@@ -738,7 +748,7 @@ function FilterSelect({
     <div className="flex flex-col gap-1.5">
       <Label className="text-xs text-muted-foreground">{label}</Label>
       <Select value={value} onValueChange={onChange}>
-        <SelectTrigger aria-label={label} className="w-full">
+        <SelectTrigger aria-label={ariaLabel} className="w-full">
           <SelectValue />
         </SelectTrigger>
         <SelectContent>

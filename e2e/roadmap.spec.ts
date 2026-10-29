@@ -57,9 +57,11 @@ async function closeDrawer(page: Page) {
 }
 
 async function publicUrl(page: Page) {
+  await page.getByRole("button", { name: "More" }).click();
   const href = await page
-    .getByRole("link", { name: "View public" })
+    .getByRole("menuitem", { name: "View public roadmap" })
     .getAttribute("href");
+  await page.keyboard.press("Escape");
   if (!href) throw new Error("No public link");
   return href;
 }
@@ -117,6 +119,50 @@ test("admin builds a roadmap: add, drag, categorise, autosave", async ({
   await expect(reopened.locator('[contenteditable="true"]')).toContainText(
     "Easier on the eyes at night.",
   );
+});
+
+test("objective quick-picker on cards; filters panel narrows the board", async ({
+  page,
+}) => {
+  const id = randomUUID().slice(0, 8);
+  const { slug } = await signUpOwner(page, id);
+  await openRoadmap(page, slug);
+  await addCard(page, "Up next", "Dark mode");
+  await addCard(page, "Future", "Bulk export");
+
+  // Pick an existing objective, then create one from the picker.
+  const objective = (title: string) =>
+    cardButton(page, title)
+      .locator("..")
+      .getByRole("button", { name: /^Objective:/ });
+  const objectives = page.getByRole("listbox", { name: "Objectives" });
+  await objective("Dark mode").click();
+  await objectives.getByRole("option", { name: "Onboarding" }).click();
+  await expect(objectives).toHaveCount(0);
+  await expect(objective("Dark mode")).toHaveAccessibleName(
+    "Objective: Onboarding",
+  );
+  await objective("Bulk export").click();
+  await page.getByRole("textbox", { name: "Search objectives" }).fill("Speed");
+  await page.getByRole("button", { name: "Add “Speed”" }).click();
+  await expect(objective("Bulk export")).toHaveAccessibleName(
+    "Objective: Speed",
+  );
+
+  // Filter by objective, survive a reload (URL), then reset.
+  await page.getByRole("button", { name: "Toggle filters" }).click();
+  const filters = page.getByRole("complementary", { name: "Filters" });
+  await filters.getByRole("radio", { name: "Speed" }).check();
+  await expect(cardButton(page, "Dark mode")).toHaveCount(0);
+  await expect(cardButton(page, "Bulk export")).toBeVisible();
+  await page.reload();
+  await expect(cardButton(page, "Bulk export")).toBeVisible();
+  await expect(cardButton(page, "Dark mode")).toHaveCount(0);
+  await page
+    .getByRole("complementary", { name: "Filters" })
+    .getByRole("button", { name: "Reset" })
+    .click();
+  await expect(cardButton(page, "Dark mode")).toBeVisible();
 });
 
 test("public site shows only public cards; drawer, card page and search work", async ({

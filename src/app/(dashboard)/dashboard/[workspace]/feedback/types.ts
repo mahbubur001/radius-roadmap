@@ -13,6 +13,8 @@ export type BoardOption = {
   description: string | null;
   isPublic: boolean;
   autoPublish: boolean;
+  /** Open items, shown on the board tab. */
+  openCount: number;
 };
 
 export type StatusOption = {

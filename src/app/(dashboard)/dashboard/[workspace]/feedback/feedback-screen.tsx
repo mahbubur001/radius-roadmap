@@ -7,6 +7,7 @@ import {
 import { db } from "@/server/db/client";
 import { seesAllWorkspaces } from "@/server/services/context";
 import {
+  boardCounts,
   inboxCount,
   listBoards,
   listFeedback,
@@ -51,13 +52,15 @@ async function Feedback({
   const ctx = await requireWorkspace(await slug);
   const q = await query;
 
-  const [boards, statuses, categories, tags, pending] = await Promise.all([
-    listBoards(db, ctx),
-    listStatuses(db, ctx),
-    listCategories(db, ctx),
-    listTags(db, ctx),
-    inboxCount(db, ctx),
-  ]);
+  const [boards, counts, statuses, categories, tags, pending] =
+    await Promise.all([
+      listBoards(db, ctx),
+      boardCounts(db, ctx),
+      listStatuses(db, ctx),
+      listCategories(db, ctx),
+      listTags(db, ctx),
+      inboxCount(db, ctx),
+    ]);
   const board = boards.find((b) => b.slug === one(q.b)) ?? boards[0];
   const inbox = mode === "inbox";
 
@@ -105,6 +108,7 @@ async function Feedback({
           description: b.description,
           isPublic: b.isPublic,
           autoPublish: b.autoPublish,
+          openCount: counts[b.id] ?? 0,
         })),
         boardId: board?.id ?? null,
         inboxCount: pending,

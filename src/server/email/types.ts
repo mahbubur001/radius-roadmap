@@ -52,6 +52,18 @@ export type EmailTemplateProps = {
   };
   /** Double opt-in for update emails (doc 23 U1). */
   "subscribe-confirm": { siteName: string; url: string };
+  /** A published post, sent to update subscribers (doc 23 step 5). */
+  "update-published": {
+    siteName: string;
+    workspaceName: string;
+    title: string;
+    category: { name: string; color: string } | null;
+    /** Sanitized HTML of the post body, links made absolute. */
+    html: string;
+    coverUrl: string | null;
+    url: string;
+    unsubscribeUrl: string;
+  };
   /** Team alert: someone confirmed an update subscription. */
   "new-subscriber": {
     workspaceName: string;
@@ -70,5 +82,7 @@ export type EmailJob = {
     template: T;
     to: string;
     props: EmailTemplateProps[T];
+    /** Extra headers, e.g. List-Unsubscribe (RFC 2369 / 8058). */
+    headers?: Record<string, string>;
   };
 }[EmailTemplate];

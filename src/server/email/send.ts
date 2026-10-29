@@ -12,6 +12,7 @@ export type OutgoingEmail = {
   subject: string;
   html: string;
   text: string;
+  headers?: Record<string, string>;
 };
 
 /** Render a template to subject + HTML + plain text. */
@@ -25,7 +26,13 @@ export async function renderEmail(job: EmailJob): Promise<OutgoingEmail> {
     render(element),
     render(element, { plainText: true }),
   ]);
-  return { to: job.to, subject: def.subject(job.props), html, text };
+  return {
+    to: job.to,
+    subject: def.subject(job.props),
+    html,
+    text,
+    headers: job.headers,
+  };
 }
 
 let smtp: Transporter | undefined;
@@ -64,6 +71,12 @@ export async function deliverEmail(email: OutgoingEmail) {
             Simple: {
               Subject: { Data: email.subject },
               Body: { Html: { Data: email.html }, Text: { Data: email.text } },
+              Headers: email.headers
+                ? Object.entries(email.headers).map(([Name, Value]) => ({
+                    Name,
+                    Value,
+                  }))
+                : undefined,
             },
           },
         }),

@@ -2,7 +2,7 @@ import type { Job } from "bullmq";
 import { db } from "@/server/db/client";
 import type { EmailJob } from "@/server/email/types";
 import { enqueueEmail } from "@/server/queue/email";
-import type { NotifyJob } from "@/server/queue/notifications";
+import { type NotifyJob, notify } from "@/server/queue/notifications";
 import { revalidateFromWorker } from "@/server/revalidate-from-worker";
 import {
   digestEmails,
@@ -10,6 +10,11 @@ import {
   newFeedbackEmails,
   newSubscriberEmails,
 } from "@/server/services/notifications";
+import {
+  claimUpdateEmail,
+  subscriberBatch,
+  updateEmail,
+} from "@/server/services/update-emails";
 import { publishDue } from "@/server/services/update-publish";
 
 /**
@@ -22,8 +27,30 @@ export async function notifyJob(job: Job<NotifyJob>) {
 
   if (data.type === "publish-update") {
     const post = await publishDue(db, data.updateId, new Date(data.at));
-    if (post) await revalidateFromWorker(post.accountId, post.workspaceId);
+    if (post) {
+      await revalidateFromWorker(post.accountId, post.workspaceId);
+      await notify({ type: "send-update", updateId: post.id });
+    }
     return { published: !!post };
+  }
+
+  if (data.type === "send-update") {
+    // Claimed once: a retry after a crash resumes nothing twice, because
+    // each email job id is post + subscriber (BullMQ ignores duplicates).
+    const post = await claimUpdateEmail(db, data.updateId);
+    if (!post) return { sent: 0 };
+    let after: string | null = null;
+    let sent = 0;
+    for (;;) {
+      const batch = await subscriberBatch(db, post, after);
+      for (const sub of batch) {
+        await enqueueEmail(updateEmail(post, sub), `post-${post.id}-${sub.id}`);
+      }
+      sent += batch.length;
+      if (batch.length < 500) break;
+      after = batch.at(-1)?.id ?? null;
+    }
+    return { sent };
   }
 
   if (data.type === "new-feedback") {

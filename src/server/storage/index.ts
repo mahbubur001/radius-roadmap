@@ -16,6 +16,7 @@ import {
 import { isValidKey, newKey, signUpload } from "./keys";
 
 export { prefixes } from "./keys";
+export { fileUrl } from "./url";
 
 // Uploads go straight from the browser to storage (S3 presigned POST, or the
 // local /api/uploads route that mimics it). The app only hands out a signed
@@ -116,18 +117,6 @@ export async function deleteFile(key: string | null | undefined) {
   } catch (error) {
     console.error("[storage] delete failed", key, error);
   }
-}
-
-/** Public URL for a stored key (null stays null). */
-export function fileUrl(key: string | null | undefined): string | null {
-  if (!key) return null;
-  // Avatars from Google sign-in are already full URLs.
-  if (/^https?:\/\//.test(key)) return key;
-  if (env.STORAGE_DRIVER === "s3") {
-    const base = env.S3_PUBLIC_URL ?? `https://${bucket()}.s3.amazonaws.com`;
-    return `${base}/${key}`;
-  }
-  return `/api/files/${key}`;
 }
 
 // Local driver only: used by the /api/uploads and /api/files route handlers.

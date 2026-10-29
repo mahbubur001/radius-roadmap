@@ -160,4 +160,49 @@ test("a visitor subscribes with double opt-in and shows up for the team", async 
   await page.goto(`/dashboard/${slug}/updates/subscribers`);
   const row = page.getByRole("row", { name: new RegExp(email) });
   await expect(row).toContainText("Active");
+
+  // Publishing the next post emails it, with a one-click unsubscribe link.
+  await page.goto(`/dashboard/${slug}/updates`);
+  await page.getByRole("button", { name: "New post" }).click();
+  await expect(page).toHaveURL(/\/updates\/[0-9a-f-]{36}$/);
+  await page.getByRole("textbox", { name: "Title" }).fill("Second news");
+  await page.locator('[contenteditable="true"]').click();
+  await page.keyboard.type("Fresh features inside.");
+  await expect(page.getByText(/^Saved ·/)).toBeVisible();
+  await page
+    .getByRole("region", { name: "Publishing" })
+    .getByRole("button", { name: "Publish now" })
+    .click();
+  const post = await waitForMail(email, "Second news");
+  expect(post.text).toContain("Fresh features inside.");
+  const unsubscribeUrl = post.html.match(
+    /href="([^"]*\/api\/public\/unsubscribe[^"]*)"/,
+  )?.[1];
+  if (!unsubscribeUrl) throw new Error("No unsubscribe link");
+  const link = unsubscribeUrl.replaceAll("&amp;", "&");
+
+  // Opening the link (as a mail scanner would) changes nothing...
+  await visitor.goto(link);
+  await expect(
+    visitor.getByRole("heading", { name: /Unsubscribe from/ }),
+  ).toBeVisible();
+  await page.goto(`/dashboard/${slug}/updates/subscribers`);
+  await expect(
+    page.getByRole("row", { name: new RegExp(email) }),
+  ).toContainText("Active");
+  // ...the button does.
+  await visitor.getByRole("button", { name: "Unsubscribe" }).click();
+  await expect(
+    visitor.getByRole("heading", { name: "You're unsubscribed" }),
+  ).toBeVisible();
+  await page.reload();
+  await expect(
+    page.getByRole("row", { name: new RegExp(email) }),
+  ).toContainText("Unsubscribed");
+
+  // RFC 8058 one-click (what Gmail's own "Unsubscribe" button sends).
+  const oneClick = await page.request.post(link, {
+    form: { "List-Unsubscribe": "One-Click" },
+  });
+  expect(oneClick.status()).toBe(200);
 });

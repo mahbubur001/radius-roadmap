@@ -9,6 +9,8 @@ const workers = [
   new Worker(EMAIL_QUEUE, sendEmailJob, {
     connection: createRedisConnection(),
     concurrency: 5,
+    // Stay under Amazon SES's default sending rate (14 emails a second).
+    limiter: { max: 12, duration: 1000 },
   }),
   new Worker(NOTIFY_QUEUE, notifyJob, {
     connection: createRedisConnection(),

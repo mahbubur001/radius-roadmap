@@ -24,3 +24,19 @@ export function verifyInternal(
   const actual = Buffer.from(signature);
   return expected.length === actual.length && timingSafeEqual(expected, actual);
 }
+
+/**
+ * Long-lived link signatures (unsubscribe links in emails): HMAC of a
+ * payload, no expiry, so links in old emails keep working.
+ */
+export function signLink(secret: string, payload: string) {
+  return createHmac("sha256", `link:${secret}`)
+    .update(payload)
+    .digest("base64url");
+}
+
+export function verifyLink(secret: string, payload: string, signature: string) {
+  const expected = Buffer.from(signLink(secret, payload));
+  const actual = Buffer.from(signature);
+  return expected.length === actual.length && timingSafeEqual(expected, actual);
+}

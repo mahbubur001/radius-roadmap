@@ -230,6 +230,50 @@ export const templates: { [T in EmailTemplate]: TemplateDef<T> } = {
       </EmailLayout>
     ),
   },
+  "update-published": {
+    subject: ({ workspaceName, title }) => `${workspaceName}: ${title}`,
+    render: ({
+      siteName,
+      workspaceName,
+      title,
+      category,
+      html,
+      coverUrl,
+      url,
+      unsubscribeUrl,
+    }) => (
+      <EmailLayout
+        preview={`New from ${workspaceName}: ${title}`}
+        heading={title}
+        action={{ label: "Read on the site", url }}
+      >
+        {category ? (
+          <Text style={{ margin: "0 0 8px", fontSize: 13, color: "#555" }}>
+            <span style={{ color: category.color }}>●</span> {category.name}
+          </Text>
+        ) : null}
+        {coverUrl ? (
+          // biome-ignore lint/performance/noImgElement: email markup
+          <img
+            src={coverUrl}
+            alt=""
+            width="416"
+            style={{ width: "100%", borderRadius: 8, margin: "8px 0 16px" }}
+          />
+        ) : null}
+        <div
+          style={{ fontSize: 15, lineHeight: 1.6, color: "#18181b" }}
+          // Rendered from Tiptap JSON by the allow-list in src/lib/rich-text.ts.
+          // biome-ignore lint/security/noDangerouslySetInnerHtml: sanitized server-side
+          dangerouslySetInnerHTML={{ __html: html }}
+        />
+        <Text style={{ color: "#888", fontSize: 12 }}>
+          You subscribed to {siteName} updates.{" "}
+          <a href={unsubscribeUrl}>Unsubscribe</a>.
+        </Text>
+      </EmailLayout>
+    ),
+  },
   "new-subscriber": {
     subject: ({ workspaceName, email }) =>
       `${email} subscribed to ${workspaceName} updates`,

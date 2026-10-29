@@ -4,7 +4,7 @@ import { expect } from "@playwright/test";
 
 const MAIL_DIR = ".dev-mail";
 
-type DevMail = { to: string; subject: string; text: string };
+type DevMail = { to: string; subject: string; text: string; html: string };
 
 /** Waits for the console email transport to write a message to `to`. */
 export async function waitForMail(

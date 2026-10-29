@@ -14,7 +14,7 @@ import {
 import { workspaceAction } from "@/server/action";
 import { db } from "@/server/db/client";
 import { invalidatePublic, invalidateSite } from "@/server/public-cache";
-import { schedulePublish } from "@/server/queue/notifications";
+import { notify, schedulePublish } from "@/server/queue/notifications";
 import type { WorkspaceContext } from "@/server/services/context";
 import { assertRole } from "@/server/services/context";
 import {
@@ -119,6 +119,7 @@ export const publishUpdateAction = workspaceAction(
       at ? new Date(at) : undefined,
     );
     if (scheduledFor) await schedulePublish(post.id, scheduledFor);
+    else await notify({ type: "send-update", updateId: post.id });
     invalidatePublic(ctx.workspaceId);
     invalidateSite(ctx.accountId);
     return {

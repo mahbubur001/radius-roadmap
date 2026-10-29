@@ -300,7 +300,8 @@ test("card attachments, team comments, follow and CSV export", async ({
 
   // Export CSV downloads the roadmap.
   await page.getByRole("button", { name: "More" }).click();
-  const download = page.waitForEvent("download");
+  // The export action can compile cold on the first run after an edit.
+  const download = page.waitForEvent("download", { timeout: 30_000 });
   await page.getByRole("menuitem", { name: "Export CSV" }).click();
   const file = await download;
   expect(file.suggestedFilename()).toMatch(/\.csv$/);

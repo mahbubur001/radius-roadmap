@@ -122,6 +122,19 @@ export async function subscribe(
 }
 
 async function byToken(db: Db, ctx: PublicContext, token: string) {
+  return findSubscription(
+    db,
+    ctx,
+    eq(updateSubscribers.tokenHash, hashToken(token)),
+  );
+}
+
+/** The subscription behind a signed email link (`s` = subscriber id). */
+export async function subscriptionById(db: Db, ctx: PublicContext, id: string) {
+  return findSubscription(db, ctx, eq(updateSubscribers.id, id));
+}
+
+async function findSubscription(db: Db, ctx: PublicContext, match: SQL) {
   const [row] = await db
     .select({
       id: updateSubscribers.id,
@@ -133,12 +146,7 @@ async function byToken(db: Db, ctx: PublicContext, token: string) {
     })
     .from(updateSubscribers)
     .innerJoin(workspaces, eq(workspaces.id, updateSubscribers.workspaceId))
-    .where(
-      and(
-        eq(updateSubscribers.accountId, ctx.accountId),
-        eq(updateSubscribers.tokenHash, hashToken(token)),
-      ),
-    )
+    .where(and(eq(updateSubscribers.accountId, ctx.accountId), match))
     .limit(1);
   return row ?? null;
 }
@@ -177,10 +185,13 @@ export async function subscriptionForToken(
 export async function unsubscribe(
   db: Db,
   ctx: PublicContext,
-  token: string,
+  link: { token: string } | { id: string },
   everything = false,
 ) {
-  const sub = await byToken(db, ctx, token);
+  const sub =
+    "token" in link
+      ? await byToken(db, ctx, link.token)
+      : await subscriptionById(db, ctx, link.id);
   if (!sub) return null;
   await db
     .update(updateSubscribers)

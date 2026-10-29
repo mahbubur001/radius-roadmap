@@ -96,7 +96,7 @@ describe("subscribers", () => {
     const first = await sub("ula@example.test");
     if (first.status !== "pending") throw new Error("not pending");
     await confirmSubscription(db, pub, first.token);
-    const gone = await unsubscribe(db, pub, first.token, true);
+    const gone = await unsubscribe(db, pub, { token: first.token }, true);
     expect(gone?.email).toBe("ula@example.test");
     expect(await isSuppressed(db, pub, "ula@example.test")).toBe(true);
     expect(await isSuppressed(db, pubB, "ula@example.test")).toBe(false);

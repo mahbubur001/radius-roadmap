@@ -12,7 +12,9 @@ export type NotifyJob =
   | { type: "new-subscriber"; subscriberId: string }
   | { type: "digest" }
   /** A scheduled post goes live (doc 23 U3). */
-  | { type: "publish-update"; updateId: string; at: string };
+  | { type: "publish-update"; updateId: string; at: string }
+  /** Email a published post to its subscribers (doc 23 step 5). */
+  | { type: "send-update"; updateId: string };
 
 const globalForQueue = globalThis as typeof globalThis & {
   notifyQueue?: Queue<NotifyJob>;
@@ -44,7 +46,9 @@ export async function notify(
       ? `new-feedback-${job.feedbackId}`
       : job.type === "new-comment"
         ? `new-comment-${job.commentId}`
-        : `new-subscriber-${job.subscriberId}`;
+        : job.type === "new-subscriber"
+          ? `new-subscriber-${job.subscriberId}`
+          : `send-update-${job.updateId}`;
   try {
     await notifyQueue.add(job.type, job, { jobId });
   } catch (error) {

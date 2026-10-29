@@ -14,6 +14,7 @@ import {
   List,
   ListOrdered,
   Underline,
+  Video,
 } from "lucide-react";
 import { useRef, useState } from "react";
 import { toast } from "sonner";
@@ -34,6 +35,8 @@ import {
   MAX_IMAGE_BYTES,
 } from "@/lib/schemas/upload";
 import { cn } from "@/lib/utils";
+import { parseVideoUrl } from "@/lib/video";
+import { VideoNode } from "./video-node";
 
 export type RichTextValue = Record<string, unknown> | null;
 
@@ -63,6 +66,7 @@ export function RichTextEditor({
         link: { openOnClick: false, autolink: true },
       }),
       Image,
+      VideoNode,
     ],
     content: value ?? "",
     editorProps: {
@@ -72,8 +76,14 @@ export function RichTextEditor({
           "rich-text min-h-32 px-3 py-2 text-sm focus-visible:outline-none",
       },
     },
+    // A plain JSON copy: some node attrs (e.g. videos) aren't plain objects,
+    // and server actions can't serialize those ("$T" temporary references).
     onUpdate: ({ editor }) =>
-      onChange(editor.isEmpty ? null : (editor.getJSON() as RichTextValue)),
+      onChange(
+        editor.isEmpty
+          ? null
+          : (JSON.parse(JSON.stringify(editor.getJSON())) as RichTextValue),
+      ),
   });
 
   const fileInput = useRef<HTMLInputElement>(null);
@@ -224,6 +234,11 @@ export function RichTextEditor({
         >
           <ImageIcon />
         </Button>
+        <VideoButton
+          onInsert={(video) =>
+            chain().insertContent({ type: "video", attrs: video }).run()
+          }
+        />
         <input
           ref={fileInput}
           type="file"
@@ -291,6 +306,72 @@ function LinkButton({
           <Button type="submit" size="sm">
             {value.trim() ? "Save" : "Remove"}
           </Button>
+        </form>
+      </PopoverContent>
+    </Popover>
+  );
+}
+
+/** Paste a YouTube or Vimeo link to embed the video. */
+function VideoButton({
+  onInsert,
+}: {
+  onInsert: (video: { provider: string; id: string }) => void;
+}) {
+  const [open, setOpen] = useState(false);
+  const [value, setValue] = useState("");
+  const [error, setError] = useState("");
+  return (
+    <Popover
+      open={open}
+      onOpenChange={(next) => {
+        setOpen(next);
+        setValue("");
+        setError("");
+      }}
+    >
+      <PopoverTrigger asChild>
+        <Button
+          type="button"
+          variant="ghost"
+          size="icon"
+          className="size-7"
+          aria-label="Insert video"
+        >
+          <Video />
+        </Button>
+      </PopoverTrigger>
+      <PopoverContent className="w-80">
+        <form
+          className="flex flex-col gap-2"
+          onSubmit={(e) => {
+            e.preventDefault();
+            const video = parseVideoUrl(value);
+            if (!video) {
+              setError("Paste a YouTube or Vimeo link.");
+              return;
+            }
+            onInsert(video);
+            setOpen(false);
+          }}
+        >
+          <div className="flex gap-2">
+            <Input
+              autoFocus
+              aria-label="Video link"
+              placeholder="https://youtube.com/watch?v=…"
+              value={value}
+              aria-invalid={!!error}
+              onChange={(e) => {
+                setValue(e.target.value);
+                setError("");
+              }}
+            />
+            <Button type="submit" size="sm">
+              Embed
+            </Button>
+          </div>
+          {error ? <p className="text-xs text-destructive">{error}</p> : null}
         </form>
       </PopoverContent>
     </Popover>

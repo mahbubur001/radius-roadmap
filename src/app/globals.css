@@ -154,6 +154,12 @@
   .rich-text ol {
     @apply list-decimal pl-5;
   }
+  .rich-text .video-embed {
+    @apply aspect-video w-full overflow-hidden rounded-md bg-muted;
+  }
+  .rich-text .video-embed iframe {
+    @apply size-full border-0;
+  }
   .rich-text a {
     @apply text-primary underline underline-offset-2;
   }

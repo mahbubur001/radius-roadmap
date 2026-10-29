@@ -135,7 +135,7 @@ export function updateEmail(
         post.categoryName && post.categoryColor
           ? { name: post.categoryName, color: post.categoryColor }
           : null,
-      html: absolute(renderRichText(post.bodyJson)),
+      html: absolute(renderRichText(post.bodyJson, { email: true })),
       coverUrl: cover
         ? cover.startsWith("/")
           ? `${origin()}${cover}`

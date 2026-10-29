@@ -2,6 +2,8 @@
 // unknown nodes render only their children, unknown marks are dropped, and
 // every attribute is escaped. User HTML is never stored or echoed.
 
+import { VIDEO_ALLOW, videoEmbedUrl, videoRef, videoWatchUrl } from "./video";
+
 export type RichTextNode = {
   type?: string;
   text?: string;
@@ -127,8 +129,14 @@ function renderMarks(text: string, marks: RichTextNode["marks"]) {
   return html;
 }
 
-function renderNode(node: RichTextNode): string {
-  const inner = () => (node.content ?? []).map(renderNode).join("");
+export type RenderOptions = {
+  /** Emails can't play iframes: videos become a "Watch the video" link. */
+  email?: boolean;
+};
+
+function renderNode(node: RichTextNode, opts: RenderOptions): string {
+  const inner = () =>
+    (node.content ?? []).map((child) => renderNode(child, opts)).join("");
   switch (node.type) {
     case "doc":
       return inner();
@@ -163,11 +171,19 @@ function renderNode(node: RichTextNode): string {
       const alt = typeof node.attrs?.alt === "string" ? node.attrs.alt : "";
       return `<img src="${escapeHtml(src)}" alt="${escapeHtml(alt)}" loading="lazy">`;
     }
+    case "video": {
+      const video = videoRef(node.attrs);
+      if (!video) return "";
+      if (opts.email) {
+        return `<p><a href="${escapeHtml(videoWatchUrl(video))}">▶ Watch the video</a></p>`;
+      }
+      return `<div class="video-embed"><iframe src="${escapeHtml(videoEmbedUrl(video))}" title="Video" loading="lazy" allow="${VIDEO_ALLOW}" allowfullscreen referrerpolicy="strict-origin-when-cross-origin"></iframe></div>`;
+    }
     default:
       return inner();
   }
 }
 
-export function renderRichText(doc: unknown): string {
-  return isRichTextDoc(doc) ? renderNode(doc) : "";
+export function renderRichText(doc: unknown, opts: RenderOptions = {}): string {
+  return isRichTextDoc(doc) ? renderNode(doc, opts) : "";
 }

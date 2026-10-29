@@ -146,6 +146,26 @@ describe("articles", () => {
     expect(again.publishedAt).toEqual(live.publishedAt);
   });
 
+  it("keeps embedded video attributes", async () => {
+    const row = await createArticle(db, ws, {});
+    const saved = await patchArticle(db, ws, {
+      id: row.id,
+      bodyJson: {
+        type: "doc",
+        content: [
+          { type: "video", attrs: { provider: "youtube", id: "dQw4w9WgXcQ" } },
+        ],
+      },
+    });
+    expect(saved.bodyJson).toEqual({
+      type: "doc",
+      content: [
+        { type: "video", attrs: { provider: "youtube", id: "dQw4w9WgXcQ" } },
+      ],
+    });
+    await deleteArticle(db, ws, row.id);
+  });
+
   it("lists by tab, category and search; counts and stats", async () => {
     const cats = await listArticleCategories(db, ws);
     const billing = cats.find((c) => c.name === "Plans & billing");

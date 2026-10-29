@@ -29,7 +29,15 @@ let pub: PublicContext;
 const accounts: string[] = [];
 const users: string[] = [];
 
-const ON = { showRoadmap: true, showIdeas: true, termsUrl: "", privacyUrl: "" };
+const ON = {
+  showRoadmap: true,
+  showIdeas: true,
+  commentsEnabled: false,
+  approveComments: false,
+  followsEnabled: false,
+  termsUrl: "",
+  privacyUrl: "",
+};
 
 beforeAll(async () => {
   const [a, b] = [

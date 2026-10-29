@@ -13,6 +13,7 @@ import {
   listRoadmaps,
   listTags,
 } from "@/server/services/roadmaps";
+import { getWorkspaceBySlug } from "@/server/services/workspaces";
 import { requireWorkspace } from "@/server/session";
 import { NoRoadmap } from "./no-roadmap";
 import { RoadmapView } from "./roadmap-view";
@@ -53,12 +54,13 @@ async function Roadmap({
     return <NoRoadmap workspace={ctx.workspaceSlug} canManage={canManage} />;
   }
 
-  const [columns, cards, objectives, tags, account] = await Promise.all([
+  const [columns, cards, objectives, tags, account, ws] = await Promise.all([
     listColumns(db, ctx, roadmap.id),
     listBoardCards(db, ctx, roadmap.id),
     listObjectives(db, ctx),
     listTags(db, ctx),
     getAccount(db, ctx),
+    getWorkspaceBySlug(db, ctx, ctx.workspaceSlug),
   ]);
 
   return (
@@ -70,6 +72,7 @@ async function Roadmap({
         workspace: ctx.workspaceSlug,
         workspaceId: ctx.workspaceId,
         canManage,
+        publicComments: !!ws.settings.commentsEnabled,
         publicUrl: publicRoadmapUrl(account.slug, ctx.workspaceSlug),
         roadmaps: roadmaps.map((r) => ({
           id: r.id,

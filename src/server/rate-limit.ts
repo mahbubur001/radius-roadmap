@@ -28,3 +28,6 @@ export const VOTE_LIMITS = {
 
 /** Public idea submissions per IP (doc 20 §4.2). */
 export const SUBMIT_LIMITS = { perIpHour: 5, perIpDay: 20 };
+
+/** Public comments per IP. */
+export const COMMENT_LIMITS = { perIpHour: 10, perIpDay: 40 };

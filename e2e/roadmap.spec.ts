@@ -266,7 +266,8 @@ test("card attachments, team comments, follow and CSV export", async ({
   await drawer
     .getByRole("textbox", { name: "New comment" })
     .fill("See https://example.com/spec");
-  await drawer.getByRole("button", { name: "Add comment" }).click();
+  // Public comments are off, so this is a team note.
+  await drawer.getByRole("button", { name: "Add note" }).click();
   await expect(
     drawer.getByRole("link", { name: "https://example.com/spec" }),
   ).toBeVisible();

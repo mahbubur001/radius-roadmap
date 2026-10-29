@@ -4,6 +4,7 @@ import { db } from "@/server/db/client";
 import { invalidatePublic } from "@/server/public-cache";
 import { notFound, publicRequest } from "@/server/public-request";
 import { hit, SUBMIT_LIMITS } from "@/server/rate-limit";
+import { setIdeaFollow } from "@/server/services/comments";
 import { NotFoundError } from "@/server/services/context";
 import { trackEvent } from "@/server/services/events";
 import { submitIdea } from "@/server/services/public-ideas";
@@ -85,6 +86,10 @@ export async function POST(request: NextRequest) {
       trackedUserId: req.voter.id,
       source,
     });
+    // Suggesting an idea follows it, when follows are on (doc 20 D3).
+    if (ws.settings.followsEnabled) {
+      await setIdeaFollow(db, req.ctx, item.id, req.voter.id, true);
+    }
     await trackEvent(db, req.ctx, {
       workspaceId: ws.id,
       type: "feedback_submit",

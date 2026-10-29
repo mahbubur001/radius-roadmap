@@ -2,6 +2,8 @@ import { Map as MapIcon } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import type { PublicIdea } from "@/server/services/public-ideas";
+import { FollowButton } from "./follow-button";
+import { PublicComments } from "./public-comments";
 import { VoteButton } from "./vote-button";
 
 const TAB =
@@ -14,11 +16,13 @@ const TAB =
 export function IdeaDetail({
   idea,
   commentsEnabled,
+  followsEnabled,
   tags,
   roadmapHref,
 }: {
   idea: PublicIdea;
   commentsEnabled: boolean;
+  followsEnabled: boolean;
   tags?: string[];
   roadmapHref?: string | null;
 }) {
@@ -28,12 +32,15 @@ export function IdeaDetail({
         <h1 className="pr-8 text-xl font-semibold tracking-tight">
           {idea.title}
         </h1>
-        <VoteButton
-          cardId={idea.id}
-          votes={idea.votes}
-          variant="pill"
-          kind="idea"
-        />
+        <div className="flex gap-2">
+          <VoteButton
+            cardId={idea.id}
+            votes={idea.votes}
+            variant="pill"
+            kind="idea"
+          />
+          {followsEnabled ? <FollowButton feedbackId={idea.id} /> : null}
+        </div>
       </header>
       <Tabs defaultValue="details" className="gap-0">
         <TabsList
@@ -101,7 +108,7 @@ export function IdeaDetail({
         </TabsContent>
         {commentsEnabled ? (
           <TabsContent value="comments" className="px-6 py-5">
-            <p className="text-sm text-muted-foreground">No comments yet.</p>
+            <PublicComments target={{ feedbackId: idea.id }} />
           </TabsContent>
         ) : null}
       </Tabs>

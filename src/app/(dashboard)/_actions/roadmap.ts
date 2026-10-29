@@ -2,7 +2,6 @@
 
 import {
   addAttachmentSchema,
-  cardCommentSchema,
   cardFlagSchema,
   cardIdSchema,
   createCardSchema,
@@ -16,7 +15,6 @@ import {
   roadmapIdSchema,
   tagSchema,
   transferCardSchema,
-  updateCardCommentSchema,
   updateCardSchema,
   updateColumnSchema,
   updateFeatureSchema,
@@ -29,15 +27,11 @@ import { db } from "@/server/db/client";
 import { invalidatePublic, invalidateSite } from "@/server/public-cache";
 import {
   addAttachment,
-  addCardComment,
   attachmentPrefix,
   cardFollowers,
   deleteAttachment,
-  deleteCardComment,
   listAttachments,
-  listCardComments,
   setCardFollow,
-  updateCardComment,
 } from "@/server/services/card-activity";
 import {
   addFeature,
@@ -54,6 +48,7 @@ import {
   updateCard,
   updateFeature,
 } from "@/server/services/cards";
+import { listTeamComments } from "@/server/services/comments";
 import type { WorkspaceContext } from "@/server/services/context";
 import {
   linkedFeedback,
@@ -149,7 +144,7 @@ export const getCardAction = workspaceAction(
         listVoters(db, ctx, id),
         linkedFeedback(db, ctx, id),
         listAttachments(db, ctx, id),
-        listCardComments(db, ctx, id),
+        listTeamComments(db, ctx, { cardId: id }),
         cardFollowers(db, ctx, id),
       ]);
     return {
@@ -328,24 +323,6 @@ export const addAttachmentAction = workspaceAction(
 export const deleteAttachmentAction = workspaceAction(
   cardIdSchema,
   async (ctx, { id }) => deleteAttachment(db, ctx, id),
-);
-
-export const addCardCommentAction = workspaceAction(
-  cardCommentSchema,
-  async (ctx, input) => {
-    const row = await addCardComment(db, ctx, input);
-    return { id: row.id, createdAt: row.createdAt };
-  },
-);
-
-export const updateCardCommentAction = workspaceAction(
-  updateCardCommentSchema,
-  async (ctx, input) => updateCardComment(db, ctx, input),
-);
-
-export const deleteCardCommentAction = workspaceAction(
-  cardIdSchema,
-  async (ctx, { id }) => deleteCardComment(db, ctx, id),
 );
 
 export const setCardFollowAction = workspaceAction(

@@ -31,6 +31,8 @@ export type BoardData = {
   workspace: string;
   workspaceId: string;
   canManage: boolean;
+  /** Public comments are on (Public settings). */
+  publicComments: boolean;
   publicUrl: string;
   roadmaps: { id: string; slug: string; title: string }[];
   roadmap: BoardRoadmap;

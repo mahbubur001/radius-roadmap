@@ -167,12 +167,3 @@ export const addAttachmentSchema = z.object({
   key: z.string().max(300),
   name: z.string().trim().min(1).max(200),
 });
-
-const commentBody = z
-  .string()
-  .trim()
-  .min(1, "Write a comment")
-  .max(5000, "Keep it under 5000 characters");
-
-export const cardCommentSchema = z.object({ cardId: id, body: commentBody });
-export const updateCardCommentSchema = z.object({ id, body: commentBody });

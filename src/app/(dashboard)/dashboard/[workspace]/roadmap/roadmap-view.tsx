@@ -501,6 +501,7 @@ export function RoadmapView({
           )
         }
         onCreateObjective={data.canManage ? createObjective : undefined}
+        publicComments={data.publicComments}
       />
 
       {data.canManage ? (

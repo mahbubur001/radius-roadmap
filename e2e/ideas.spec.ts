@@ -2,7 +2,9 @@ import { randomUUID } from "node:crypto";
 import { type Browser, expect, type Page, test } from "@playwright/test";
 import { signUpOwner } from "./helpers";
 
-// Public Ideas (doc 20 steps 5–6, doc 22 step 4).
+// Public Ideas (doc 20 steps 5–8, doc 22 step 4).
+
+test.use({ actionTimeout: 10_000 });
 
 async function visitor(browser: Browser) {
   const rand = () => Math.floor(Math.random() * 254) + 1;
@@ -138,4 +140,93 @@ test("ideas 404 when switched off; merged ideas redirect", async ({ page }) => {
   await expect
     .poll(() => page.request.get(url).then((r) => r.status()))
     .toBe(404);
+});
+
+test("with comments on: a visitor comments, the team approves, replies and leaves an internal note", async ({
+  page,
+  browser,
+}) => {
+  const id = randomUUID().slice(0, 8);
+  const { slug } = await signUpOwner(page, id);
+  const url = await ideasUrl(page, slug);
+
+  // Comments + approval + follows on; one idea.
+  await page.goto(`/dashboard/${slug}/public-settings`);
+  for (const name of ["Comments", "Approve comments first", "Follows"]) {
+    await page.getByRole("switch", { name, exact: true }).click();
+  }
+  await page.getByRole("button", { name: "Save changes" }).click();
+  await expect(page.getByText("Public site saved.")).toBeVisible();
+  await page.goto(`/dashboard/${slug}/feedback`);
+  await page.getByRole("button", { name: "New feedback" }).click();
+  await page
+    .getByRole("dialog")
+    .getByRole("textbox", { name: "Title" })
+    .fill("Webhooks");
+  await page
+    .getByRole("dialog")
+    .getByRole("button", { name: "Create" })
+    .click();
+  await expect(
+    page
+      .getByRole("dialog", { name: "Edit feedback" })
+      .getByRole("textbox", { name: "Title", exact: true }),
+  ).toHaveValue("Webhooks");
+
+  // A visitor logs in as a guest, follows and comments: held for approval.
+  const guest = await visitor(browser);
+  await guest.goto(`${url}/webhooks`);
+  await guest.getByRole("button", { name: "Follow" }).click();
+  const login = guest.getByRole("dialog", { name: "Log in" });
+  await login.getByRole("tab", { name: "Guest" }).click();
+  await login.getByRole("textbox", { name: "Name" }).fill("Vera");
+  await login
+    .getByRole("textbox", { name: "Email" })
+    .fill(`vera-${id}@example.test`);
+  await login.getByRole("button", { name: "Continue as guest" }).click();
+  await expect(login).toHaveCount(0);
+  await guest.getByRole("button", { name: "Follow" }).click();
+  await expect(guest.getByRole("button", { name: "Following" })).toBeVisible();
+  await guest.getByRole("tab", { name: /Comments/ }).click();
+  await guest
+    .getByRole("textbox", { name: "Write a comment" })
+    .fill("Please add retries, see https://example.com/retries");
+  await guest.getByRole("button", { name: "Post comment" }).click();
+  await expect(
+    guest.getByText("Your comment will show once the team approves it."),
+  ).toBeVisible();
+
+  // The team approves it from Feedback → Comments.
+  await page.goto(`/dashboard/${slug}/feedback/comments`);
+  const queue = page.getByRole("list", { name: "Comments to approve" });
+  await expect(queue.getByText("Please add retries")).toBeVisible();
+  await queue.getByRole("button", { name: "Approve" }).click();
+  await expect(page.getByText("Comment approved.")).toBeVisible();
+
+  // In the drawer: a public reply and an internal note.
+  await page.goto(`/dashboard/${slug}/feedback`);
+  await page.getByRole("button", { name: "Webhooks" }).click();
+  const drawer = page.getByRole("dialog", { name: "Edit feedback" });
+  await drawer.getByRole("tab", { name: /Comments/ }).click();
+  await drawer.getByRole("textbox", { name: "New comment" }).fill("On it!");
+  await drawer.getByRole("button", { name: "Reply" }).click();
+  await expect(drawer.getByText("On it!")).toBeVisible();
+  await drawer.getByRole("switch", { name: "Internal note" }).click();
+  await drawer
+    .getByRole("textbox", { name: "New comment" })
+    .fill("Needs a queue first");
+  await drawer.getByRole("button", { name: "Add note" }).click();
+  await expect(drawer.getByText("Needs a queue first")).toBeVisible();
+
+  // The public page shows the comment and the team reply, not the note.
+  await guest.goto(`${url}/webhooks`);
+  await guest.getByRole("tab", { name: "Comments (2)" }).click();
+  const thread = guest.getByRole("list", { name: "Comments" });
+  await expect(
+    thread.getByRole("link", { name: "https://example.com/retries" }),
+  ).toBeVisible();
+  await expect(thread.getByText("On it!")).toBeVisible();
+  await expect(thread.getByText("Team")).toBeVisible();
+  await expect(guest.getByText("Needs a queue first")).toHaveCount(0);
+  await expect(guest.getByRole("button", { name: "Following" })).toBeVisible();
 });

@@ -47,6 +47,7 @@ export function PublicIdeas({
   query,
   embed,
   commentsEnabled,
+  followsEnabled,
   termsUrl,
   privacyUrl,
 }: {
@@ -61,6 +62,7 @@ export function PublicIdeas({
   query: string;
   embed: boolean;
   commentsEnabled: boolean;
+  followsEnabled: boolean;
   termsUrl: string | null;
   privacyUrl: string | null;
 }) {
@@ -300,7 +302,11 @@ export function PublicIdeas({
             <SheetDescription>Idea</SheetDescription>
           </SheetHeader>
           {open ? (
-            <IdeaDetail idea={open} commentsEnabled={commentsEnabled} />
+            <IdeaDetail
+              idea={open}
+              commentsEnabled={commentsEnabled}
+              followsEnabled={followsEnabled}
+            />
           ) : null}
         </SheetContent>
       </Sheet>

@@ -1,24 +1,19 @@
-import { and, asc, eq, isNull } from "drizzle-orm";
+import { and, asc, eq } from "drizzle-orm";
 import { MAX_ATTACHMENT_BYTES } from "@/lib/schemas/upload";
 import type { Db } from "@/server/db/client";
-import {
-  cardAttachments,
-  cardFollows,
-  comments,
-  user,
-} from "@/server/db/schema";
+import { cardAttachments, cardFollows, user } from "@/server/db/schema";
 import { deleteFile, fileSize, prefixes } from "@/server/storage";
 import { contentTypeForKey, keyHasPrefix } from "@/server/storage/keys";
 import { getCard } from "./cards";
 import {
   ForbiddenError,
   NotFoundError,
-  seesAllWorkspaces,
   type WorkspaceContext,
 } from "./context";
 import { inWorkspace } from "./roadmaps";
 
-// Attachments, team comments and follows on roadmap cards (doc 21 step C).
+// Attachments and team follows on roadmap cards (doc 21 step C). Comments
+// live in comments.ts (shared with ideas).
 // Everyone with access to the workspace can use them; every query is scoped
 // by account + workspace through the card.
 
@@ -116,108 +111,6 @@ export async function attachmentKeys(
       ),
     );
   return rows.map((r) => r.key);
-}
-
-// ── Comments (team only for now; public ones come with doc 20 step 7) ──
-
-export async function listCardComments(
-  db: Db,
-  ctx: WorkspaceContext,
-  cardId: string,
-) {
-  await getCard(db, ctx, cardId);
-  return db
-    .select({
-      id: comments.id,
-      body: comments.body,
-      authorUserId: comments.authorUserId,
-      author: user.name,
-      createdAt: comments.createdAt,
-      editedAt: comments.editedAt,
-    })
-    .from(comments)
-    .leftJoin(user, eq(user.id, comments.authorUserId))
-    .where(
-      and(
-        inWorkspace(comments, ctx),
-        eq(comments.cardId, cardId),
-        isNull(comments.deletedAt),
-      ),
-    )
-    .orderBy(asc(comments.createdAt));
-}
-
-export async function addCardComment(
-  db: Db,
-  ctx: WorkspaceContext,
-  input: { cardId: string; body: string },
-) {
-  await getCard(db, ctx, input.cardId);
-  const [row] = await db
-    .insert(comments)
-    .values({
-      accountId: ctx.accountId,
-      workspaceId: ctx.workspaceId,
-      cardId: input.cardId,
-      body: input.body,
-      authorUserId: ctx.userId,
-      // Team notes: never shown on the public site.
-      isInternal: true,
-    })
-    .returning();
-  if (!row) throw new Error("Failed to add the comment.");
-  return row;
-}
-
-/** A live card comment in this workspace that `ctx` may change. */
-async function ownComment(
-  db: Db,
-  ctx: WorkspaceContext,
-  id: string,
-  allowAdmin: boolean,
-) {
-  const [row] = await db
-    .select({ authorUserId: comments.authorUserId, cardId: comments.cardId })
-    .from(comments)
-    .where(
-      and(
-        inWorkspace(comments, ctx),
-        eq(comments.id, id),
-        isNull(comments.deletedAt),
-      ),
-    )
-    .limit(1);
-  if (!row?.cardId) throw new NotFoundError("Comment not found.");
-  const mine = row.authorUserId === ctx.userId;
-  if (!mine && !(allowAdmin && seesAllWorkspaces(ctx))) {
-    throw new ForbiddenError();
-  }
-}
-
-/** Authors edit their own comments. */
-export async function updateCardComment(
-  db: Db,
-  ctx: WorkspaceContext,
-  input: { id: string; body: string },
-) {
-  await ownComment(db, ctx, input.id, false);
-  await db
-    .update(comments)
-    .set({ body: input.body, editedAt: new Date() })
-    .where(and(inWorkspace(comments, ctx), eq(comments.id, input.id)));
-}
-
-/** Authors delete their own comments; owners and admins any. */
-export async function deleteCardComment(
-  db: Db,
-  ctx: WorkspaceContext,
-  id: string,
-) {
-  await ownComment(db, ctx, id, true);
-  await db
-    .update(comments)
-    .set({ deletedAt: new Date() })
-    .where(and(inWorkspace(comments, ctx), eq(comments.id, id)));
 }
 
 // ── Follows (team members; emails from Phase 4) ─────────────────────────

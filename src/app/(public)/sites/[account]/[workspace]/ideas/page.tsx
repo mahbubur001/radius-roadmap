@@ -94,6 +94,7 @@ async function Ideas(props: Props) {
           query={q ?? ""}
           embed={embed}
           commentsEnabled={!!ws.settings.commentsEnabled}
+          followsEnabled={!!ws.settings.followsEnabled}
           termsUrl={ws.settings.termsUrl ?? null}
           privacyUrl={ws.settings.privacyUrl ?? null}
         />

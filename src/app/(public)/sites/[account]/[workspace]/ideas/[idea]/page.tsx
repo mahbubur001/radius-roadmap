@@ -72,6 +72,7 @@ async function Idea(props: Props) {
           <IdeaDetail
             idea={idea}
             commentsEnabled={!!ws.settings.commentsEnabled}
+            followsEnabled={!!ws.settings.followsEnabled}
             tags={idea.tags}
             roadmapHref={
               idea.roadmapCard && ws.modules.roadmap

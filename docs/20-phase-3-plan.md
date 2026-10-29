@@ -213,6 +213,8 @@ Feedback pages use the same `"use cache"` loaders with `cacheTag("ws:<id>")`; ev
 
 - Steps 5–6 (2026-10-29): built as **doc 22 step 4** with LoopedIn's layout. The public path is **`/ideas`** (not `/feedback`) and the tab is labelled "Ideas". Submission is a side form (button + sheet on mobile), not a dialog. See doc 22 "As built".
 
+- Step 7 (2026-10-29): **comments and follows**. One service for comments on ideas **and roadmap cards** (`src/server/services/comments.ts`, replacing the card-only team comments from doc 21): public list (approved, non-internal, never emails), visitor comments (logged in, Turnstile for guests, 10/hour + 40/day per IP, held when "Approve comments first" is on), team replies (public, marked "Team") and internal notes, approve, edit own, delete (visitors' comments: anyone on the team; team comments: author or owner/admin), `comment_count` recomputed in the same transaction. Shared admin `CommentsPanel` in both drawers; moderation at `/dashboard/<workspace>/feedback/comments` (tab with a pending badge). Public: `GET|POST /api/public/comments`, `POST /api/public/follows` (404 when the setting is off), live Comments tabs on cards and ideas, Follow button on ideas; voting on or suggesting an idea follows it when follows are on; `/api/public/me` returns followed ideas. Public settings has Comments / Approve comments first / Follows switches (all off by default). E2E: `e2e/ideas.spec.ts` flow 5.
+
 ## Done when
 - [ ] Feedback boards, statuses, categories and tags work; the admin list filters, sorts and searches; the drawer autosaves.
 - [ ] New public submissions land in the triage inbox with a visible count and an email alert, and can be approved, kept private, rejected or merged in bulk.

@@ -10,15 +10,11 @@ import {
 } from "@/test/factories";
 import {
   addAttachment,
-  addCardComment,
   attachmentPrefix,
   cardFollowers,
   deleteAttachment,
-  deleteCardComment,
   listAttachments,
-  listCardComments,
   setCardFollow,
-  updateCardComment,
 } from "./card-activity";
 import { createCard, deleteCard, listBoardCards } from "./cards";
 import {
@@ -147,54 +143,6 @@ describe("card attachments", () => {
     await expect(
       addAttachment(db, wsB, { cardId: c.id, key: foreignKey, name: "x" }),
     ).rejects.toBeInstanceOf(NotFoundError);
-  });
-});
-
-describe("card comments", () => {
-  it("adds, edits and deletes team comments", async () => {
-    const c = await card("Discussed");
-    const mine = await addCardComment(db, mateA, {
-      cardId: c.id,
-      body: "First!",
-    });
-    expect(mine.isInternal).toBe(true);
-    await updateCardComment(db, mateA, { id: mine.id, body: "Edited" });
-    const [listed] = await listCardComments(db, wsA, c.id);
-    expect(listed).toMatchObject({ body: "Edited" });
-    expect(listed?.editedAt).not.toBeNull();
-
-    // Only the author edits; owners and admins may delete.
-    await expect(
-      updateCardComment(db, wsA, { id: mine.id, body: "Owner edit" }),
-    ).rejects.toBeInstanceOf(ForbiddenError);
-    const ownerNote = await addCardComment(db, wsA, {
-      cardId: c.id,
-      body: "Owner note",
-    });
-    await expect(
-      deleteCardComment(db, mateA, ownerNote.id),
-    ).rejects.toBeInstanceOf(ForbiddenError);
-    await deleteCardComment(db, wsA, mine.id);
-    expect((await listCardComments(db, wsA, c.id)).map((r) => r.id)).toEqual([
-      ownerNote.id,
-    ]);
-  });
-
-  it("another account can't read, add, edit or delete card comments", async () => {
-    const c = await card("Private talk");
-    const note = await addCardComment(db, wsA, { cardId: c.id, body: "Hi" });
-    await expect(listCardComments(db, wsB, c.id)).rejects.toBeInstanceOf(
-      NotFoundError,
-    );
-    await expect(
-      addCardComment(db, wsB, { cardId: c.id, body: "x" }),
-    ).rejects.toBeInstanceOf(NotFoundError);
-    await expect(
-      updateCardComment(db, wsB, { id: note.id, body: "x" }),
-    ).rejects.toBeInstanceOf(NotFoundError);
-    await expect(deleteCardComment(db, wsB, note.id)).rejects.toBeInstanceOf(
-      NotFoundError,
-    );
   });
 });
 

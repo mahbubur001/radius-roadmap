@@ -25,6 +25,7 @@ import {
   unlinkCardAction,
   updateFeedbackAction,
 } from "@/app/(dashboard)/_actions/feedback";
+import { CommentsPanel } from "@/components/dashboard/comments-panel";
 import { TagPicker } from "@/components/dashboard/tag-picker";
 import {
   autosaveLabel,
@@ -114,6 +115,8 @@ type Shared = {
   onTagCreated: (tag: TagOption) => void;
   /** Open another item (after merge or duplicate). */
   onOpenItem: (id: string) => void;
+  /** Public comments are on (Public settings). */
+  publicComments: boolean;
 };
 
 export function FeedbackDrawer({
@@ -173,11 +176,13 @@ function FeedbackEditor({
   onRemoved,
   onTagCreated,
   onOpenItem,
+  publicComments,
 }: Shared & { detail: Detail }) {
   const { item } = detail;
   const [cards, setCards] = useState(detail.cards);
   const [dialog, setDialog] = useState<"push" | "link" | "merge" | null>(null);
   const [title, setTitle] = useState(item.title);
+  const [comments, setComments] = useState(detail.comments);
   const [boardId, setBoardId] = useState(item.boardId);
   const [statusId, setStatusId] = useState(item.statusId);
   const [objectiveId, setObjectiveId] = useState(item.objectiveId);
@@ -367,6 +372,9 @@ function FeedbackEditor({
             <TabsTrigger value="general">General</TabsTrigger>
             <TabsTrigger value="votes">
               Votes ({item.voteCount + item.importedVotes})
+            </TabsTrigger>
+            <TabsTrigger value="comments">
+              Comments ({comments.length})
             </TabsTrigger>
           </TabsList>
 
@@ -588,6 +596,24 @@ function FeedbackEditor({
 
           <TabsContent value="votes" className="pt-2">
             <VotersList voters={detail.voters} />
+          </TabsContent>
+
+          <TabsContent value="comments" className="pt-2">
+            <CommentsPanel
+              workspace={workspace}
+              target={{ feedbackId: item.id }}
+              items={comments}
+              me={detail.me}
+              canModerate={detail.canModerate}
+              publicComments={publicComments}
+              onChange={(next) => {
+                setComments(next);
+                onChanged(item.id, {
+                  comments: next.filter((c) => !c.internal && !c.pending)
+                    .length,
+                });
+              }}
+            />
           </TabsContent>
         </Tabs>
       </div>

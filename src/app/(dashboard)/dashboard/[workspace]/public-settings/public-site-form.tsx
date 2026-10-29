@@ -59,6 +59,25 @@ export function PublicSiteForm({
               label="Ideas"
               description="Public feedback boards where visitors suggest and vote on ideas."
             />
+            <FieldSeparator>Comments and follows</FieldSeparator>
+            <SwitchField
+              control={form.control}
+              name="commentsEnabled"
+              label="Comments"
+              description="Visitors can comment on ideas and roadmap cards. Your team can always leave internal notes."
+            />
+            <SwitchField
+              control={form.control}
+              name="approveComments"
+              label="Approve comments first"
+              description="Visitors' comments wait under Feedback → Comments until someone approves them."
+            />
+            <SwitchField
+              control={form.control}
+              name="followsEnabled"
+              label="Follows"
+              description="Visitors can follow ideas. Voting on or suggesting an idea follows it. Follow emails arrive with Updates."
+            />
             <FieldSeparator>Idea form</FieldSeparator>
             <TextField
               control={form.control}

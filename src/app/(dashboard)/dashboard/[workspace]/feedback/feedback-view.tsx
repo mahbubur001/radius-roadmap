@@ -5,6 +5,7 @@ import {
   Globe,
   Inbox,
   Lock,
+  MessageSquare,
   MoreVertical,
   Plus,
   Search,
@@ -398,10 +399,22 @@ export function FeedbackView({
             </Link>
           );
         })}
+        {data.publicComments || data.pendingComments ? (
+          <Link href={`${base}/comments`} className={cn(tab(false), "ml-auto")}>
+            <MessageSquare className="size-4" />
+            Comments
+            {data.pendingComments ? (
+              <Badge variant="secondary">{data.pendingComments}</Badge>
+            ) : null}
+          </Link>
+        ) : null}
         <Link
           href={`${base}/inbox`}
           aria-current={inbox ? "page" : undefined}
-          className={cn(tab(inbox), "ml-auto")}
+          className={cn(
+            tab(inbox),
+            !(data.publicComments || data.pendingComments) && "ml-auto",
+          )}
         >
           <Inbox className="size-4" />
           Inbox
@@ -697,6 +710,7 @@ export function FeedbackView({
         onChanged={patchItem}
         onRemoved={removeItem}
         onOpenItem={openItem}
+        publicComments={data.publicComments}
         onTagCreated={(tag) =>
           setTags((all) =>
             all.some((t) => t.id === tag.id)

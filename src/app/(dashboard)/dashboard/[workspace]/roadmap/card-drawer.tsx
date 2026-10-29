@@ -32,6 +32,7 @@ import {
   updateCardAction,
   updateFeatureAction,
 } from "@/app/(dashboard)/_actions/roadmap";
+import { CommentsPanel } from "@/components/dashboard/comments-panel";
 import { TagPicker } from "@/components/dashboard/tag-picker";
 import {
   autosaveLabel,
@@ -87,7 +88,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import type { UpdateCardInput } from "@/lib/schemas/roadmap";
 import { ago } from "@/lib/time";
 import { cn } from "@/lib/utils";
-import { Attachments, Comments } from "./card-activity-tabs";
+import { Attachments } from "./card-activity-tabs";
 import { ObjectivePicker } from "./objective-picker";
 import type { BoardCard, ObjectiveOption, TagOption } from "./types";
 
@@ -110,6 +111,7 @@ export function CardDrawer({
   onRemoved,
   onTagCreated,
   onCreateObjective,
+  publicComments,
 }: {
   workspace: string;
   workspaceId: string;
@@ -123,6 +125,8 @@ export function CardDrawer({
   onRemoved: (id: string) => void;
   onTagCreated: (tag: TagOption) => void;
   onCreateObjective?: (name: string) => Promise<ObjectiveOption | null>;
+  /** Public comments are on for this workspace. */
+  publicComments: boolean;
 }) {
   const [detail, setDetail] = useState<Detail | null>(null);
 
@@ -161,6 +165,7 @@ export function CardDrawer({
             onRemoved={onRemoved}
             onTagCreated={onTagCreated}
             onCreateObjective={onCreateObjective}
+            publicComments={publicComments}
           />
         ) : (
           <div className="flex flex-col gap-4 p-8">
@@ -190,6 +195,7 @@ function CardEditor({
   onRemoved,
   onTagCreated,
   onCreateObjective,
+  publicComments,
 }: {
   detail: Detail;
   workspace: string;
@@ -203,6 +209,8 @@ function CardEditor({
   onRemoved: (id: string) => void;
   onTagCreated: (tag: TagOption) => void;
   onCreateObjective?: (name: string) => Promise<ObjectiveOption | null>;
+  /** Public comments are on for this workspace. */
+  publicComments: boolean;
 }) {
   const router = useRouter();
   const { card } = detail;
@@ -480,12 +488,13 @@ function CardEditor({
             </TabsContent>
 
             <TabsContent value="comments" className="px-8 py-6">
-              <Comments
+              <CommentsPanel
                 workspace={workspace}
-                cardId={card.id}
+                target={{ cardId: card.id }}
                 items={comments}
                 me={detail.me}
                 canModerate={detail.canModerate}
+                publicComments={publicComments}
                 onChange={(next) => {
                   setComments(next);
                   onChanged(card.id, { comments: next.length });

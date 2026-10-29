@@ -4,9 +4,13 @@ import { db } from "@/server/db/client";
 import { invalidatePublic } from "@/server/public-cache";
 import { notFound, publicRequest } from "@/server/public-request";
 import { hit, VOTE_LIMITS } from "@/server/rate-limit";
+import { setIdeaFollow } from "@/server/services/comments";
 import { trackEvent } from "@/server/services/events";
 import { getVotableIdea } from "@/server/services/public-ideas";
-import { getVotableCard } from "@/server/services/public-site";
+import {
+  getPublicWorkspaceById,
+  getVotableCard,
+} from "@/server/services/public-site";
 import { toggleFeedbackVote, toggleVote } from "@/server/services/votes";
 import { verifyTurnstile } from "@/server/turnstile";
 
@@ -82,6 +86,13 @@ export async function POST(request: NextRequest) {
   const result = cardId
     ? await toggleVote(db, req.ctx, card, voter, meta)
     : await toggleFeedbackVote(db, req.ctx, card, voter, meta);
+  // Voting on an idea follows it, when follows are on (doc 20 D3).
+  if (feedbackId && result.voted && req.voter) {
+    const ws = await getPublicWorkspaceById(db, req.ctx, card.workspaceId);
+    if (ws?.settings.followsEnabled) {
+      await setIdeaFollow(db, req.ctx, feedbackId, req.voter.id, true);
+    }
+  }
   await trackEvent(db, req.ctx, {
     workspaceId: card.workspaceId,
     type: result.voted ? "vote" : "unvote",

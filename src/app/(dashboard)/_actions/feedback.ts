@@ -21,6 +21,7 @@ import {
 import { workspaceAction } from "@/server/action";
 import { db } from "@/server/db/client";
 import { invalidatePublic, invalidateSite } from "@/server/public-cache";
+import { listTeamComments } from "@/server/services/comments";
 import type { WorkspaceContext } from "@/server/services/context";
 import {
   bulkUpdateFeedback,
@@ -67,12 +68,20 @@ async function mutate<T>(ctx: WorkspaceContext, run: () => Promise<T>) {
 export const getFeedbackAction = workspaceAction(
   feedbackIdSchema,
   async (ctx, { id }) => {
-    const [item, voters, cards] = await Promise.all([
+    const [item, voters, cards, comments] = await Promise.all([
       getFeedbackDetail(db, ctx, id),
       listFeedbackVoters(db, ctx, id),
       linkedCards(db, ctx, id),
+      listTeamComments(db, ctx, { feedbackId: id }),
     ]);
-    return { item, voters, cards };
+    return {
+      item,
+      voters,
+      cards,
+      comments,
+      me: ctx.userId,
+      canModerate: ctx.role !== "member",
+    };
   },
 );
 

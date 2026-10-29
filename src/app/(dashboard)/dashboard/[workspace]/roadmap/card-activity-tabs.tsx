@@ -1,19 +1,15 @@
 "use client";
 
-import { FileText, Paperclip, Pencil, Trash2, Upload } from "lucide-react";
-import { Fragment, useRef, useState } from "react";
+import { FileText, Paperclip, Trash2, Upload } from "lucide-react";
+import { useRef, useState } from "react";
 import { toast } from "sonner";
 import {
   addAttachmentAction,
-  addCardCommentAction,
   deleteAttachmentAction,
-  deleteCardCommentAction,
   type getCardAction,
   requestAttachmentUploadAction,
-  updateCardCommentAction,
 } from "@/app/(dashboard)/_actions/roadmap";
 import { Button } from "@/components/ui/button";
-import { Textarea } from "@/components/ui/textarea";
 import {
   ATTACHMENT_TYPES,
   type AttachmentType,
@@ -27,7 +23,6 @@ type Detail = Extract<
   { ok: true }
 >["data"];
 export type Attachment = Detail["attachments"][number];
-export type CardComment = Detail["comments"][number];
 
 function formatSize(bytes: number) {
   if (bytes < 1024) return `${bytes} B`;
@@ -205,194 +200,5 @@ export function Attachments({
         </p>
       )}
     </div>
-  );
-}
-
-/** Comments tab: team notes on the card (never shown publicly yet). */
-export function Comments({
-  workspace,
-  cardId,
-  items,
-  me,
-  canModerate,
-  onChange,
-}: {
-  workspace: string;
-  cardId: string;
-  items: CardComment[];
-  me: string;
-  canModerate: boolean;
-  onChange: (items: CardComment[]) => void;
-}) {
-  const [body, setBody] = useState("");
-  const [busy, setBusy] = useState(false);
-  const [editing, setEditing] = useState<{ id: string; body: string } | null>(
-    null,
-  );
-
-  async function add() {
-    if (!body.trim() || busy) return;
-    setBusy(true);
-    const result = await addCardCommentAction({ workspace, cardId, body });
-    setBusy(false);
-    if (!result.ok) return toast.error(result.error);
-    onChange([
-      ...items,
-      {
-        id: result.data.id,
-        body: body.trim(),
-        authorUserId: me,
-        author: "You",
-        createdAt: result.data.createdAt,
-        editedAt: null,
-      },
-    ]);
-    setBody("");
-  }
-
-  async function save() {
-    if (!editing?.body.trim()) return;
-    const result = await updateCardCommentAction({ workspace, ...editing });
-    if (!result.ok) return toast.error(result.error);
-    onChange(
-      items.map((c) =>
-        c.id === editing.id
-          ? { ...c, body: editing.body.trim(), editedAt: new Date() }
-          : c,
-      ),
-    );
-    setEditing(null);
-  }
-
-  async function remove(id: string) {
-    const result = await deleteCardCommentAction({ workspace, id });
-    if (!result.ok) return toast.error(result.error);
-    onChange(items.filter((c) => c.id !== id));
-  }
-
-  return (
-    <div className="flex flex-col gap-4">
-      <p className="text-xs text-muted-foreground">
-        Comments here are for your team only. They don’t show on the public
-        roadmap.
-      </p>
-      {items.length ? (
-        <ul className="flex flex-col gap-3">
-          {items.map((c) => (
-            <li key={c.id} className="group rounded-md border p-3 text-sm">
-              <div className="mb-1 flex items-center gap-2 text-xs text-muted-foreground">
-                <span className="font-medium text-foreground">
-                  {c.author ?? "Former member"}
-                </span>
-                <span suppressHydrationWarning>
-                  {ago(new Date(c.createdAt))}
-                </span>
-                {c.editedAt ? <span>(edited)</span> : null}
-                <span className="ml-auto flex gap-1 opacity-0 group-hover:opacity-100 focus-within:opacity-100">
-                  {c.authorUserId === me ? (
-                    <Button
-                      variant="ghost"
-                      size="icon"
-                      className="size-7"
-                      aria-label="Edit comment"
-                      onClick={() => setEditing({ id: c.id, body: c.body })}
-                    >
-                      <Pencil />
-                    </Button>
-                  ) : null}
-                  {c.authorUserId === me || canModerate ? (
-                    <Button
-                      variant="ghost"
-                      size="icon"
-                      className="size-7"
-                      aria-label="Delete comment"
-                      onClick={() => remove(c.id)}
-                    >
-                      <Trash2 />
-                    </Button>
-                  ) : null}
-                </span>
-              </div>
-              {editing?.id === c.id ? (
-                <div className="flex flex-col gap-2">
-                  <Textarea
-                    aria-label="Edit comment"
-                    value={editing.body}
-                    maxLength={5000}
-                    onChange={(e) =>
-                      setEditing({ id: c.id, body: e.target.value })
-                    }
-                  />
-                  <div className="flex gap-2">
-                    <Button size="sm" onClick={save}>
-                      Save
-                    </Button>
-                    <Button
-                      size="sm"
-                      variant="ghost"
-                      onClick={() => setEditing(null)}
-                    >
-                      Cancel
-                    </Button>
-                  </div>
-                </div>
-              ) : (
-                <p className="break-words whitespace-pre-wrap">
-                  <Linkified text={c.body} />
-                </p>
-              )}
-            </li>
-          ))}
-        </ul>
-      ) : null}
-      <form
-        className="flex flex-col gap-2"
-        onSubmit={(e) => {
-          e.preventDefault();
-          void add();
-        }}
-      >
-        <Textarea
-          aria-label="New comment"
-          placeholder="Write a comment for your team…"
-          value={body}
-          maxLength={5000}
-          onChange={(e) => setBody(e.target.value)}
-          onKeyDown={(e) => {
-            if (e.key === "Enter" && (e.metaKey || e.ctrlKey)) void add();
-          }}
-        />
-        <Button
-          type="submit"
-          className="self-end"
-          disabled={busy || !body.trim()}
-        >
-          Add comment
-        </Button>
-      </form>
-    </div>
-  );
-}
-
-const URL_PATTERN = /(https?:\/\/[^\s<]+[^\s<.,;:!?)\]'"])/g;
-
-/** Plain text with http(s) URLs as links. React escapes everything else. */
-function Linkified({ text }: { text: string }) {
-  return text.split(URL_PATTERN).map((part, i) =>
-    i % 2 ? (
-      <a
-        // biome-ignore lint/suspicious/noArrayIndexKey: parts never reorder
-        key={i}
-        href={part}
-        target="_blank"
-        rel="noreferrer nofollow"
-        className="text-primary underline"
-      >
-        {part}
-      </a>
-    ) : (
-      // biome-ignore lint/suspicious/noArrayIndexKey: parts never reorder
-      <Fragment key={i}>{part}</Fragment>
-    ),
   );
 }

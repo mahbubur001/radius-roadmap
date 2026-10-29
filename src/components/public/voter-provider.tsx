@@ -40,6 +40,9 @@ type VoterState = {
   toggleVote: (id: string, kind?: VoteKind) => Promise<void>;
   pendingIdeas: PendingIdea[];
   addPendingIdea: (idea: PendingIdea) => void;
+  /** Ideas the logged-in voter follows. */
+  following: Set<string>;
+  toggleFollow: (feedbackId: string) => Promise<void>;
   openSignIn: () => void;
   signOut: () => Promise<void>;
   setVoter: (voter: Voter | null) => void;
@@ -116,17 +119,20 @@ export function VoterProvider({
   const [signInOpen, setSignInOpen] = useState(false);
   const [pending, setPending] = useState<string | null>(null);
   const [pendingIdeas, setPendingIdeas] = useState<PendingIdea[]>([]);
+  const [following, setFollowing] = useState<Set<string>>(new Set());
 
   const refresh = useCallback(async () => {
     const res = await publicApi<{
       voter: Voter | null;
       voted: string[];
       pending?: PendingIdea[];
+      following?: string[];
     }>(`/api/public/me?workspace=${workspaceId}`, { site, embed });
     if (!res.ok) return;
     setVoter(res.data.voter);
     setVoted(new Set(res.data.voted));
     setPendingIdeas(res.data.pending ?? []);
+    setFollowing(new Set(res.data.following ?? []));
   }, [site, workspaceId, embed]);
 
   useEffect(() => {
@@ -181,6 +187,34 @@ export function VoterProvider({
     [site, embed, pending, voter],
   );
 
+  const toggleFollow = useCallback(
+    async (feedbackId: string) => {
+      if (!voter) {
+        setSignInOpen(true);
+        toast.info("Log in to follow ideas.");
+        return;
+      }
+      const follow = !following.has(feedbackId);
+      const res = await publicApi(
+        "/api/public/follows",
+        { site, embed },
+        { method: "POST", body: { feedbackId, follow } },
+      );
+      if (!res.ok) {
+        toast.error(res.data.error ?? "Couldn't update.");
+        return;
+      }
+      setFollowing((all) => {
+        const next = new Set(all);
+        if (follow) next.add(feedbackId);
+        else next.delete(feedbackId);
+        return next;
+      });
+      toast.success(follow ? "Following this idea" : "Unfollowed");
+    },
+    [site, embed, voter, following],
+  );
+
   const signOut = useCallback(async () => {
     await publicApi(
       "/api/public/auth/sign-out",
@@ -202,6 +236,8 @@ export function VoterProvider({
       toggleVote,
       pendingIdeas,
       addPendingIdea: (idea) => setPendingIdeas((all) => [idea, ...all]),
+      following,
+      toggleFollow,
       openSignIn: () => setSignInOpen(true),
       signOut,
       setVoter: (next) => {
@@ -218,6 +254,8 @@ export function VoterProvider({
       totals,
       toggleVote,
       pendingIdeas,
+      following,
+      toggleFollow,
       signOut,
       refresh,
     ],

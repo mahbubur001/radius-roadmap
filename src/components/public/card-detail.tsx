@@ -1,6 +1,7 @@
 import { Badge } from "@/components/ui/badge";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import type { PublicCard } from "@/server/services/public-site";
+import { PublicComments } from "./public-comments";
 import { VoteButton } from "./vote-button";
 
 const TAB =
@@ -143,7 +144,7 @@ export function CardDetail({
 
         {commentsEnabled ? (
           <TabsContent value="comments" className="px-6 py-5">
-            <p className="text-sm text-muted-foreground">No comments yet.</p>
+            <PublicComments target={{ cardId: card.id }} />
           </TabsContent>
         ) : null}
       </Tabs>

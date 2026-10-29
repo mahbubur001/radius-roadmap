@@ -33,6 +33,10 @@ export type FeedbackData = {
   workspace: string;
   workspaceId: string;
   canManage: boolean;
+  /** Public comments are on (Public settings). */
+  publicComments: boolean;
+  /** Visitors' comments waiting for approval (Comments tab). */
+  pendingComments: number;
   boards: BoardOption[];
   boardId: string | null;
   /** Items waiting for review (sidebar badge, Inbox tab). */

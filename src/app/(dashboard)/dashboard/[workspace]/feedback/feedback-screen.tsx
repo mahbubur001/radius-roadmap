@@ -5,6 +5,7 @@ import {
   feedbackFilterSchema,
 } from "@/lib/schemas/feedback";
 import { db } from "@/server/db/client";
+import { pendingCommentCount } from "@/server/services/comments";
 import { seesAllWorkspaces } from "@/server/services/context";
 import {
   boardCounts,
@@ -14,6 +15,7 @@ import {
   listStatuses,
 } from "@/server/services/feedback";
 import { listObjectives, listTags } from "@/server/services/roadmaps";
+import { getWorkspaceBySlug } from "@/server/services/workspaces";
 import { requireWorkspace } from "@/server/session";
 import { FeedbackView } from "./feedback-view";
 import type { FeedbackMode } from "./types";
@@ -52,15 +54,25 @@ async function Feedback({
   const ctx = await requireWorkspace(await slug);
   const q = await query;
 
-  const [boards, counts, statuses, objectives, tags, pending] =
-    await Promise.all([
-      listBoards(db, ctx),
-      boardCounts(db, ctx),
-      listStatuses(db, ctx),
-      listObjectives(db, ctx),
-      listTags(db, ctx),
-      inboxCount(db, ctx),
-    ]);
+  const [
+    boards,
+    counts,
+    statuses,
+    objectives,
+    tags,
+    pending,
+    ws,
+    pendingComments,
+  ] = await Promise.all([
+    listBoards(db, ctx),
+    boardCounts(db, ctx),
+    listStatuses(db, ctx),
+    listObjectives(db, ctx),
+    listTags(db, ctx),
+    inboxCount(db, ctx),
+    getWorkspaceBySlug(db, ctx, ctx.workspaceSlug),
+    pendingCommentCount(db, ctx),
+  ]);
   const board = boards.find((b) => b.slug === one(q.b)) ?? boards[0];
   const inbox = mode === "inbox";
 
@@ -101,6 +113,8 @@ async function Feedback({
         workspace: ctx.workspaceSlug,
         workspaceId: ctx.workspaceId,
         canManage: seesAllWorkspaces(ctx),
+        publicComments: !!ws.settings.commentsEnabled,
+        pendingComments,
         boards: boards.map((b) => ({
           id: b.id,
           slug: b.slug,

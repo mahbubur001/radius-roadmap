@@ -73,6 +73,7 @@ describe("public site modules", () => {
       roadmap: true,
       updates: false,
       ideas: true,
+      articles: false,
     });
     expect(await publicPathStatus(db, pub, ["mod", "roadmap"])).toBe("ok");
   });
@@ -83,6 +84,7 @@ describe("public site modules", () => {
       roadmap: false,
       updates: false,
       ideas: true,
+      articles: false,
     });
     expect(await publicPathStatus(db, pub, ["mod", "roadmap"])).toBe("missing");
     // The workspace root now opens Ideas.

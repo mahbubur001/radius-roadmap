@@ -10,6 +10,7 @@ import {
   useState,
 } from "react";
 import { toast } from "sonner";
+import type { ArticleRating } from "@/lib/schemas/articles";
 import { SignInDialog } from "./sign-in-dialog";
 import { turnstileToken } from "./turnstile";
 
@@ -48,6 +49,12 @@ type VoterState = {
   /** Reaction counts changed in this session, by "<postId>:<emoji>". */
   reactionTotals: Record<string, number>;
   toggleReaction: (postId: string, emoji: string) => Promise<void>;
+  /** articleId → the visitor's "Was this helpful?" answer. */
+  ratings: Record<string, ArticleRating>;
+  rateArticle: (
+    articleId: string,
+    value: ArticleRating | null,
+  ) => Promise<boolean>;
   openSignIn: () => void;
   signOut: () => Promise<void>;
   setVoter: (voter: Voter | null) => void;
@@ -129,6 +136,7 @@ export function VoterProvider({
   const [reactionTotals, setReactionTotals] = useState<Record<string, number>>(
     {},
   );
+  const [ratings, setRatings] = useState<Record<string, ArticleRating>>({});
 
   const refresh = useCallback(async () => {
     const res = await publicApi<{
@@ -137,6 +145,7 @@ export function VoterProvider({
       pending?: PendingIdea[];
       following?: string[];
       reactions?: string[];
+      ratings?: Record<string, ArticleRating>;
     }>(`/api/public/me?workspace=${workspaceId}`, { site, embed });
     if (!res.ok) return;
     setVoter(res.data.voter);
@@ -144,6 +153,7 @@ export function VoterProvider({
     setPendingIdeas(res.data.pending ?? []);
     setFollowing(new Set(res.data.following ?? []));
     setReactions(new Set(res.data.reactions ?? []));
+    setRatings(res.data.ratings ?? {});
   }, [site, workspaceId, embed]);
 
   useEffect(() => {
@@ -249,6 +259,26 @@ export function VoterProvider({
     [site, embed],
   );
 
+  const rateArticle = useCallback(
+    async (articleId: string, value: ArticleRating | null) => {
+      const res = await publicApi<{ value: ArticleRating | null }>(
+        "/api/public/article-ratings",
+        { site, embed },
+        { method: "POST", body: { articleId, value } },
+      );
+      if (!res.ok) {
+        toast.error(res.data.error ?? "Couldn't save your answer.");
+        return false;
+      }
+      setRatings((all) => {
+        const { [articleId]: _old, ...rest } = all;
+        return value ? { ...rest, [articleId]: value } : rest;
+      });
+      return true;
+    },
+    [site, embed],
+  );
+
   const signOut = useCallback(async () => {
     await publicApi(
       "/api/public/auth/sign-out",
@@ -275,6 +305,8 @@ export function VoterProvider({
       reactions,
       reactionTotals,
       toggleReaction,
+      ratings,
+      rateArticle,
       openSignIn: () => setSignInOpen(true),
       signOut,
       setVoter: (next) => {
@@ -296,6 +328,8 @@ export function VoterProvider({
       reactions,
       reactionTotals,
       toggleReaction,
+      ratings,
+      rateArticle,
       signOut,
       refresh,
     ],

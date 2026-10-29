@@ -1,4 +1,5 @@
 import { db } from "@/server/db/client";
+import { listArticleSitemapEntries } from "@/server/services/public-articles";
 import { listIdeaSitemapEntries } from "@/server/services/public-ideas";
 import { listSitemapEntries } from "@/server/services/public-site";
 import { listUpdateSitemapEntries } from "@/server/services/public-updates";
@@ -8,7 +9,7 @@ function escapeXml(value: string) {
   return value.replace(/[<>&'"]/g, (c) => `&#${c.charCodeAt(0)};`);
 }
 
-/** Roadmap, card, Ideas and idea URLs of workspaces that allow indexing. */
+/** Module, card, post, idea and article URLs of workspaces that allow indexing. */
 export async function GET(
   _request: Request,
   ctx: RouteContext<"/sites/[account]/sitemap.xml">,
@@ -17,11 +18,12 @@ export async function GET(
   if (!site) return new Response("Not found", { status: 404 });
   const origin = siteUrl(site.slug);
   const scope = { accountId: site.accountId };
-  const [workspaces, cards, ideas, posts] = await Promise.all([
+  const [workspaces, cards, ideas, posts, articles] = await Promise.all([
     loadWorkspaces(site.accountId),
     listSitemapEntries(db, scope),
     listIdeaSitemapEntries(db, scope),
     listUpdateSitemapEntries(db, scope),
+    listArticleSitemapEntries(db, scope),
   ]);
   const modules = await Promise.all(
     workspaces
@@ -31,7 +33,7 @@ export async function GET(
   const urls = [
     ...modules.flatMap((w) =>
       w
-        ? (["roadmap", "updates", "ideas"] as const)
+        ? (["roadmap", "updates", "ideas", "articles"] as const)
             .filter((m) => w.modules[m])
             .map((m) => ({ loc: `${origin}/${w.slug}/${m}`, lastmod: null }))
         : [],
@@ -47,6 +49,12 @@ export async function GET(
       .map((p) => ({
         loc: `${origin}/${p.workspace}/updates/${p.post}`,
         lastmod: p.updatedAt.toISOString(),
+      })),
+    ...articles
+      .filter((a) => a.indexable)
+      .map((a) => ({
+        loc: `${origin}/${a.workspace}/articles/${a.article}`,
+        lastmod: a.updatedAt.toISOString(),
       })),
     ...ideas
       .filter((i) => i.indexable)

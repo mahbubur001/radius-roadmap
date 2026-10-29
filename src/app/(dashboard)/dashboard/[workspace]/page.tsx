@@ -6,6 +6,7 @@ import { Skeleton } from "@/components/ui/skeleton";
 import { ago } from "@/lib/time";
 import { cn } from "@/lib/utils";
 import { db } from "@/server/db/client";
+import { articleStats } from "@/server/services/articles";
 import {
   RANGES,
   type Range,
@@ -57,12 +58,14 @@ async function Home({
 }) {
   const ctx = await requireWorkspace(await slug);
   const r = await range;
-  const [days, totals, recent, top] = await Promise.all([
+  const [days, totals, recent, top, kb] = await Promise.all([
     viewsByDay(db, ctx, r),
     summary(db, ctx, r),
     recentVotes(db, ctx, 8),
     topCards(db, ctx, 5),
+    articleStats(db, ctx),
   ]);
+  const rated = kb.likes + kb.neutrals + kb.dislikes;
   const base = `/dashboard/${ctx.workspaceSlug}`;
 
   return (
@@ -96,6 +99,19 @@ async function Home({
         <Stat label="Update subscribers" value={totals.subscribers} />
         <Stat label="Update views" value={totals.postViews} />
         <Stat label="Reactions" value={totals.reactions} />
+        <Stat label="Article views" value={totals.articleViews} />
+        <Stat label="Published articles" value={kb.published} />
+        <div className="flex flex-col gap-1 rounded-lg border p-4">
+          <span className="text-sm text-muted-foreground">
+            Articles rated helpful
+          </span>
+          <span className="text-2xl font-semibold tabular-nums">
+            {rated ? `${Math.round((kb.likes / rated) * 100)}%` : "–"}
+          </span>
+          <span className="text-xs text-muted-foreground">
+            {rated} {rated === 1 ? "rating" : "ratings"} in total
+          </span>
+        </div>
       </div>
 
       <section className="rounded-lg border p-4">

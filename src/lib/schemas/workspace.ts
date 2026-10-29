@@ -69,6 +69,7 @@ export const publicSiteSchema = z.object({
   showRoadmap: z.boolean(),
   showIdeas: z.boolean(),
   showUpdates: z.boolean(),
+  showArticles: z.boolean().default(true),
   /** Visitors comment on ideas and cards (doc 20 D3, off by default). */
   commentsEnabled: z.boolean(),
   /** Hold visitors' comments until the team approves them. */
@@ -79,6 +80,7 @@ export const publicSiteSchema = z.object({
   roadmapLabel: tabLabel,
   updatesLabel: tabLabel,
   ideasLabel: tabLabel,
+  articlesLabel: tabLabel,
   termsUrl: optionalUrl,
   privacyUrl: optionalUrl,
 });

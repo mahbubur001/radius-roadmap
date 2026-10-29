@@ -17,6 +17,7 @@ import {
 } from "@/lib/schemas/roadmap";
 import type { Db } from "@/server/db/client";
 import {
+  articles,
   cardAttachments,
   cardFeatures,
   cardFeedbackLinks,
@@ -37,6 +38,11 @@ import { fileUrl } from "@/server/storage/url";
 import { likePattern } from "./cards";
 import type { PublicContext } from "./context";
 import { byPosition } from "./positions";
+import {
+  articleIsPublic,
+  articlePathStatus,
+  hasPublicArticles,
+} from "./public-articles";
 import { boardIsPublic, hasPublicIdeas, ideaPathStatus } from "./public-ideas";
 import {
   hasPublicUpdates,
@@ -129,6 +135,14 @@ export async function listPublicWorkspaces(db: Db, ctx: PublicContext) {
               .from(updates)
               .where(and(eq(updates.workspaceId, workspaces.id), postIsPublic)),
           ),
+          exists(
+            db
+              .select({ one: sql`1` })
+              .from(articles)
+              .where(
+                and(eq(articles.workspaceId, workspaces.id), articleIsPublic),
+              ),
+          ),
         ),
       ),
     )
@@ -174,11 +188,12 @@ async function publicWorkspace(db: Db, ctx: PublicContext, match: SQL) {
       ),
     )
     .orderBy(byPosition(roadmaps.position));
-  const [ideas, posts] = await Promise.all([
+  const [ideas, posts, kb] = await Promise.all([
     hasPublicIdeas(db, ctx, ws.id),
     hasPublicUpdates(db, ctx, ws.id),
+    hasPublicArticles(db, ctx, ws.id),
   ]);
-  if (!boards.length && !ideas && !posts) return null;
+  if (!boards.length && !ideas && !posts && !kb) return null;
   return {
     id: ws.id,
     name: ws.name,
@@ -186,7 +201,12 @@ async function publicWorkspace(db: Db, ctx: PublicContext, match: SQL) {
     logo: ws.logo,
     settings: ws.settings,
     roadmaps: boards,
-    modules: { roadmap: boards.length > 0, updates: posts, ideas },
+    modules: {
+      roadmap: boards.length > 0,
+      updates: posts,
+      ideas,
+      articles: kb,
+    },
   };
 }
 
@@ -565,12 +585,16 @@ export async function isSiteWorkspace(
 }
 
 /** The first module a workspace shows: its tab when you open /<ws>. */
-function homeModule(ws: { modules: { roadmap: boolean; updates: boolean } }) {
+function homeModule(ws: {
+  modules: { roadmap: boolean; updates: boolean; ideas: boolean };
+}) {
   return ws.modules.roadmap
     ? "roadmap"
     : ws.modules.updates
       ? "updates"
-      : "ideas";
+      : ws.modules.ideas
+        ? "ideas"
+        : "articles";
 }
 
 export type PublicPathStatus = "ok" | "missing" | { redirect: string };
@@ -602,6 +626,14 @@ export async function publicPathStatus(
   }
   if (module === "updates") {
     return rest.length ? "missing" : updatePathStatus(db, ctx, ws, cardSlug);
+  }
+  if (module === "articles") {
+    return articlePathStatus(
+      db,
+      ctx,
+      ws,
+      cardSlug === undefined ? [] : [cardSlug, ...rest],
+    );
   }
   if (rest.length || (module !== undefined && module !== "roadmap")) {
     return "missing";

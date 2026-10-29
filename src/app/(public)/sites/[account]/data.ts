@@ -4,6 +4,12 @@ import { env } from "@/lib/env";
 import { db } from "@/server/db/client";
 import { publicTag, siteTag } from "@/server/public-cache";
 import {
+  getPublicArticle,
+  getPublicArticleCategory,
+  getPublicKnowledgeBase,
+  searchPublicArticles,
+} from "@/server/services/public-articles";
+import {
   getPublicIdea,
   getPublicIdeas,
   type IdeaSort,
@@ -123,6 +129,49 @@ export async function loadUpdate(
   cacheTag(publicTag(workspaceId));
   const post = await getPublicUpdate(db, { accountId }, workspaceId, slug);
   return post ? { ...post, cover: fileUrl(post.cover) } : null;
+}
+
+export async function loadKnowledgeBase(
+  accountId: string,
+  workspaceId: string,
+) {
+  "use cache";
+  cacheLife("hours");
+  cacheTag(publicTag(workspaceId));
+  return getPublicKnowledgeBase(db, { accountId }, workspaceId);
+}
+
+export async function loadArticleCategory(
+  accountId: string,
+  workspaceId: string,
+  slug: string,
+) {
+  "use cache";
+  cacheLife("hours");
+  cacheTag(publicTag(workspaceId));
+  return getPublicArticleCategory(db, { accountId }, workspaceId, slug);
+}
+
+export async function loadArticle(
+  accountId: string,
+  workspaceId: string,
+  slug: string,
+) {
+  "use cache";
+  cacheLife("hours");
+  cacheTag(publicTag(workspaceId));
+  return getPublicArticle(db, { accountId }, workspaceId, slug);
+}
+
+export async function loadArticleSearch(
+  accountId: string,
+  workspaceId: string,
+  q: string,
+) {
+  "use cache";
+  cacheLife("hours");
+  cacheTag(publicTag(workspaceId));
+  return searchPublicArticles(db, { accountId }, workspaceId, q);
 }
 
 /** Absolute base URL of a public site (<app>/<account>), for canonical URLs and sitemaps. */

@@ -65,6 +65,12 @@ export function PublicSiteForm({
               label="Ideas"
               description="Public feedback boards where visitors suggest and vote on ideas."
             />
+            <SwitchField
+              control={form.control}
+              name="showArticles"
+              label="Articles"
+              description="Your knowledge base: published public articles, by category, with search."
+            />
             <FieldSeparator>Header</FieldSeparator>
             <SwitchField
               control={form.control}
@@ -89,6 +95,12 @@ export function PublicSiteForm({
               name="ideasLabel"
               label="Ideas tab"
               placeholder="Ideas"
+            />
+            <TextField
+              control={form.control}
+              name="articlesLabel"
+              label="Articles tab"
+              placeholder="Articles"
             />
             <FieldSeparator>Comments and follows</FieldSeparator>
             <SwitchField

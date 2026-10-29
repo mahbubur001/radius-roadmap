@@ -13,13 +13,14 @@ import type { WorkspaceSettings } from "@/server/db/schema";
  * customer's iframe) the header and footer are dropped and the height is
  * reported to embed.js.
  */
-export type SiteModule = "roadmap" | "updates" | "ideas";
+export type SiteModule = "roadmap" | "updates" | "ideas" | "articles";
 
-/** LoopedIn's tab order: Roadmap, Updates, Ideas (Articles in Phase 5). */
+/** LoopedIn's tab order: Roadmap, Updates, Ideas, Articles. */
 const MODULES: { key: SiteModule; label: string }[] = [
   { key: "roadmap", label: "Roadmap" },
   { key: "updates", label: "Updates" },
   { key: "ideas", label: "Ideas" },
+  { key: "articles", label: "Articles" },
 ];
 
 export function SiteShell({
@@ -43,6 +44,7 @@ export function SiteShell({
       | "roadmapLabel"
       | "updatesLabel"
       | "ideasLabel"
+      | "articlesLabel"
     >;
     /** Modules switched on and with something public (doc 22 P2). */
     modules: Record<SiteModule, boolean>;

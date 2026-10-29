@@ -57,7 +57,9 @@ async function articleSlug(
   title: string,
   exceptId?: string,
 ) {
-  const base = slugify(title) || "article";
+  // "/articles/category/…" is the category page, so never use that slug.
+  const slug = slugify(title) || "article";
+  const base = slug === "category" ? "category-article" : slug;
   const rows = await db
     .select({ id: articles.id, slug: articles.slug })
     .from(articles)

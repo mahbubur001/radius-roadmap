@@ -40,6 +40,7 @@ async function PublicSettings({ slug }: { slug: Promise<string> }) {
           showRoadmap: settings.showRoadmap !== false,
           showIdeas: settings.showIdeas !== false,
           showUpdates: settings.showUpdates !== false,
+          showArticles: settings.showArticles !== false,
           commentsEnabled: !!settings.commentsEnabled,
           approveComments: !!settings.approveComments,
           followsEnabled: !!settings.followsEnabled,
@@ -47,6 +48,7 @@ async function PublicSettings({ slug }: { slug: Promise<string> }) {
           roadmapLabel: settings.roadmapLabel ?? "",
           updatesLabel: settings.updatesLabel ?? "",
           ideasLabel: settings.ideasLabel ?? "",
+          articlesLabel: settings.articlesLabel ?? "",
           termsUrl: settings.termsUrl ?? "",
           privacyUrl: settings.privacyUrl ?? "",
         }}

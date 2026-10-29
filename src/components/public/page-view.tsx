@@ -4,17 +4,19 @@ import { useEffect } from "react";
 import { publicApi, useVoter } from "./voter-provider";
 
 /**
- * Records a page, card or idea view (pages are cached, so this runs
+ * Records a page, card, idea, post or article view (pages are cached, so this runs
  * client-side).
  */
 export function PageView({
   cardId,
   ideaId,
   postId,
+  articleId,
 }: {
   cardId?: string;
   ideaId?: string;
   postId?: string;
+  articleId?: string;
 }) {
   const { site, workspaceId, embed } = useVoter();
   useEffect(() => {
@@ -31,11 +33,13 @@ export function PageView({
               ? "feedback_view"
               : postId
                 ? "update_view"
-                : "page_view",
-          subjectId: cardId ?? ideaId ?? postId ?? null,
+                : articleId
+                  ? "article_view"
+                  : "page_view",
+          subjectId: cardId ?? ideaId ?? postId ?? articleId ?? null,
         },
       },
     ).catch(() => undefined);
-  }, [site, workspaceId, embed, cardId, ideaId, postId]);
+  }, [site, workspaceId, embed, cardId, ideaId, postId, articleId]);
   return null;
 }

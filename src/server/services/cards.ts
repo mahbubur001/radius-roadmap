@@ -36,8 +36,10 @@ import {
   roadmapCards,
   user,
 } from "@/server/db/schema";
-import { deleteFile } from "@/server/storage";
+import { deleteFile, fileUrl, prefixes } from "@/server/storage";
+import { keyHasPrefix } from "@/server/storage/keys";
 import {
+  ForbiddenError,
   isUniqueViolation,
   NotFoundError,
   type WorkspaceContext,
@@ -150,9 +152,9 @@ export async function updateCard(
   ctx: WorkspaceContext,
   input: UpdateCardInput,
 ) {
-  const { id, tagIds, summaryJson, objectiveId, ...rest } =
+  const { id, tagIds, summaryJson, objectiveId, headerImageKey, ...rest } =
     updateCardSchema.parse(input);
-  await getCard(db, ctx, id);
+  const current = await getCard(db, ctx, id);
 
   // updatedAt is always set, so a tags-only patch still has a SET clause.
   const set: Partial<typeof roadmapCards.$inferInsert> = {
@@ -176,8 +178,20 @@ export async function updateCard(
     }
     set.objectiveId = objectiveId;
   }
+  if (headerImageKey !== undefined) {
+    if (
+      headerImageKey &&
+      !keyHasPrefix(
+        headerImageKey,
+        prefixes.cardImages(ctx.accountId, ctx.workspaceId),
+      )
+    ) {
+      throw new ForbiddenError("Invalid image.");
+    }
+    set.headerImageKey = headerImageKey;
+  }
 
-  return db.transaction(async (tx) => {
+  const saved = await db.transaction(async (tx) => {
     const [row] = await tx
       .update(roadmapCards)
       .set(set)
@@ -195,6 +209,14 @@ export async function updateCard(
     }
     return row;
   });
+  if (
+    headerImageKey !== undefined &&
+    current.headerImageKey &&
+    current.headerImageKey !== headerImageKey
+  ) {
+    await deleteFile(current.headerImageKey);
+  }
+  return saved;
 }
 
 /**
@@ -278,6 +300,7 @@ export async function setCardArchived(
 }
 
 export async function deleteCard(db: Db, ctx: WorkspaceContext, id: string) {
+  const { headerImageKey } = await getCard(db, ctx, id);
   const files = await db
     .select({ key: cardAttachments.key })
     .from(cardAttachments)
@@ -290,7 +313,11 @@ export async function deleteCard(db: Db, ctx: WorkspaceContext, id: string) {
     .returning({ id: roadmapCards.id });
   if (!row) throw new NotFoundError("Card not found.");
   // Attachment rows cascade; their files are removed here.
-  await Promise.all(files.map((f) => deleteFile(f.key)));
+  await Promise.all(
+    [...files.map((f) => f.key), headerImageKey].map((key) =>
+      key ? deleteFile(key) : undefined,
+    ),
+  );
 }
 
 /**
@@ -397,6 +424,7 @@ export type BoardCard = {
   objectiveId: string | null;
   plannedFor: string | null;
   isPublic: boolean;
+  headerImageUrl: string | null;
   completed: boolean;
   votes: number;
   tagIds: string[];
@@ -471,6 +499,7 @@ export async function listBoardCards(
       summaryText: roadmapCards.summaryText,
       objectiveId: roadmapCards.objectiveId,
       plannedFor: roadmapCards.plannedFor,
+      headerImageKey: roadmapCards.headerImageKey,
       isPublic: roadmapCards.isPublic,
       completedAt: roadmapCards.completedAt,
       voteCount: roadmapCards.voteCount,
@@ -500,17 +529,20 @@ export async function listBoardCards(
       ])
     : [[], []];
 
-  return rows.map(({ completedAt, voteCount, importedVotes, ...r }) => {
-    const f = featureRows.find((x) => x.cardId === r.id);
-    return {
-      ...r,
-      summaryText: r.summaryText.slice(0, 200),
-      completed: !!completedAt,
-      votes: voteCount + importedVotes,
-      tagIds: tagRows.filter((t) => t.cardId === r.id).map((t) => t.tagId),
-      features: { done: f?.done ?? 0, total: f?.total ?? 0 },
-    };
-  });
+  return rows.map(
+    ({ completedAt, voteCount, importedVotes, headerImageKey, ...r }) => {
+      const f = featureRows.find((x) => x.cardId === r.id);
+      return {
+        ...r,
+        headerImageUrl: fileUrl(headerImageKey),
+        summaryText: r.summaryText.slice(0, 200),
+        completed: !!completedAt,
+        votes: voteCount + importedVotes,
+        tagIds: tagRows.filter((t) => t.cardId === r.id).map((t) => t.tagId),
+        features: { done: f?.done ?? 0, total: f?.total ?? 0 },
+      };
+    },
+  );
 }
 
 /** Everything the card drawer needs. */
@@ -533,6 +565,7 @@ export async function getCardDetail(db: Db, ctx: WorkspaceContext, id: string) {
   const { search: _search, ...rest } = card;
   return {
     ...rest,
+    headerImageUrl: fileUrl(card.headerImageKey),
     tagIds: tagRows.map((t) => t.tagId),
     features,
     createdByName: creator?.name ?? null,

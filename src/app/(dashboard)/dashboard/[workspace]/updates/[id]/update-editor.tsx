@@ -5,7 +5,6 @@ import {
   CalendarClock,
   Copy,
   ExternalLink,
-  ImageUp,
   Plus,
   Send,
   Trash2,
@@ -13,7 +12,7 @@ import {
 } from "lucide-react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { useCallback, useEffect, useRef, useState } from "react";
+import { useCallback, useEffect, useState } from "react";
 import { toast } from "sonner";
 import {
   deleteUpdateAction,
@@ -25,14 +24,11 @@ import {
   unpublishUpdateAction,
 } from "@/app/(dashboard)/_actions/updates";
 import {
-  requestUploadAction,
-  saveUploadAction,
-} from "@/app/(dashboard)/_actions/uploads";
-import {
   autosaveLabel,
   useAutosave,
 } from "@/components/dashboard/use-autosave";
 import { DatePicker } from "@/components/form/date-picker";
+import { ImageUploadField } from "@/components/form/image-upload-field";
 import {
   RichTextEditor,
   type RichTextValue,
@@ -73,11 +69,6 @@ import {
 } from "@/components/ui/select";
 import { Switch } from "@/components/ui/switch";
 import type { PatchUpdateInput } from "@/lib/schemas/updates";
-import {
-  IMAGE_TYPES,
-  type ImageType,
-  MAX_IMAGE_BYTES,
-} from "@/lib/schemas/upload";
 import { ago } from "@/lib/time";
 import type { getUpdateDetail } from "@/server/services/updates";
 import type { CategoryOption } from "../categories-dialog";
@@ -244,8 +235,10 @@ export function UpdateEditor({
             </Select>
           </div>
 
-          <CoverField
-            workspace={workspace}
+          <ImageUploadField
+            label="Cover image"
+            addLabel="Add cover"
+            className="aspect-[16/9]"
             workspaceId={workspaceId}
             url={post.coverUrl}
             onSave={(cover) => save({ cover })}
@@ -348,109 +341,6 @@ export function UpdateEditor({
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>
-    </div>
-  );
-}
-
-/** Optional cover image, uploaded like images in the post body. */
-function CoverField({
-  workspace: _workspace,
-  workspaceId,
-  url: initial,
-  onSave,
-}: {
-  workspace: string;
-  workspaceId: string;
-  url: string | null;
-  onSave: (key: string | null) => Promise<boolean>;
-}) {
-  const input = useRef<HTMLInputElement>(null);
-  const [url, setUrl] = useState(initial);
-  const [busy, setBusy] = useState(false);
-
-  async function upload(file: File) {
-    if (!(file.type in IMAGE_TYPES)) {
-      return toast.error("Use a PNG, JPEG or WebP image.");
-    }
-    if (file.size > MAX_IMAGE_BYTES) {
-      return toast.error("Images must be 2 MB or smaller.");
-    }
-    setBusy(true);
-    try {
-      const form = await requestUploadAction({
-        purpose: "card-image",
-        workspaceId,
-        contentType: file.type as ImageType,
-        size: file.size,
-      });
-      if (!form.ok) throw new Error(form.error);
-      const body = new FormData();
-      for (const [k, v] of Object.entries(form.data.fields)) body.append(k, v);
-      body.append("file", file); // must be the last field for S3
-      const res = await fetch(form.data.url, { method: "POST", body });
-      if (!res.ok) throw new Error("Upload failed. Try again.");
-      const saved = await saveUploadAction({
-        purpose: "card-image",
-        workspaceId,
-        key: form.data.key,
-      });
-      if (!saved.ok) throw new Error(saved.error);
-      if (await onSave(form.data.key)) setUrl(saved.data.url);
-    } catch (error) {
-      toast.error(error instanceof Error ? error.message : "Upload failed.");
-    } finally {
-      setBusy(false);
-      if (input.current) input.current.value = "";
-    }
-  }
-
-  return (
-    <div className="flex flex-col gap-2">
-      <Label>Cover image</Label>
-      {url ? (
-        // biome-ignore lint/performance/noImgElement: user upload, any size
-        <img
-          src={url}
-          alt=""
-          className="aspect-[16/9] w-full rounded-md border object-cover"
-        />
-      ) : null}
-      <input
-        ref={input}
-        type="file"
-        hidden
-        aria-label="Cover image file"
-        accept={Object.keys(IMAGE_TYPES).join(",")}
-        onChange={(e) => {
-          const file = e.target.files?.[0];
-          if (file) void upload(file);
-        }}
-      />
-      <div className="flex gap-2">
-        <Button
-          type="button"
-          variant="outline"
-          size="sm"
-          disabled={busy}
-          onClick={() => input.current?.click()}
-        >
-          <ImageUp />
-          {busy ? "Uploading…" : url ? "Change" : "Add cover"}
-        </Button>
-        {url ? (
-          <Button
-            type="button"
-            variant="ghost"
-            size="sm"
-            disabled={busy}
-            onClick={async () => {
-              if (await onSave(null)) setUrl(null);
-            }}
-          >
-            Remove
-          </Button>
-        ) : null}
-      </div>
     </div>
   );
 }

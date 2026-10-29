@@ -24,6 +24,7 @@ import {
 } from "@dnd-kit/sortable";
 import { CSS } from "@dnd-kit/utilities";
 import {
+  CalendarDays,
   CheckCircle2,
   ChevronUp,
   EyeOff,
@@ -36,6 +37,7 @@ import { useId, useMemo, useRef, useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { cn } from "@/lib/utils";
+import { useBoardDisplay } from "./board-display";
 import { ObjectivePicker } from "./objective-picker";
 import {
   type BoardCard,
@@ -413,6 +415,8 @@ function SortableCard({
   onCreateObjective?: (name: string) => Promise<ObjectiveOption | null>;
 }) {
   const sortable = useSortable({ id: card.id });
+  const { display } = useBoardDisplay();
+  const image = display.showImageHeaders ? card.headerImageUrl : null;
   return (
     <div
       ref={sortable.setNodeRef}
@@ -420,31 +424,45 @@ function SortableCard({
         transform: CSS.Translate.toString(sortable.transform),
         transition: sortable.transition,
       }}
-      className={cn("relative", sortable.isDragging && "opacity-40")}
+      className={cn(sortable.isDragging && "opacity-40")}
     >
-      <button
-        type="button"
-        className="block w-full rounded-md text-left focus-visible:ring-2 focus-visible:ring-ring focus-visible:outline-none"
-        {...sortable.attributes}
-        {...sortable.listeners}
-        aria-label={card.title}
-        onClick={() => onOpen(card.id)}
-      >
-        <CardFace
-          card={card}
-          objective={objectives.find((c) => c.id === card.objectiveId)}
-          summaryView={summaryView}
-          objectiveSlot
+      {image ? (
+        // biome-ignore lint/performance/noImgElement: user upload, served as-is
+        <img
+          src={image}
+          alt=""
+          loading="lazy"
+          className="aspect-[3/1] w-full rounded-t-md border border-b-0 object-cover"
         />
-      </button>
-      {/* Outside the card's button: a button can't contain another one. */}
-      <ObjectivePicker
-        objectives={objectives}
-        value={card.objectiveId}
-        onChange={(id) => onSetObjective(card.id, id)}
-        onCreate={onCreateObjective}
-        className="absolute top-3 left-5 max-w-[calc(100%-2.5rem)]"
-      />
+      ) : null}
+      <div className="relative">
+        <button
+          type="button"
+          className="block w-full rounded-md text-left focus-visible:ring-2 focus-visible:ring-ring focus-visible:outline-none"
+          {...sortable.attributes}
+          {...sortable.listeners}
+          aria-label={card.title}
+          onClick={() => onOpen(card.id)}
+        >
+          <CardFace
+            card={card}
+            objective={objectives.find((c) => c.id === card.objectiveId)}
+            summaryView={summaryView}
+            objectiveSlot
+            className={image ? "rounded-t-none" : undefined}
+          />
+        </button>
+        {/* Outside the card's button: a button can't contain another one. */}
+        {display.showObjectives ? (
+          <ObjectivePicker
+            objectives={objectives}
+            value={card.objectiveId}
+            onChange={(id) => onSetObjective(card.id, id)}
+            onCreate={onCreateObjective}
+            className="absolute top-3 left-5 max-w-[calc(100%-2.5rem)]"
+          />
+        ) : null}
+      </div>
     </div>
   );
 }
@@ -463,16 +481,23 @@ function CardFace({
   objectiveSlot?: boolean;
   className?: string;
 }) {
+  const { display, tags } = useBoardDisplay();
   const { done, total } = card.features;
+  const shownObjective = display.showObjectives ? objective : undefined;
+  const cardTags = display.showTags
+    ? tags.filter((t) => card.tagIds.includes(t.id))
+    : [];
   return (
     <article
       className={cn(
         "flex cursor-pointer flex-col gap-2 rounded-md border border-l-4 bg-card py-3 pr-3 pl-4 text-card-foreground shadow-xs hover:border-ring",
         className,
       )}
-      style={objective ? { borderLeftColor: objective.color } : undefined}
+      style={
+        shownObjective ? { borderLeftColor: shownObjective.color } : undefined
+      }
     >
-      {objectiveSlot ? (
+      {!display.showObjectives ? null : objectiveSlot ? (
         <span className="h-4" />
       ) : (
         <span className="flex items-center gap-1.5 text-xs font-medium">
@@ -491,12 +516,24 @@ function CardFace({
         ) : null}
         {card.title}
       </p>
-      {summaryView && card.summaryText ? (
+      {summaryView && display.showDescriptions && card.summaryText ? (
         <p className="line-clamp-3 text-xs text-muted-foreground">
           {card.summaryText}
         </p>
       ) : null}
-      {total > 0 ? (
+      {cardTags.length ? (
+        <ul className="flex flex-wrap gap-1" aria-label="Tags">
+          {cardTags.map((t) => (
+            <li
+              key={t.id}
+              className="rounded bg-muted px-1.5 py-0.5 text-[11px] text-muted-foreground"
+            >
+              {t.name}
+            </li>
+          ))}
+        </ul>
+      ) : null}
+      {display.showFeatureProgress && total > 0 ? (
         <div className="flex items-center gap-2 text-xs text-muted-foreground">
           <div className="h-1 flex-1 rounded-full bg-muted">
             <div
@@ -508,13 +545,21 @@ function CardFace({
         </div>
       ) : null}
       <div className="flex items-center gap-3 text-xs text-muted-foreground">
-        <span
-          className="flex items-center gap-1 rounded border bg-background px-2 py-0.5 font-medium"
-          title="Votes"
-        >
-          <ChevronUp className="size-3.5" />
-          {card.votes}
-        </span>
+        {display.showVotes ? (
+          <span
+            className="flex items-center gap-1 rounded border bg-background px-2 py-0.5 font-medium"
+            title="Votes"
+          >
+            <ChevronUp className="size-3.5" />
+            {card.votes}
+          </span>
+        ) : null}
+        {display.showDates && card.plannedFor ? (
+          <span className="flex items-center gap-1" title="Planned for">
+            <CalendarDays className="size-3.5" />
+            {formatPlanned(card.plannedFor)}
+          </span>
+        ) : null}
         {card.ideas ? (
           <span
             className="flex items-center gap-1"
@@ -530,4 +575,12 @@ function CardFace({
       </div>
     </article>
   );
+}
+
+function formatPlanned(date: string) {
+  return new Date(`${date}T00:00:00`).toLocaleDateString(undefined, {
+    month: "short",
+    day: "numeric",
+    year: "numeric",
+  });
 }

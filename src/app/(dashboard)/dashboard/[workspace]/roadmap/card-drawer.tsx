@@ -43,6 +43,7 @@ import {
 } from "@/components/dashboard/use-autosave";
 import { VotersList } from "@/components/dashboard/voters-list";
 import { DatePicker } from "@/components/form/date-picker";
+import { ImageUploadField } from "@/components/form/image-upload-field";
 import {
   RichTextEditor,
   type RichTextValue,
@@ -91,6 +92,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import type { UpdateCardInput } from "@/lib/schemas/roadmap";
 import { ago } from "@/lib/time";
 import { cn } from "@/lib/utils";
+import { useBoardDisplay } from "./board-display";
 import { Attachments } from "./card-activity-tabs";
 import { ObjectivePicker } from "./objective-picker";
 import type { BoardCard, ObjectiveOption, TagOption } from "./types";
@@ -216,6 +218,7 @@ function CardEditor({
   publicComments: boolean;
 }) {
   const router = useRouter();
+  const { display } = useBoardDisplay();
   const { card } = detail;
   const [title, setTitle] = useState(card.title);
   const [publicTitle, setPublicTitle] = useState(card.publicTitle ?? "");
@@ -324,25 +327,29 @@ function CardEditor({
               className="self-start"
             />
             <div className="flex items-center gap-4">
-              <button
-                type="button"
-                aria-pressed={myVote}
-                aria-label={myVote ? "Remove your vote" : "Vote for this card"}
-                disabled={voting}
-                onClick={toggleVote}
-                className={cn(
-                  "flex size-14 shrink-0 flex-col items-center justify-center rounded-md border-2 text-lg font-semibold transition-colors",
-                  myVote
-                    ? "border-primary text-emerald-600"
-                    : "border-border text-muted-foreground hover:border-primary/60",
-                )}
-              >
-                <ChevronUp
-                  className={cn("size-5", myVote && "fill-current")}
-                  strokeWidth={myVote ? 3 : 2}
-                />
-                <span data-testid="card-vote-count">{votes}</span>
-              </button>
+              {display.showVotes ? (
+                <button
+                  type="button"
+                  aria-pressed={myVote}
+                  aria-label={
+                    myVote ? "Remove your vote" : "Vote for this card"
+                  }
+                  disabled={voting}
+                  onClick={toggleVote}
+                  className={cn(
+                    "flex size-14 shrink-0 flex-col items-center justify-center rounded-md border-2 text-lg font-semibold transition-colors",
+                    myVote
+                      ? "border-primary text-emerald-600"
+                      : "border-border text-muted-foreground hover:border-primary/60",
+                  )}
+                >
+                  <ChevronUp
+                    className={cn("size-5", myVote && "fill-current")}
+                    strokeWidth={myVote ? 3 : 2}
+                  />
+                  <span data-testid="card-vote-count">{votes}</span>
+                </button>
+              ) : null}
               <Input
                 aria-label="Title"
                 className="h-auto border-none bg-transparent px-0 text-2xl font-semibold shadow-none focus-visible:ring-0 md:text-2xl dark:bg-transparent"
@@ -376,22 +383,28 @@ function CardEditor({
               <TabsTrigger value="general" className={TAB}>
                 General
               </TabsTrigger>
-              <TabsTrigger value="features" className={TAB}>
-                Features (
-                {features.length
-                  ? `${doneCount}/${features.length}`
-                  : features.length}
-                )
-              </TabsTrigger>
+              {display.showFeatures ? (
+                <TabsTrigger value="features" className={TAB}>
+                  Features (
+                  {features.length
+                    ? `${doneCount}/${features.length}`
+                    : features.length}
+                  )
+                </TabsTrigger>
+              ) : null}
               <TabsTrigger value="feedback" className={TAB}>
                 Linked feedback ({detail.feedback.length})
               </TabsTrigger>
-              <TabsTrigger value="attachments" className={TAB}>
-                Attachments ({attachments.length})
-              </TabsTrigger>
-              <TabsTrigger value="votes" className={TAB}>
-                Votes ({votes})
-              </TabsTrigger>
+              {display.showAttachments ? (
+                <TabsTrigger value="attachments" className={TAB}>
+                  Attachments ({attachments.length})
+                </TabsTrigger>
+              ) : null}
+              {display.showVotes ? (
+                <TabsTrigger value="votes" className={TAB}>
+                  Votes ({votes})
+                </TabsTrigger>
+              ) : null}
               <TabsTrigger value="comments" className={TAB}>
                 Comments ({comments.length})
               </TabsTrigger>
@@ -401,6 +414,27 @@ function CardEditor({
               value="general"
               className="flex flex-col gap-5 px-8 py-6"
             >
+              <ImageUploadField
+                label="Header image"
+                addLabel="Add header image"
+                className="aspect-[3/1]"
+                workspaceId={workspaceId}
+                url={detail.card.headerImageUrl}
+                onSave={async (headerImageKey) => {
+                  const result = await updateCardAction({
+                    workspace,
+                    id: card.id,
+                    headerImageKey,
+                  });
+                  if (!result.ok) {
+                    toast.error(result.error);
+                    return false;
+                  }
+                  router.refresh();
+                  return true;
+                }}
+              />
+
               <div className="flex flex-col gap-2">
                 <Label>Summary</Label>
                 <RichTextEditor

@@ -82,13 +82,22 @@ async function PublicRoadmap(props: Props) {
         <div className="flex flex-wrap items-center gap-4 border-b pb-6">
           {embed ? null : (
             <div className="flex flex-col gap-2">
-              <h1 className="text-3xl font-semibold tracking-tight">
+              <h1
+                className={
+                  roadmap.display.showTitle
+                    ? "text-3xl font-semibold tracking-tight"
+                    : "sr-only"
+                }
+              >
                 {roadmap.title}
               </h1>
-              {roadmap.summary ? (
-                <p className="max-w-2xl text-muted-foreground">
-                  {roadmap.summary}
-                </p>
+              {roadmap.summaryHtml ? (
+                <div
+                  className="rich-text max-w-2xl text-muted-foreground"
+                  // Rendered from Tiptap JSON by the allow-list in src/lib/rich-text.ts.
+                  // biome-ignore lint/security/noDangerouslySetInnerHtml: sanitized server-side
+                  dangerouslySetInnerHTML={{ __html: roadmap.summaryHtml }}
+                />
               ) : null}
             </div>
           )}

@@ -95,6 +95,15 @@ export function PublicBoard({
                           card.objective?.color ?? "var(--border)",
                       }}
                     >
+                      {card.image ? (
+                        // biome-ignore lint/performance/noImgElement: tenant uploads on any host
+                        <img
+                          src={card.image}
+                          alt=""
+                          loading="lazy"
+                          className="-mx-5 -mt-4 mb-1 aspect-[3/1] w-[calc(100%+2.5rem)] max-w-none object-cover"
+                        />
+                      ) : null}
                       {card.objective ? (
                         <span className="flex w-fit items-center gap-1.5 rounded border px-2 py-0.5 text-xs">
                           <span
@@ -134,8 +143,8 @@ export function PublicBoard({
                           {card.preview}
                         </p>
                       ) : null}
-                      {card.features?.length ? (
-                        <FeatureBar features={card.features} />
+                      {card.progress ? (
+                        <FeatureBar progress={card.progress} />
                       ) : null}
                       <div className="relative z-10 flex items-center gap-3 text-sm text-muted-foreground">
                         <VoteButton cardId={card.id} votes={card.votes} />
@@ -195,20 +204,19 @@ export function PublicBoard({
 }
 
 function FeatureBar({
-  features,
+  progress: { done, total },
 }: {
-  features: NonNullable<PublicCard["features"]>;
+  progress: NonNullable<PublicCard["progress"]>;
 }) {
-  const done = features.filter((f) => f.done).length;
   return (
     <div className="flex items-center gap-2 text-xs text-muted-foreground">
       <div className="h-1 flex-1 rounded-full bg-muted">
         <div
           className="h-1 rounded-full bg-primary"
-          style={{ width: `${Math.round((done / features.length) * 100)}%` }}
+          style={{ width: `${Math.round((done / total) * 100)}%` }}
         />
       </div>
-      {done}/{features.length}
+      {done}/{total}
     </div>
   );
 }

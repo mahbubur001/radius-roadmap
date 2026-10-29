@@ -128,6 +128,8 @@ export const updateCardSchema = z.object({
   plannedFor: z.iso.date().nullable().optional(),
   isPublic: z.boolean().optional(),
   tagIds: z.array(id).max(20).optional(),
+  /** Storage key of the header image (doc 24 R5); null removes it. */
+  headerImageKey: z.string().max(300).nullable().optional(),
 });
 
 export type UpdateCardInput = z.input<typeof updateCardSchema>;

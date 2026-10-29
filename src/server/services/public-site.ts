@@ -1,5 +1,6 @@
 import {
   and,
+  asc,
   eq,
   exists,
   ilike,
@@ -16,6 +17,7 @@ import {
 } from "@/lib/schemas/roadmap";
 import type { Db } from "@/server/db/client";
 import {
+  cardAttachments,
   cardFeatures,
   cardFeedbackLinks,
   cardTags,
@@ -31,6 +33,7 @@ import {
   updates,
   workspaces,
 } from "@/server/db/schema";
+import { fileUrl } from "@/server/storage/url";
 import { likePattern } from "./cards";
 import type { PublicContext } from "./context";
 import { byPosition } from "./positions";
@@ -203,6 +206,12 @@ export type PublicCard = {
   tags: string[];
   plannedFor: string | null;
   features: { title: string; done: boolean }[] | null;
+  /** Completed features (null when progress bars are hidden or none). */
+  progress: { done: number; total: number } | null;
+  /** Header image URL (doc 24 R5). */
+  image: string | null;
+  /** Card page only, when the roadmap shows attachments publicly. */
+  attachments: { name: string; url: string; contentType: string }[] | null;
   /** Public, approved feedback linked to the card (the 💡 count). */
   ideas: number;
   /** Approved public comments (team notes never count). */
@@ -251,6 +260,7 @@ async function publicCards(
       summaryText: roadmapCards.summaryText,
       summaryJson: roadmapCards.summaryJson,
       plannedFor: roadmapCards.plannedFor,
+      headerImageKey: roadmapCards.headerImageKey,
       objectiveName: objectives.name,
       objectiveColor: objectives.color,
       ideas: sql<number>`(select count(*)::int from ${cardFeedbackLinks} inner join ${feedbackItems} on ${feedbackItems.id} = ${cardFeedbackLinks.feedbackId} where ${cardFeedbackLinks.cardId} = ${roadmapCards.id} and ${feedbackItems.isPublic} and ${feedbackItems.review} = 'approved' and ${feedbackItems.archivedAt} is null)`,
@@ -263,7 +273,8 @@ async function publicCards(
     .orderBy(byPosition(roadmapCards.position));
 
   const ids = rows.map((r) => r.id);
-  const [tagRows, featureRows] = ids.length
+  const withAttachments = withHtml && display.showAttachments;
+  const [tagRows, featureRows, attachmentRows] = ids.length
     ? await Promise.all([
         display.showTags
           ? db
@@ -272,7 +283,7 @@ async function publicCards(
               .innerJoin(tags, eq(tags.id, cardTags.tagId))
               .where(inArray(cardTags.cardId, ids))
           : [],
-        display.showFeatures
+        display.showFeatures || display.showFeatureProgress
           ? db
               .select({
                 cardId: cardFeatures.cardId,
@@ -283,8 +294,20 @@ async function publicCards(
               .where(inArray(cardFeatures.cardId, ids))
               .orderBy(byPosition(cardFeatures.position))
           : [],
+        withAttachments
+          ? db
+              .select({
+                cardId: cardAttachments.cardId,
+                key: cardAttachments.key,
+                name: cardAttachments.name,
+                contentType: cardAttachments.contentType,
+              })
+              .from(cardAttachments)
+              .where(inArray(cardAttachments.cardId, ids))
+              .orderBy(asc(cardAttachments.createdAt))
+          : [],
       ])
-    : [[], []];
+    : [[], [], []];
 
   return rows.map((r) => ({
     id: r.id,
@@ -311,9 +334,33 @@ async function publicCards(
           .filter((f) => f.cardId === r.id)
           .map(({ title, done }) => ({ title, done }))
       : null,
+    progress: featureProgress(
+      display.showFeatureProgress
+        ? featureRows.filter((f) => f.cardId === r.id)
+        : [],
+    ),
+    image: display.showImageHeaders ? fileUrl(r.headerImageKey) : null,
+    attachments: withAttachments
+      ? attachmentRows
+          .filter((a) => a.cardId === r.id)
+          .flatMap((a) => {
+            const url = fileUrl(a.key);
+            return url
+              ? [{ name: a.name, url, contentType: a.contentType }]
+              : [];
+          })
+      : null,
     ideas: r.ideas,
     comments: r.comments,
   }));
+}
+
+function featureProgress(features: { done: boolean }[]) {
+  if (!features.length) return null;
+  return {
+    done: features.filter((f) => f.done).length,
+    total: features.length,
+  };
 }
 
 async function getPublicRoadmapRow(
@@ -376,7 +423,12 @@ export async function getPublicRoadmap(
     id: roadmap.id,
     slug: roadmap.slug,
     title: roadmap.publicTitle ?? roadmap.internalTitle,
+    /** Plain text, for meta descriptions. */
     summary: roadmap.publicSummary,
+    /** Shown above the board (null when the roadmap hides it). */
+    summaryHtml: display.showSummary
+      ? renderRichText(roadmap.publicSummaryJson) || null
+      : null,
     display,
     columns,
     cards,

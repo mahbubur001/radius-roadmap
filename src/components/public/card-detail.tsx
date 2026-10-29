@@ -1,3 +1,4 @@
+import { Paperclip } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import type { PublicCard } from "@/server/services/public-site";
@@ -21,9 +22,17 @@ export function CardDetail({
   commentsEnabled: boolean;
 }) {
   const features = card.features ?? [];
-  const done = features.filter((f) => f.done).length;
+  const progress = card.progress;
   return (
     <article className="flex flex-col">
+      {card.image ? (
+        // biome-ignore lint/performance/noImgElement: tenant uploads on any host
+        <img
+          src={card.image}
+          alt=""
+          className="aspect-[3/1] w-full object-cover"
+        />
+      ) : null}
       <header className="flex flex-col items-start gap-4 border-b px-6 pt-6 pb-5">
         <h1 className="pr-8 text-xl font-semibold tracking-tight">
           {card.title}
@@ -101,33 +110,63 @@ export function CardDetail({
             </Field>
           ) : null}
 
-          {features.length ? (
-            <Field label={`Features · ${done}/${features.length} done`}>
-              <div className="h-1.5 rounded-full bg-muted">
-                <div
-                  className="h-1.5 rounded-full bg-primary"
-                  style={{
-                    width: `${Math.round((done / features.length) * 100)}%`,
-                  }}
-                />
-              </div>
+          {progress || features.length ? (
+            <Field
+              label={
+                progress
+                  ? `Features · ${progress.done}/${progress.total} done`
+                  : "Features"
+              }
+            >
+              {progress ? (
+                <div className="h-1.5 rounded-full bg-muted">
+                  <div
+                    className="h-1.5 rounded-full bg-primary"
+                    style={{
+                      width: `${Math.round((progress.done / progress.total) * 100)}%`,
+                    }}
+                  />
+                </div>
+              ) : null}
+              {features.length ? (
+                <ul className="flex flex-col gap-1 text-sm">
+                  {features.map((f) => (
+                    <li key={f.title} className="flex items-center gap-2">
+                      <span
+                        className={
+                          f.done
+                            ? "size-3 rounded-full bg-primary"
+                            : "size-3 rounded-full border"
+                        }
+                      />
+                      <span
+                        className={
+                          f.done ? "text-muted-foreground line-through" : ""
+                        }
+                      >
+                        {f.title}
+                      </span>
+                    </li>
+                  ))}
+                </ul>
+              ) : null}
+            </Field>
+          ) : null}
+
+          {card.attachments?.length ? (
+            <Field label="Attachments">
               <ul className="flex flex-col gap-1 text-sm">
-                {features.map((f) => (
-                  <li key={f.title} className="flex items-center gap-2">
-                    <span
-                      className={
-                        f.done
-                          ? "size-3 rounded-full bg-primary"
-                          : "size-3 rounded-full border"
-                      }
-                    />
-                    <span
-                      className={
-                        f.done ? "text-muted-foreground line-through" : ""
-                      }
+                {card.attachments.map((a) => (
+                  <li key={a.url}>
+                    <a
+                      href={a.url}
+                      target="_blank"
+                      rel="noreferrer"
+                      className="flex items-center gap-2 text-primary underline-offset-2 hover:underline"
                     >
-                      {f.title}
-                    </span>
+                      <Paperclip className="size-3.5 shrink-0" />
+                      {a.name}
+                    </a>
                   </li>
                 ))}
               </ul>

@@ -47,7 +47,12 @@ function oneOf<T extends string>(list: readonly T[], value: string | null) {
   return list.find((v) => v === value);
 }
 
-export function filtersFromParams(params: URLSearchParams): RoadmapFilters {
+/** `completedByDefault`: the roadmap's internal "Completed cards" setting. */
+export function filtersFromParams(
+  params: URLSearchParams,
+  completedByDefault = true,
+): RoadmapFilters {
+  const done = params.get("done");
   return {
     objective: params.get("obj") ?? "all",
     tags: params.get("tags")?.split(",").filter(Boolean) ?? [],
@@ -58,12 +63,16 @@ export function filtersFromParams(params: URLSearchParams): RoadmapFilters {
     attachments: oneOf(PRESENCE, params.get("files")) ?? "all",
     comments: oneOf(PRESENCE, params.get("comments")) ?? "all",
     followers: oneOf(PRESENCE, params.get("followers")) ?? "all",
-    showCompleted: params.get("done") !== "hide",
+    showCompleted: done ? done !== "hide" : completedByDefault,
   };
 }
 
 /** Writes non-default filters into `params` (and removes default ones). */
-export function filtersToParams(f: RoadmapFilters, params: URLSearchParams) {
+export function filtersToParams(
+  f: RoadmapFilters,
+  params: URLSearchParams,
+  completedByDefault = true,
+) {
   const set = (key: string, value: string | null) =>
     value ? params.set(key, value) : params.delete(key);
   set("obj", f.objective === "all" ? null : f.objective);
@@ -75,7 +84,14 @@ export function filtersToParams(f: RoadmapFilters, params: URLSearchParams) {
   set("files", f.attachments === "all" ? null : f.attachments);
   set("comments", f.comments === "all" ? null : f.comments);
   set("followers", f.followers === "all" ? null : f.followers);
-  set("done", f.showCompleted ? null : "hide");
+  set(
+    "done",
+    f.showCompleted === completedByDefault
+      ? null
+      : f.showCompleted
+        ? "show"
+        : "hide",
+  );
 }
 
 /** Filters that narrow the board (the completed toggle has its own button). */

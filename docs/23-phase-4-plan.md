@@ -95,3 +95,11 @@ Sources:
 - [ ] Subscribers confirm, receive post emails once, and can unsubscribe in one click.
 - [ ] Idea followers get status-changed and shipped emails (when follows are on).
 - [ ] Public Updates tab, post pages, RSS and sitemap work; checks green.
+
+---
+
+## As built
+
+- **Step 1 (2026-10-29):** schema in `src/server/db/schema/updates.ts`, migration `0007_updates` (tables, enums, `event_type` values, `notification_preferences.new_subscriber`, default categories backfilled for existing workspaces). `src/server/services/update-categories.ts` (seeded by `seedWorkspace`, admin-only CRUD).
+- **Step 2 (2026-10-29):** `src/server/services/updates.ts` (drafts, autosave patch, shipped cards, duplicate, delete, list per tab with search + category, counts, card picker). Dashboard `/dashboard/<workspace>/updates` (tabs Published / Scheduled / Drafts, search, category filter, Categories dialog for admins, New post) and the editor `/dashboard/<workspace>/updates/<id>` (title, body, settings rail: category, cover, visibility, pinned, email switch, shipped cards, duplicate, delete; autosave). Covers reuse the description-image upload (`card-image` purpose, tenant prefix checked). Everyone with access can write posts. Card drawer: **Announce…** on completed cards starts a draft with the card's title, summary and link. E2E: `e2e/updates.spec.ts`.
+- Also on 2026-10-29: dashboard content is capped at **1500px** and centered (owner request); drawer tabs show one underline; team members can vote on a card from its drawer (as their own voter record).

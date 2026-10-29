@@ -11,6 +11,7 @@ import {
   Copy,
   CopyPlus,
   ExternalLink,
+  Megaphone,
   MoveRight,
   Trash2,
 } from "lucide-react";
@@ -33,6 +34,7 @@ import {
   updateCardAction,
   updateFeatureAction,
 } from "@/app/(dashboard)/_actions/roadmap";
+import { createUpdateAction } from "@/app/(dashboard)/_actions/updates";
 import { CommentsPanel } from "@/components/dashboard/comments-panel";
 import { TagPicker } from "@/components/dashboard/tag-picker";
 import {
@@ -279,6 +281,16 @@ function CardEditor({
     const result = await run({ workspace, id: card.id, value });
     if (!result.ok) return toast.error(result.error);
     apply();
+  }
+
+  /** Start an Updates post about this (completed) card (doc 23). */
+  async function announce() {
+    setBusy(true);
+    await flush();
+    const result = await createUpdateAction({ workspace, cardId: card.id });
+    setBusy(false);
+    if (!result.ok) return toast.error(result.error);
+    router.push(`/dashboard/${workspace}/updates/${result.data.id}`);
   }
 
   async function duplicate() {
@@ -585,6 +597,12 @@ function CardEditor({
           {following ? <BellOff /> : <Bell />}
           {following ? "Unfollow" : "Follow"}
         </RailButton>
+        {completed ? (
+          <RailButton disabled={busy} onClick={announce}>
+            <Megaphone />
+            Announce…
+          </RailButton>
+        ) : null}
         <RailButton onClick={() => setTransfer("move")}>
           <MoveRight />
           Move to…

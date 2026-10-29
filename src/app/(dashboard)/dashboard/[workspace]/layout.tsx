@@ -42,7 +42,9 @@ export default function WorkspaceLayout({
             <CurrentUser slug={slug} />
           </Suspense>
         </header>
-        <main className="flex-1 bg-muted/40 p-6">{children}</main>
+        <main className="flex-1 bg-muted/40 p-6">
+          <div className="mx-auto w-full max-w-[1500px]">{children}</div>
+        </main>
       </div>
     </div>
   );

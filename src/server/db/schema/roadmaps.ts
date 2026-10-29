@@ -210,6 +210,47 @@ export const cardTags = pgTable(
   ],
 );
 
+/** Files attached to a card (doc 21 step C). Team-only for now. */
+export const cardAttachments = pgTable(
+  "card_attachments",
+  {
+    id: uuid().primaryKey().defaultRandom(),
+    accountId: accountId(),
+    workspaceId: workspaceId(),
+    cardId: uuid()
+      .notNull()
+      .references(() => roadmapCards.id, { onDelete: "cascade" }),
+    /** Storage key under prefixes.cardAttachments. */
+    key: text().notNull(),
+    /** Original file name, shown in the list. */
+    name: text().notNull(),
+    size: integer().notNull(),
+    contentType: text().notNull(),
+    uploadedBy: text().references(() => user.id, { onDelete: "set null" }),
+    createdAt: timestamp({ withTimezone: true }).notNull().defaultNow(),
+  },
+  (t) => [index("card_attachments_card_idx").on(t.cardId, t.createdAt)],
+);
+
+/** Team members following a card. Follow emails come in Phase 4. */
+export const cardFollows = pgTable(
+  "card_follows",
+  {
+    accountId: accountId(),
+    cardId: uuid()
+      .notNull()
+      .references(() => roadmapCards.id, { onDelete: "cascade" }),
+    userId: text()
+      .notNull()
+      .references(() => user.id, { onDelete: "cascade" }),
+    createdAt: timestamp({ withTimezone: true }).notNull().defaultNow(),
+  },
+  (t) => [
+    primaryKey({ columns: [t.cardId, t.userId] }),
+    index("card_follows_user_idx").on(t.userId),
+  ],
+);
+
 export const roadmapsRelations = relations(roadmaps, ({ many }) => ({
   columns: many(roadmapColumns),
   cards: many(roadmapCards),
@@ -260,6 +301,7 @@ export const cardTagsRelations = relations(cardTags, ({ one }) => ({
 export type Roadmap = typeof roadmaps.$inferSelect;
 export type RoadmapColumn = typeof roadmapColumns.$inferSelect;
 export type RoadmapCard = typeof roadmapCards.$inferSelect;
+export type CardAttachment = typeof cardAttachments.$inferSelect;
 export type Category = typeof categories.$inferSelect;
 export type Tag = typeof tags.$inferSelect;
 export type CardFeature = typeof cardFeatures.$inferSelect;

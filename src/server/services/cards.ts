@@ -25,14 +25,18 @@ import {
 import { slugify } from "@/lib/schemas/workspace";
 import type { Db, DbOrTx } from "@/server/db/client";
 import {
+  cardAttachments,
   cardFeatures,
   cardFeedbackLinks,
+  cardFollows,
   cardTags,
   categories,
+  comments,
   type RoadmapCard,
   roadmapCards,
   user,
 } from "@/server/db/schema";
+import { deleteFile } from "@/server/storage";
 import {
   isUniqueViolation,
   NotFoundError,
@@ -272,11 +276,19 @@ export async function setCardArchived(
 }
 
 export async function deleteCard(db: Db, ctx: WorkspaceContext, id: string) {
+  const files = await db
+    .select({ key: cardAttachments.key })
+    .from(cardAttachments)
+    .where(
+      and(inWorkspace(cardAttachments, ctx), eq(cardAttachments.cardId, id)),
+    );
   const [row] = await db
     .delete(roadmapCards)
     .where(and(inWorkspace(roadmapCards, ctx), eq(roadmapCards.id, id)))
     .returning({ id: roadmapCards.id });
   if (!row) throw new NotFoundError("Card not found.");
+  // Attachment rows cascade; their files are removed here.
+  await Promise.all(files.map((f) => deleteFile(f.key)));
 }
 
 /**
@@ -389,7 +401,17 @@ export type BoardCard = {
   features: { done: number; total: number };
   /** Feedback linked to the card (the 💡 count on the board). */
   ideas: number;
+  attachments: number;
+  comments: number;
+  followers: number;
 };
+
+/**
+ * The outer card's id, table-qualified: in a one-table select Drizzle renders
+ * columns unqualified, and a bare "id" inside a subquery would bind to the
+ * subquery's own table.
+ */
+const cardRef = sql`"roadmap_cards"."id"`;
 
 /** Cards for the admin board (archived cards excluded), in column order. */
 export async function listBoardCards(
@@ -451,7 +473,10 @@ export async function listBoardCards(
       completedAt: roadmapCards.completedAt,
       voteCount: roadmapCards.voteCount,
       importedVotes: roadmapCards.importedVotes,
-      ideas: sql<number>`(select count(*)::int from ${cardFeedbackLinks} where ${cardFeedbackLinks.cardId} = ${roadmapCards.id})`,
+      ideas: sql<number>`(select count(*)::int from ${cardFeedbackLinks} where ${cardFeedbackLinks.cardId} = ${cardRef})`,
+      attachments: sql<number>`(select count(*)::int from ${cardAttachments} where ${cardAttachments.cardId} = ${cardRef})`,
+      comments: sql<number>`(select count(*)::int from ${comments} where ${comments.cardId} = ${cardRef} and ${comments.deletedAt} is null)`,
+      followers: sql<number>`(select count(*)::int from ${cardFollows} where ${cardFollows.cardId} = ${cardRef})`,
     })
     .from(roadmapCards)
     .where(and(...where))

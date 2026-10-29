@@ -2,9 +2,11 @@ import { describe, expect, it } from "vitest";
 import {
   isValidKey,
   keyHasPrefix,
+  maxBytesForKey,
   newKey,
   prefixes,
   signUpload,
+  sniffFile,
   sniffImage,
   verifyUpload,
 } from "./keys";
@@ -64,5 +66,25 @@ describe("sniffImage", () => {
     expect(sniffImage(png, "image/jpeg")).toBe(false);
     const html = new TextEncoder().encode("<svg onload=alert(1)>");
     expect(sniffImage(html, "image/png")).toBe(false);
+  });
+});
+
+describe("card attachments", () => {
+  const prefix = prefixes.cardAttachments("acct_1", "ws_1");
+
+  it("allows PDF keys and a 10 MB limit only under the attachments prefix", () => {
+    const pdf = newKey(prefix, "application/pdf");
+    expect(pdf).toMatch(/\.pdf$/);
+    expect(isValidKey(pdf)).toBe(true);
+    expect(maxBytesForKey(pdf)).toBe(10 * 1024 * 1024);
+    const logo = newKey(prefixes.accountLogo("acct_1"), "image/png");
+    expect(maxBytesForKey(logo)).toBe(2 * 1024 * 1024);
+  });
+
+  it("checks PDF magic bytes", () => {
+    const enc = new TextEncoder();
+    expect(sniffFile(enc.encode("%PDF-1.7\n"), "application/pdf")).toBe(true);
+    expect(sniffFile(enc.encode("<html>"), "application/pdf")).toBe(false);
+    expect(sniffFile(enc.encode("%PDF-1.7"), "image/png")).toBe(false);
   });
 });

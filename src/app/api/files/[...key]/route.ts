@@ -20,6 +20,10 @@ export async function GET(
         "Content-Type": contentType,
         "Cache-Control": "public, max-age=31536000, immutable",
         "X-Content-Type-Options": "nosniff",
+        // Only images render inline; anything else downloads.
+        ...(contentType.startsWith("image/")
+          ? {}
+          : { "Content-Disposition": "attachment" }),
       },
     });
   } catch {

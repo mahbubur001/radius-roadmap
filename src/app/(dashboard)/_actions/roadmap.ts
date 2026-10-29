@@ -1,6 +1,8 @@
 "use server";
 
 import {
+  addAttachmentSchema,
+  cardCommentSchema,
   cardFlagSchema,
   cardIdSchema,
   categorySchema,
@@ -10,18 +12,33 @@ import {
   createRoadmapSchema,
   moveCardSchema,
   moveColumnSchema,
+  requestAttachmentSchema,
   roadmapIdSchema,
   tagSchema,
   transferCardSchema,
+  updateCardCommentSchema,
   updateCardSchema,
   updateCategorySchema,
   updateColumnSchema,
   updateFeatureSchema,
   updateRoadmapSchema,
 } from "@/lib/schemas/roadmap";
+import { MAX_ATTACHMENT_BYTES } from "@/lib/schemas/upload";
 import { workspaceAction } from "@/server/action";
 import { db } from "@/server/db/client";
 import { invalidatePublic, invalidateSite } from "@/server/public-cache";
+import {
+  addAttachment,
+  addCardComment,
+  attachmentPrefix,
+  cardFollowers,
+  deleteAttachment,
+  deleteCardComment,
+  listAttachments,
+  listCardComments,
+  setCardFollow,
+  updateCardComment,
+} from "@/server/services/card-activity";
 import {
   addFeature,
   createCard,
@@ -38,7 +55,11 @@ import {
   updateFeature,
 } from "@/server/services/cards";
 import type { WorkspaceContext } from "@/server/services/context";
-import { linkedFeedback } from "@/server/services/feedback-links";
+import {
+  linkedFeedback,
+  roadmapTargets,
+} from "@/server/services/feedback-links";
+import { exportRoadmapCsv } from "@/server/services/roadmap-export";
 import {
   createCategory,
   createColumn,
@@ -48,14 +69,13 @@ import {
   deleteColumn,
   deleteRoadmap,
   deleteTag,
-  listColumns,
-  listRoadmaps,
   moveColumn,
   updateCategory,
   updateColumn,
   updateRoadmap,
 } from "@/server/services/roadmaps";
 import { listVoters } from "@/server/services/votes";
+import { createUpload, fileUrl } from "@/server/storage";
 
 // Every mutation here changes what the public site may show, so it drops
 // the workspace's public cache afterwards (and the site's workspace list,
@@ -123,12 +143,25 @@ export const deleteColumnAction = workspaceAction(
 export const getCardAction = workspaceAction(
   cardIdSchema,
   async (ctx, { id }) => {
-    const [card, voters, feedback] = await Promise.all([
-      getCardDetail(db, ctx, id),
-      listVoters(db, ctx, id),
-      linkedFeedback(db, ctx, id),
-    ]);
-    return { card, voters, feedback };
+    const [card, voters, feedback, attachments, comments, followers] =
+      await Promise.all([
+        getCardDetail(db, ctx, id),
+        listVoters(db, ctx, id),
+        linkedFeedback(db, ctx, id),
+        listAttachments(db, ctx, id),
+        listCardComments(db, ctx, id),
+        cardFollowers(db, ctx, id),
+      ]);
+    return {
+      card,
+      voters,
+      feedback,
+      attachments: attachments.map(withUrl),
+      comments,
+      followers,
+      me: ctx.userId,
+      canModerate: ctx.role !== "member",
+    };
   },
 );
 
@@ -206,17 +239,7 @@ export const cardTargetsAction = workspaceAction(
   cardIdSchema,
   async (ctx, { id }) => {
     await getCard(db, ctx, id);
-    const roadmaps = await listRoadmaps(db, ctx);
-    return Promise.all(
-      roadmaps.map(async (r) => ({
-        id: r.id,
-        title: r.internalTitle,
-        columns: (await listColumns(db, ctx, r.id)).map((c) => ({
-          id: c.id,
-          name: c.name,
-        })),
-      })),
-    );
+    return roadmapTargets(db, ctx);
   },
 );
 
@@ -273,4 +296,64 @@ export const createTagAction = workspaceAction(tagSchema, async (ctx, input) =>
 export const deleteTagAction = workspaceAction(
   cardIdSchema,
   async (ctx, { id }) => mutate(ctx, () => deleteTag(db, ctx, id)),
+);
+
+// ── Card attachments, comments, follows (doc 21 step C) ───────────────────
+// Team-only data: nothing here changes the public site, so no invalidation.
+
+function withUrl<T extends { key: string }>({ key, ...rest }: T) {
+  return { ...rest, url: fileUrl(key) ?? "" };
+}
+
+export const requestAttachmentUploadAction = workspaceAction(
+  requestAttachmentSchema,
+  async (ctx, { cardId, contentType }) => {
+    await getCard(db, ctx, cardId);
+    return createUpload(
+      attachmentPrefix(ctx),
+      contentType,
+      MAX_ATTACHMENT_BYTES,
+    );
+  },
+);
+
+export const addAttachmentAction = workspaceAction(
+  addAttachmentSchema,
+  async (ctx, input) => {
+    const row = await addAttachment(db, ctx, input);
+    return withUrl({ ...row, uploadedBy: null as string | null });
+  },
+);
+
+export const deleteAttachmentAction = workspaceAction(
+  cardIdSchema,
+  async (ctx, { id }) => deleteAttachment(db, ctx, id),
+);
+
+export const addCardCommentAction = workspaceAction(
+  cardCommentSchema,
+  async (ctx, input) => {
+    const row = await addCardComment(db, ctx, input);
+    return { id: row.id, createdAt: row.createdAt };
+  },
+);
+
+export const updateCardCommentAction = workspaceAction(
+  updateCardCommentSchema,
+  async (ctx, input) => updateCardComment(db, ctx, input),
+);
+
+export const deleteCardCommentAction = workspaceAction(
+  cardIdSchema,
+  async (ctx, { id }) => deleteCardComment(db, ctx, id),
+);
+
+export const setCardFollowAction = workspaceAction(
+  cardFlagSchema,
+  async (ctx, { id, value }) => setCardFollow(db, ctx, id, value),
+);
+
+export const exportRoadmapAction = workspaceAction(
+  roadmapIdSchema,
+  async (ctx, { id }) => exportRoadmapCsv(db, ctx, id),
 );

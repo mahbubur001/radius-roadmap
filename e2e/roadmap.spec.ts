@@ -228,6 +228,82 @@ test("card drawer rail: duplicate, copy to and move to another column", async ({
   ).toBeVisible();
 });
 
+test("card attachments, team comments, follow and CSV export", async ({
+  page,
+}) => {
+  const id = randomUUID().slice(0, 8);
+  const { slug } = await signUpOwner(page, id);
+  await openRoadmap(page, slug);
+  await addCard(page, "Up next", "Dark mode");
+
+  const drawer = await openCard(page, "Dark mode");
+
+  // Attachment: upload a PDF, then delete it.
+  await drawer.getByRole("tab", { name: "Attachments (0)" }).click();
+  await drawer.getByLabel("Attachment files").setInputFiles({
+    name: "spec.pdf",
+    mimeType: "application/pdf",
+    buffer: Buffer.from("%PDF-1.4\n%test\n"),
+  });
+  await expect(drawer.getByRole("link", { name: "spec.pdf" })).toBeVisible();
+  await expect(
+    drawer.getByRole("tab", { name: "Attachments (1)" }),
+  ).toBeVisible();
+  await drawer.getByRole("button", { name: "Delete spec.pdf" }).click();
+  await expect(drawer.getByText("No attachments yet.")).toBeVisible();
+
+  // A file that isn't really a PDF is refused by the upload route.
+  await drawer.getByLabel("Attachment files").setInputFiles({
+    name: "fake.pdf",
+    mimeType: "application/pdf",
+    buffer: Buffer.from("<html><script>alert(1)</script>"),
+  });
+  await expect(page.getByText("fake.pdf: upload failed.")).toBeVisible();
+
+  // Team comment with a link.
+  await drawer.getByRole("tab", { name: "Comments (0)" }).click();
+  await drawer
+    .getByRole("textbox", { name: "New comment" })
+    .fill("See https://example.com/spec");
+  await drawer.getByRole("button", { name: "Add comment" }).click();
+  await expect(
+    drawer.getByRole("link", { name: "https://example.com/spec" }),
+  ).toBeVisible();
+  await expect(drawer.getByRole("tab", { name: "Comments (1)" })).toBeVisible();
+
+  // Follow sticks after reopening.
+  const rail = drawer.getByRole("complementary", { name: "More options" });
+  await rail.getByRole("button", { name: "Follow" }).click();
+  await expect(rail.getByRole("button", { name: "Unfollow" })).toBeVisible();
+  await closeDrawer(page);
+  const again = await openCard(page, "Dark mode");
+  await expect(
+    again
+      .getByRole("complementary", { name: "More options" })
+      .getByRole("button", { name: "Unfollow" }),
+  ).toBeVisible();
+  await expect(again.getByRole("tab", { name: "Comments (1)" })).toBeVisible();
+  await closeDrawer(page);
+
+  // Filters see the new data.
+  await page.getByRole("button", { name: "Toggle filters" }).click();
+  const filters = page.getByRole("complementary", { name: "Filters" });
+  await filters.getByText("Comments", { exact: true }).click();
+  await filters.getByRole("radio", { name: "No comments" }).check();
+  await expect(cardButton(page, "Dark mode")).toHaveCount(0);
+  await filters.getByRole("button", { name: "Reset" }).click();
+
+  // Export CSV downloads the roadmap.
+  await page.getByRole("button", { name: "More" }).click();
+  const download = page.waitForEvent("download");
+  await page.getByRole("menuitem", { name: "Export CSV" }).click();
+  const file = await download;
+  expect(file.suggestedFilename()).toMatch(/\.csv$/);
+  const path = await file.path();
+  const { readFile } = await import("node:fs/promises");
+  expect(await readFile(path, "utf8")).toContain("Dark mode");
+});
+
 test("public site shows only public cards; drawer, card page and search work", async ({
   page,
   browser,

@@ -3,6 +3,8 @@
 import {
   Archive,
   ArchiveRestore,
+  Bell,
+  BellOff,
   CheckCircle2,
   ChevronUp,
   Circle,
@@ -25,6 +27,7 @@ import {
   getCardAction,
   setCardArchivedAction,
   setCardCompletedAction,
+  setCardFollowAction,
   transferCardAction,
   updateCardAction,
   updateFeatureAction,
@@ -84,6 +87,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import type { UpdateCardInput } from "@/lib/schemas/roadmap";
 import { ago } from "@/lib/time";
 import { cn } from "@/lib/utils";
+import { Attachments, Comments } from "./card-activity-tabs";
 import { ObjectivePicker } from "./objective-picker";
 import type { BoardCard, CategoryOption, TagOption } from "./types";
 
@@ -211,6 +215,9 @@ function CardEditor({
   const [completed, setCompleted] = useState(!!card.completedAt);
   const [archived, setArchived] = useState(!!card.archivedAt);
   const [features, setFeatures] = useState(card.features);
+  const [attachments, setAttachments] = useState(detail.attachments);
+  const [comments, setComments] = useState(detail.comments);
+  const [following, setFollowing] = useState(detail.followers.following);
   const [updatedAt, setUpdatedAt] = useState(new Date(card.updatedAt));
   const [confirmDelete, setConfirmDelete] = useState(false);
   const [transfer, setTransfer] = useState<"move" | "copy" | null>(null);
@@ -293,7 +300,7 @@ function CardEditor({
               </span>
               <Input
                 aria-label="Title"
-                className="h-auto border-none px-0 text-2xl font-semibold shadow-none focus-visible:ring-0 md:text-2xl"
+                className="h-auto border-none bg-transparent px-0 text-2xl font-semibold shadow-none focus-visible:ring-0 md:text-2xl dark:bg-transparent"
                 value={title}
                 onChange={(e) => {
                   setTitle(e.target.value);
@@ -334,8 +341,14 @@ function CardEditor({
               <TabsTrigger value="feedback" className={TAB}>
                 Linked feedback ({detail.feedback.length})
               </TabsTrigger>
+              <TabsTrigger value="attachments" className={TAB}>
+                Attachments ({attachments.length})
+              </TabsTrigger>
               <TabsTrigger value="votes" className={TAB}>
                 Votes ({votes})
+              </TabsTrigger>
+              <TabsTrigger value="comments" className={TAB}>
+                Comments ({comments.length})
               </TabsTrigger>
             </TabsList>
 
@@ -450,8 +463,34 @@ function CardEditor({
               <LinkedFeedback workspace={workspace} items={detail.feedback} />
             </TabsContent>
 
+            <TabsContent value="attachments" className="px-8 py-6">
+              <Attachments
+                workspace={workspace}
+                cardId={card.id}
+                items={attachments}
+                onChange={(next) => {
+                  setAttachments(next);
+                  onChanged(card.id, { attachments: next.length });
+                }}
+              />
+            </TabsContent>
+
             <TabsContent value="votes" className="px-8 py-6">
               <VotersList voters={detail.voters} />
+            </TabsContent>
+
+            <TabsContent value="comments" className="px-8 py-6">
+              <Comments
+                workspace={workspace}
+                cardId={card.id}
+                items={comments}
+                me={detail.me}
+                canModerate={detail.canModerate}
+                onChange={(next) => {
+                  setComments(next);
+                  onChanged(card.id, { comments: next.length });
+                }}
+              />
             </TabsContent>
           </Tabs>
         </div>
@@ -488,6 +527,29 @@ function CardEditor({
         >
           {completed ? <Circle /> : <CheckCircle2 />}
           {completed ? "Reopen" : "Mark as complete"}
+        </RailButton>
+        <RailButton
+          aria-pressed={following}
+          onClick={async () => {
+            const next = !following;
+            setFollowing(next);
+            const result = await setCardFollowAction({
+              workspace,
+              id: card.id,
+              value: next,
+            });
+            if (!result.ok) {
+              setFollowing(!next);
+              return toast.error(result.error);
+            }
+            // Others' follows + mine.
+            const others =
+              detail.followers.count - (detail.followers.following ? 1 : 0);
+            onChanged(card.id, { followers: others + (next ? 1 : 0) });
+          }}
+        >
+          {following ? <BellOff /> : <Bell />}
+          {following ? "Unfollow" : "Follow"}
         </RailButton>
         <RailButton onClick={() => setTransfer("move")}>
           <MoveRight />

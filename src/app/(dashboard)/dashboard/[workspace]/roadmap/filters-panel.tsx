@@ -21,6 +21,9 @@ export type RoadmapFilters = {
   votes: Presence;
   description: Presence;
   feedback: Presence;
+  attachments: Presence;
+  comments: Presence;
+  followers: Presence;
   showCompleted: boolean;
 };
 
@@ -31,6 +34,9 @@ export const defaultFilters: RoadmapFilters = {
   votes: "all",
   description: "all",
   feedback: "all",
+  attachments: "all",
+  comments: "all",
+  followers: "all",
   showCompleted: true,
 };
 
@@ -49,6 +55,9 @@ export function filtersFromParams(params: URLSearchParams): RoadmapFilters {
     votes: oneOf(PRESENCE, params.get("votes")) ?? "all",
     description: oneOf(PRESENCE, params.get("desc")) ?? "all",
     feedback: oneOf(PRESENCE, params.get("fb")) ?? "all",
+    attachments: oneOf(PRESENCE, params.get("files")) ?? "all",
+    comments: oneOf(PRESENCE, params.get("comments")) ?? "all",
+    followers: oneOf(PRESENCE, params.get("followers")) ?? "all",
     showCompleted: params.get("done") !== "hide",
   };
 }
@@ -63,6 +72,9 @@ export function filtersToParams(f: RoadmapFilters, params: URLSearchParams) {
   set("votes", f.votes === "all" ? null : f.votes);
   set("desc", f.description === "all" ? null : f.description);
   set("fb", f.feedback === "all" ? null : f.feedback);
+  set("files", f.attachments === "all" ? null : f.attachments);
+  set("comments", f.comments === "all" ? null : f.comments);
+  set("followers", f.followers === "all" ? null : f.followers);
   set("done", f.showCompleted ? null : "hide");
 }
 
@@ -75,6 +87,9 @@ export function activeFilterCount(f: RoadmapFilters) {
     f.votes !== "all",
     f.description !== "all",
     f.feedback !== "all",
+    f.attachments !== "all",
+    f.comments !== "all",
+    f.followers !== "all",
   ].filter(Boolean).length;
 }
 
@@ -93,6 +108,9 @@ export function matchesFilters(card: BoardCard, f: RoadmapFilters) {
     present(f.votes, card.votes > 0) &&
     present(f.description, card.summaryText.trim().length > 0) &&
     present(f.feedback, card.ideas > 0) &&
+    present(f.attachments, card.attachments > 0) &&
+    present(f.comments, card.comments > 0) &&
+    present(f.followers, card.followers > 0) &&
     (f.showCompleted || !card.completed)
   );
 }
@@ -186,6 +204,27 @@ export function FiltersPanel({
         none="No description"
         value={filters.description}
         onChange={(description) => set({ description })}
+      />
+      <PresenceSection
+        title="Attachments"
+        some="Has attachments"
+        none="No attachments"
+        value={filters.attachments}
+        onChange={(attachments) => set({ attachments })}
+      />
+      <PresenceSection
+        title="Comments"
+        some="Has comments"
+        none="No comments"
+        value={filters.comments}
+        onChange={(comments) => set({ comments })}
+      />
+      <PresenceSection
+        title="Followers"
+        some="Followed"
+        none="No followers"
+        value={filters.followers}
+        onChange={(followers) => set({ followers })}
       />
       <PresenceSection
         title="Feedbacks"

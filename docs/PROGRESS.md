@@ -24,10 +24,12 @@
 - Phase 1 plan (built): `docs/18-phase-1-plan.md`
 - Phase 2 plan (approved, being built; see its "As built" section): `docs/19-phase-2-plan.md`
 - Phase 3 plan (approved 2026-10-28, being built): `docs/20-phase-3-plan.md`
+- Roadmap admin redesign (LoopedIn layout, attachments, comments, follow, export; approved + built 2026-10-29): `docs/21-roadmap-admin-redesign.md`
 - Stack versions as built: `docs/14-dev-tools.md` → "Versions as built"
 
 ## Current status
 - **Phase:** Phases 0 and 1 done. **Phase 2:** everything built except step 10 (LoopedIn roadmap import, waiting for the export file). **Phase 3 (doc 20, approved 2026-10-28):** steps 1–4 of doc 20 §7 built, tested and pushed; step 5 (public feedback pages) is next.
+- **2026-10-29, LoopedIn-style admin UI** (doc 21 + this session): collapsible blue/charcoal sidebar; feedback list with board tabs and cards; roadmap board with filters panel and objective quick-picker; two-pane card drawer with rail actions (duplicate, move/copy to any roadmap, follow); card attachments (images + PDF), team comments, CSV export. Migration `0005`.
 - **Phase 3 delivered so far** (details in doc 20 "As built"):
   - Schema + migrations `0003` (feedback boards, statuses, items, links, comments, follows, notification preferences; `votes.feedback_id`) and `0004` (defaults for existing workspaces).
   - Admin feedback list at `/dashboard/<workspace>/feedback` (filters in the URL, sort, search) + drawer (autosave, Impact/Effort priority).
@@ -45,11 +47,11 @@
   - Real 404 / 308 statuses for public sites, checked in `src/proxy.ts` (`publicPathStatus`).
   - Playwright flows 1–5 (`e2e/roadmap.spec.ts`).
 - Rate-limit bypass fixed: `cf-*` headers trusted only with `TRUST_CLOUDFLARE=1` (new env var); `src/server/rate-limit.test.ts`.
-- **Checks:** `pnpm lint`, `typecheck`, `test` (120 tests), `test:e2e` (14 tests: Phase 2 flows 1–5 in `e2e/roadmap.spec.ts`, Phase 3 admin flows in `e2e/feedback.spec.ts`) and `build` pass.
-- **Git:** everything is pushed to `origin/main`. Latest code commit `4109b0d` (Phase 3 step 4); the commit after it only updates this file.
+- **Checks:** `pnpm lint`, `typecheck`, `test` (133 tests), `test:e2e` (17 tests in `e2e/roadmap.spec.ts`, `feedback.spec.ts`, `team.spec.ts`) and `build` pass.
+- **Git:** doc 21 work is committed locally on `main` (sidebar `668679c`, step A `e853923`, step B `92ae9fa`, step C + docs after it). **Not pushed yet.**
 - **Dev tip:** Turbopack's dev cache sometimes serves stale code after edits (seen twice: CSS and a new service export). If a change doesn't show up, stop `pnpm dev`, delete `.next/dev`, and start it again.
 - **Dev test account on this Mac:** `claude-dev@example.test` / `devpassword123` (account `claude-dev`, workspace `dev-product`). Local dev DB only.
-- **Second Mac (user `radiustheme`):** set up 2026-10-28. Homebrew Postgres 18 (role `radiustheme`, no `postgres` role, so `DATABASE_URL=postgres://radiustheme@localhost:5432/radius_roadmap`) + Redis. `~/.zshrc` has `PNPM_HOME=/Users/mahbubur/...` copied from the first Mac, so pnpm fails with EACCES until it's fixed to `$HOME/Library/pnpm`. Playwright Chromium installed 2026-10-28.
+- **Second Mac (user `radiustheme`):** set up 2026-10-28. Homebrew Postgres 18 (role `radiustheme`, no `postgres` role, so `DATABASE_URL=postgres://radiustheme@localhost:5432/radius_roadmap`) + Redis. `~/.zshrc` has `PNPM_HOME=/Users/mahbubur/...` copied from the first Mac, so pnpm (and the lefthook pre-commit hook) fails with EACCES until it's fixed to `$HOME/Library/pnpm` (workaround: prefix commands with `PNPM_HOME=$HOME/Library/pnpm`). Playwright Chromium installed 2026-10-28.
 - **First Mac (user `mahbubur`):** Homebrew Postgres 18 + Redis, `EMAIL_TRANSPORT=console`, `STORAGE_DRIVER=local` in `.env.local` (its `PUBLIC_ROOT_DOMAIN` line is no longer used and can be deleted). The dev workspace `demo-product` was renamed "Radius Roadmap" (slug unchanged). The local dev DB also holds many test accounts made by Playwright; they're harmless.
 
 ## Next step
@@ -101,6 +103,7 @@ Resume here. On a new session say: *"Read docs/PROGRESS.md and continue from Nex
 - [x] Phase 1 — Accounts & workspaces (doc 18)
 - [ ] Phase 2 — Roadmap + voting + public page + embed (all built except step 10, LoopedIn import)
 - [ ] Phase 3 — Feedback + triage + import (steps 1–4 of 11 built)
+- [x] Roadmap admin redesign — doc 21 (steps A–C)
 - [ ] Phase 4 — Updates + email
 - [ ] Phase 5 — Knowledge base
 - [ ] Phase 6 — Billing, widget, domains, white-label
@@ -122,3 +125,4 @@ Resume here. On a new session say: *"Read docs/PROGRESS.md and continue from Nex
 | 2026-10-28 | radiustheme (Mac 2) | First-time setup on this Mac; fixed the cf-connecting-ip rate-limit bypass (`TRUST_CLOUDFLARE`), added rate-limit tests (98 passing) ; button cursor fix (Tailwind v4 Preflight); wrote the Phase 3 plan (doc 20), approved | LoopedIn exports → Phase 2 step 10; build Phase 3 steps 1–8 |
 | 2026-10-28 | radiustheme (Mac 2) | Phase 3 steps 1–3 (schema, feedback list + drawer, triage inbox + bulk + boards/statuses); public pages moved to `/<account>/<workspace>`, dashboard to `/dashboard/<workspace>` (owner decision, doc 19 "D1 revised") | Phase 3 step 4 (push to roadmap, merge); LoopedIn exports still needed |
 | 2026-10-28 | radiustheme (Mac 2) | Phase 3 step 4: push to roadmap, links both ways, status sync, merge, duplicate, 💡 counts (120 unit + 14 e2e passing) | Phase 3 step 5 (public feedback pages) |
+| 2026-10-29 | radiustheme (Mac 2) | LoopedIn-style admin UI: sidebar, feedback list, roadmap board + filters, card drawer rail; doc 21 approved and built (attachments, team comments, follow, duplicate/move/copy, CSV export; migration 0005); 133 unit + 17 e2e passing | Push; then Phase 3 step 5 (public feedback pages) |

@@ -241,9 +241,11 @@ export const comments = pgTable(
     id: uuid().primaryKey().defaultRandom(),
     accountId: accountId(),
     workspaceId: workspaceId(),
-    feedbackId: uuid()
-      .notNull()
-      .references(() => feedbackItems.id, { onDelete: "cascade" }),
+    /** Exactly one of feedbackId / cardId is set (card comments: doc 21). */
+    feedbackId: uuid().references(() => feedbackItems.id, {
+      onDelete: "cascade",
+    }),
+    cardId: uuid().references(() => roadmapCards.id, { onDelete: "cascade" }),
     /** Plain text; URLs are auto-linked when rendered. */
     body: text().notNull(),
     authorTrackedUserId: uuid().references(() => trackedUsers.id, {
@@ -259,7 +261,12 @@ export const comments = pgTable(
   },
   (t) => [
     index("comments_feedback_created_idx").on(t.feedbackId, t.createdAt),
+    index("comments_card_created_idx").on(t.cardId, t.createdAt),
     index("comments_workspace_review_idx").on(t.workspaceId, t.review),
+    check(
+      "comments_one_target",
+      sql`num_nonnulls(${t.feedbackId}, ${t.cardId}) = 1`,
+    ),
   ],
 );
 

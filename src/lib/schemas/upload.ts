@@ -11,6 +11,24 @@ export type ImageType = keyof typeof IMAGE_TYPES;
 
 export const MAX_IMAGE_BYTES = 2 * 1024 * 1024;
 
+/**
+ * Card attachments (doc 21 step C): images plus PDF. No Office files: they are
+ * zip containers we can't check by their first bytes. PDFs are served as
+ * downloads, never inline.
+ */
+export const ATTACHMENT_TYPES = {
+  ...IMAGE_TYPES,
+  "application/pdf": "pdf",
+} as const;
+
+export type AttachmentType = keyof typeof ATTACHMENT_TYPES;
+
+export const MAX_ATTACHMENT_BYTES = 10 * 1024 * 1024;
+
+export function isImageType(type: string): type is ImageType {
+  return type in IMAGE_TYPES;
+}
+
 export const uploadPurposeSchema = z.enum([
   "avatar",
   "account-logo",

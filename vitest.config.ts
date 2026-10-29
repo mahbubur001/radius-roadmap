@@ -1,3 +1,4 @@
+import { resolve } from "node:path";
 import { config } from "dotenv";
 import tsconfigPaths from "vite-tsconfig-paths";
 import { defineConfig } from "vitest/config";
@@ -19,6 +20,10 @@ export default defineConfig({
     include: ["src/**/*.test.ts", "src/**/*.test.tsx"],
     environment: "node",
     globalSetup: ["./src/test/global-setup.ts"],
+    // Server modules guard against client imports; tests run on the server.
+    alias: {
+      "server-only": resolve(import.meta.dirname, "src/test/server-only.ts"),
+    },
     env: {
       NODE_ENV: "test",
       DATABASE_URL: testDatabaseUrl ?? "",

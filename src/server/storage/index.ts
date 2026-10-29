@@ -8,7 +8,11 @@ import {
 } from "@aws-sdk/client-s3";
 import { createPresignedPost } from "@aws-sdk/s3-presigned-post";
 import { env } from "@/lib/env";
-import { type ImageType, MAX_IMAGE_BYTES } from "@/lib/schemas/upload";
+import {
+  type AttachmentType,
+  isImageType,
+  MAX_IMAGE_BYTES,
+} from "@/lib/schemas/upload";
 import { isValidKey, newKey, signUpload } from "./keys";
 
 export { prefixes } from "./keys";
@@ -39,19 +43,26 @@ function bucket() {
 /** A signed form the browser POSTs the file to (field `file` last). */
 export async function createUpload(
   prefix: string,
-  contentType: ImageType,
+  contentType: AttachmentType,
+  maxBytes = MAX_IMAGE_BYTES,
 ): Promise<UploadForm> {
   const key = newKey(prefix, contentType);
 
   if (env.STORAGE_DRIVER === "s3") {
+    // Anything that isn't an image is served as a download.
+    const disposition = isImageType(contentType) ? null : "attachment";
     const { url, fields } = await createPresignedPost(s3Client(), {
       Bucket: bucket(),
       Key: key,
       Conditions: [
-        ["content-length-range", 1, MAX_IMAGE_BYTES],
+        ["content-length-range", 1, maxBytes],
         ["eq", "$Content-Type", contentType],
+        ...(disposition ? [{ "Content-Disposition": disposition }] : []),
       ],
-      Fields: { "Content-Type": contentType },
+      Fields: {
+        "Content-Type": contentType,
+        ...(disposition ? { "Content-Disposition": disposition } : {}),
+      },
       Expires: UPLOAD_TTL_SECONDS,
     });
     return { key, url, fields };

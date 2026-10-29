@@ -1,4 +1,9 @@
 import { z } from "zod";
+import {
+  ATTACHMENT_TYPES,
+  type AttachmentType,
+  MAX_ATTACHMENT_BYTES,
+} from "./upload";
 
 const id = z.uuid();
 const neighbour = z.uuid().nullable();
@@ -141,3 +146,33 @@ export const boardFilterSchema = z.object({
 });
 
 export type BoardFilter = z.input<typeof boardFilterSchema>;
+
+// ── Card attachments, comments, follows (doc 21 step C) ───────────────────
+
+export const requestAttachmentSchema = z.object({
+  cardId: id,
+  contentType: z.enum(
+    Object.keys(ATTACHMENT_TYPES) as [AttachmentType, ...AttachmentType[]],
+    "Attach an image (PNG, JPEG, WebP) or a PDF.",
+  ),
+  size: z
+    .number()
+    .int()
+    .positive()
+    .max(MAX_ATTACHMENT_BYTES, "Files must be 10 MB or smaller."),
+});
+
+export const addAttachmentSchema = z.object({
+  cardId: id,
+  key: z.string().max(300),
+  name: z.string().trim().min(1).max(200),
+});
+
+const commentBody = z
+  .string()
+  .trim()
+  .min(1, "Write a comment")
+  .max(5000, "Keep it under 5000 characters");
+
+export const cardCommentSchema = z.object({ cardId: id, body: commentBody });
+export const updateCardCommentSchema = z.object({ id, body: commentBody });

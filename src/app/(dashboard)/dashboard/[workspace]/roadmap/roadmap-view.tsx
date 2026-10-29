@@ -4,6 +4,7 @@ import { generateKeyBetween } from "fractional-indexing";
 import {
   CheckCircle2,
   ChevronDown,
+  Download,
   ExternalLink,
   Filter,
   List,
@@ -22,6 +23,7 @@ import {
   createCardAction,
   createCategoryAction,
   createRoadmapAction,
+  exportRoadmapAction,
   moveCardAction,
   moveColumnAction,
   updateCardAction,
@@ -277,9 +279,28 @@ export function RoadmapView({
         tagIds: [],
         features: { done: 0, total: 0 },
         ideas: 0,
+        attachments: 0,
+        comments: 0,
+        followers: 0,
       },
     ]);
     return true;
+  }
+
+  async function exportCsv() {
+    const result = await exportRoadmapAction({
+      workspace,
+      id: data.roadmap.id,
+    });
+    if (!result.ok) return toast.error(result.error);
+    const url = URL.createObjectURL(
+      new Blob([result.data.csv], { type: "text/csv;charset=utf-8" }),
+    );
+    const link = document.createElement("a");
+    link.href = url;
+    link.download = result.data.filename;
+    link.click();
+    URL.revokeObjectURL(url);
   }
 
   async function newRoadmap() {
@@ -395,6 +416,10 @@ export function RoadmapView({
                   <DropdownMenuSeparator />
                 </>
               ) : null}
+              <DropdownMenuItem onSelect={exportCsv}>
+                <Download />
+                Export CSV
+              </DropdownMenuItem>
               <DropdownMenuItem asChild>
                 <a href={data.publicUrl} target="_blank" rel="noreferrer">
                   <ExternalLink />

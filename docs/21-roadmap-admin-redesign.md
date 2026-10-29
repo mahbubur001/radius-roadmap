@@ -1,6 +1,6 @@
 # 21 — Roadmap admin: LoopedIn layout + missing card features
 
-Status: **APPROVED 2026-10-29** (all recommendations R1–R5 in §3). Building A → B → C.
+Status: **APPROVED 2026-10-29** (all recommendations R1–R5 in §3). **Built 2026-10-29** (see "As built").
 
 Source: 11 LoopedIn screenshots from the owner (2026-10-29): the roadmap board (light and dark, filters panel open, the objective quick-picker, the More menu) and the card drawer (General, Features, Linked feedbacks, Attachments, Votes, Comments tabs). Builds on doc 19 (Phase 2 roadmap) and doc 20 (Phase 3 feedback). Same direction as the sidebar and feedback-list redesigns done earlier on 2026-10-29.
 
@@ -84,3 +84,17 @@ Source: 11 LoopedIn screenshots from the owner (2026-10-29): the roadmap board (
 ## 5. Done when
 - Board and drawer match the screenshots in layout (our theme colours), in light and dark mode.
 - All rail actions and tabs work; lint, typecheck, test, test:e2e and build pass.
+
+---
+
+## As built (2026-10-29)
+
+- **Step A** (`e853923`): roadmap name heading with switcher; toolbar Toggle filters / Completed cards / Edit roadmap / Summary view / More (Objectives and tags, Import roadmap, Export CSV, View public roadmap); search under it. Filters panel (`filters-panel.tsx`), client-side over the loaded cards, mirrored in the URL (`obj`, `tags`, `vis`, `votes`, `desc`, `fb`, `files`, `comments`, `followers`, `done=hide`). Cards: objective-colour left border, objective quick-picker (`objective-picker.tsx`, drawn over the card because a button can't contain a button), summary in summary view, vote box, 💡. Summary view and the sidebar state use `useStoredFlag` (localStorage).
+- **Step B** (`92ae9fa`): two-pane drawer with a "More options" rail (Mark as complete, Follow, Move to…, Copy to…, Duplicate card, View public card, Archive, Delete card; Submitted by, Created); underlined tabs with counts; footer "All changes saved · Last updated". Services `duplicateCard`, `transferCard` (move keeps votes/links/history and completes/reopens across done columns; copy doesn't carry votes or links). "Public visibility" is now a select. Votes tab shows the vote date.
+- **Step C**: migration `0005` (`card_attachments`, `card_follows`, `comments.card_id` with a one-target check). `src/server/services/card-activity.ts` (attachments, team comments, follows) and `roadmap-export.ts` (CSV, formula cells prefixed with `'`). Deleting a card deletes its files.
+  - **Attachments accept PNG/JPEG/WebP and PDF only, 10 MB.** Office files (docx/xlsx) were left out: they're zip containers we can't verify by magic bytes. PDFs are checked by magic bytes and always served as downloads (`Content-Disposition: attachment`, also on S3 via the presigned policy). The 10 MB limit applies only to keys under `…/card-files/` (the key is signed, so it can't be forged); every other upload keeps 2 MB.
+  - **Card comments are team notes** (`is_internal = true`): authors edit their own; authors, owners and admins delete. Public card comments come with doc 20 step 7.
+  - Follows are stored per team member; emails in Phase 4.
+- Bug found by the new tests: in a one-table Drizzle select, `${roadmapCards.id}` renders as a bare `"id"`, which inside a correlated subquery binds to the subquery's table. Board counts now use a table-qualified `cardRef`.
+- Vitest aliases `server-only` to `src/test/server-only.ts` so services that use storage can be tested.
+- Checks: 133 unit tests, 17 e2e (new: quick-picker + filters, drawer rail, attachments/comments/follow/export), lint, typecheck and build pass.

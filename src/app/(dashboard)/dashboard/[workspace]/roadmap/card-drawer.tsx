@@ -28,6 +28,7 @@ import {
   setCardArchivedAction,
   setCardCompletedAction,
   setCardFollowAction,
+  toggleCardVoteAction,
   transferCardAction,
   updateCardAction,
   updateFeatureAction,
@@ -255,7 +256,19 @@ function CardEditor({
   }
 
   const doneCount = features.filter((f) => f.done).length;
-  const votes = card.voteCount + card.importedVotes;
+  const [votes, setVotes] = useState(card.voteCount + card.importedVotes);
+  const [myVote, setMyVote] = useState(detail.myVote);
+  const [voting, setVoting] = useState(false);
+
+  async function toggleVote() {
+    setVoting(true);
+    const result = await toggleCardVoteAction({ workspace, id: card.id });
+    setVoting(false);
+    if (!result.ok) return toast.error(result.error);
+    setMyVote(result.data.voted);
+    setVotes(result.data.total);
+    onChanged(card.id, { votes: result.data.total });
+  }
   const cardUrl = `${publicUrl}/${card.slug}`;
 
   async function flag(
@@ -299,13 +312,25 @@ function CardEditor({
               className="self-start"
             />
             <div className="flex items-center gap-4">
-              <span
-                className="flex size-14 shrink-0 flex-col items-center justify-center rounded-md border text-lg font-semibold"
-                title="Votes"
+              <button
+                type="button"
+                aria-pressed={myVote}
+                aria-label={myVote ? "Remove your vote" : "Vote for this card"}
+                disabled={voting}
+                onClick={toggleVote}
+                className={cn(
+                  "flex size-14 shrink-0 flex-col items-center justify-center rounded-md border-2 text-lg font-semibold transition-colors",
+                  myVote
+                    ? "border-primary text-emerald-600"
+                    : "border-border text-muted-foreground hover:border-primary/60",
+                )}
               >
-                <ChevronUp className="size-4 text-muted-foreground" />
-                {votes}
-              </span>
+                <ChevronUp
+                  className={cn("size-5", myVote && "fill-current")}
+                  strokeWidth={myVote ? 3 : 2}
+                />
+                <span data-testid="card-vote-count">{votes}</span>
+              </button>
               <Input
                 aria-label="Title"
                 className="h-auto border-none bg-transparent px-0 text-2xl font-semibold shadow-none focus-visible:ring-0 md:text-2xl dark:bg-transparent"
@@ -682,7 +707,7 @@ function CardEditor({
 
 /** Underlined tab in the drawer, like LoopedIn. */
 const TAB =
-  "flex-none rounded-none border-0 border-b-2 border-transparent px-1 pt-2 pb-2.5 data-active:border-foreground";
+  "-mb-px flex-none rounded-none border-0 border-b-2 border-transparent px-1 pt-2 pb-2.5 after:hidden data-active:border-foreground";
 
 function RailButton(props: React.ComponentProps<typeof Button>) {
   return <Button variant="secondary" className="w-full" {...props} />;

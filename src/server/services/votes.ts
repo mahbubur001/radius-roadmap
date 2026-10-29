@@ -14,11 +14,16 @@ import {
   feedbackItems,
   roadmapCards,
   trackedUsers,
+  user,
   type VoteSource,
   votes,
 } from "@/server/db/schema";
 import { getCard } from "./cards";
-import type { PublicContext, WorkspaceContext } from "./context";
+import {
+  NotFoundError,
+  type PublicContext,
+  type WorkspaceContext,
+} from "./context";
 import { getFeedback } from "./feedback";
 
 // Votes (doc 19 §3.6, §4.3). One row per voter per card: tracked users by
@@ -285,4 +290,84 @@ export async function listFeedbackVoters(
     ),
     item.importedVotes,
   );
+}
+
+// ── Team votes from the dashboard (LoopedIn's clickable vote box) ───────
+
+/**
+ * The account's voter record for the signed-in team member, by their
+ * (verified) email, so a vote from the dashboard and one from the public site
+ * are the same vote.
+ */
+export async function teamVoterId(db: Db, ctx: WorkspaceContext) {
+  const [me] = await db
+    .select({ email: user.email, name: user.name })
+    .from(user)
+    .where(eq(user.id, ctx.userId))
+    .limit(1);
+  if (!me) throw new NotFoundError("User not found.");
+  const email = me.email.trim().toLowerCase();
+  const [row] = await db
+    .insert(trackedUsers)
+    .values({
+      accountId: ctx.accountId,
+      kind: "email",
+      email,
+      name: me.name,
+      emailVerifiedAt: new Date(),
+    })
+    .onConflictDoUpdate({
+      target: [trackedUsers.accountId, trackedUsers.email],
+      targetWhere: isNotNull(trackedUsers.email),
+      set: { lastSeenAt: new Date() },
+    })
+    .returning({ id: trackedUsers.id });
+  if (!row) throw new Error("Failed to find the voter.");
+  return row.id;
+}
+
+const ADMIN_META = {
+  ipHash: null,
+  country: null,
+  city: null,
+  source: "admin",
+} as const;
+
+/** Toggle the team member's own vote on a card in their workspace. */
+export async function toggleTeamCardVote(
+  db: Db,
+  ctx: WorkspaceContext,
+  cardId: string,
+) {
+  const card = await getCard(db, ctx, cardId);
+  const trackedUserId = await teamVoterId(db, ctx);
+  return toggleVote(
+    db,
+    ctx,
+    { id: card.id, workspaceId: card.workspaceId },
+    { trackedUserId },
+    ADMIN_META,
+  );
+}
+
+/** Has the team member voted on this card (from anywhere)? */
+export async function hasTeamCardVote(
+  db: Db,
+  ctx: WorkspaceContext,
+  cardId: string,
+) {
+  const [row] = await db
+    .select({ id: votes.id })
+    .from(votes)
+    .innerJoin(trackedUsers, eq(trackedUsers.id, votes.trackedUserId))
+    .innerJoin(user, eq(user.id, ctx.userId))
+    .where(
+      and(
+        eq(votes.accountId, ctx.accountId),
+        eq(votes.cardId, cardId),
+        eq(trackedUsers.email, sql`lower(${user.email})`),
+      ),
+    )
+    .limit(1);
+  return !!row;
 }

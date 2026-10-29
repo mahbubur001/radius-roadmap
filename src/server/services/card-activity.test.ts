@@ -24,6 +24,7 @@ import {
 } from "./context";
 import { exportRoadmapCsv } from "./roadmap-export";
 import { listColumns, listRoadmaps } from "./roadmaps";
+import { hasTeamCardVote, listVoters, toggleTeamCardVote } from "./votes";
 import { createWorkspace } from "./workspaces";
 
 let wsA: WorkspaceContext; // owner, account A
@@ -176,6 +177,30 @@ describe("roadmap CSV export", () => {
     expect(csv).toContain("'=HYPERLINK(evil)");
     expect(csv).toContain("Watched");
     await expect(exportRoadmapCsv(db, wsB, roadmapId)).rejects.toBeInstanceOf(
+      NotFoundError,
+    );
+  });
+});
+
+describe("team votes from the card drawer", () => {
+  it("votes as the member's own voter record, toggles, and stays in the account", async () => {
+    const c = await card("Vote from the dashboard");
+    expect(await hasTeamCardVote(db, mateA, c.id)).toBe(false);
+    expect(await toggleTeamCardVote(db, mateA, c.id)).toEqual({
+      voted: true,
+      total: 1,
+    });
+    expect(await hasTeamCardVote(db, mateA, c.id)).toBe(true);
+    // Another teammate's vote is separate.
+    expect(await hasTeamCardVote(db, wsA, c.id)).toBe(false);
+    const voters = await listVoters(db, wsA, c.id);
+    expect(voters.named.map((v) => v.name)).toEqual(["act-mate"]);
+
+    expect(await toggleTeamCardVote(db, mateA, c.id)).toEqual({
+      voted: false,
+      total: 0,
+    });
+    await expect(toggleTeamCardVote(db, wsB, c.id)).rejects.toBeInstanceOf(
       NotFoundError,
     );
   });

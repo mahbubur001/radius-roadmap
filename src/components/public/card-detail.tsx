@@ -5,7 +5,7 @@ import { PublicComments } from "./public-comments";
 import { VoteButton } from "./vote-button";
 
 const TAB =
-  "flex-none rounded-none border-0 border-b-2 border-transparent px-1 pt-2 pb-2.5 data-active:border-primary data-active:text-primary";
+  "-mb-px flex-none rounded-none border-0 border-b-2 border-transparent px-1 pt-2 pb-2.5 after:hidden data-active:border-primary data-active:text-primary";
 
 /**
  * Full card view, shared by the card page and the board's drawer (doc 22

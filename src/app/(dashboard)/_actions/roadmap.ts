@@ -69,7 +69,11 @@ import {
   updateObjective,
   updateRoadmap,
 } from "@/server/services/roadmaps";
-import { listVoters } from "@/server/services/votes";
+import {
+  hasTeamCardVote,
+  listVoters,
+  toggleTeamCardVote,
+} from "@/server/services/votes";
 import { createUpload, fileUrl } from "@/server/storage";
 
 // Every mutation here changes what the public site may show, so it drops
@@ -138,7 +142,7 @@ export const deleteColumnAction = workspaceAction(
 export const getCardAction = workspaceAction(
   cardIdSchema,
   async (ctx, { id }) => {
-    const [card, voters, feedback, attachments, comments, followers] =
+    const [card, voters, feedback, attachments, comments, followers, myVote] =
       await Promise.all([
         getCardDetail(db, ctx, id),
         listVoters(db, ctx, id),
@@ -146,6 +150,7 @@ export const getCardAction = workspaceAction(
         listAttachments(db, ctx, id),
         listTeamComments(db, ctx, { cardId: id }),
         cardFollowers(db, ctx, id),
+        hasTeamCardVote(db, ctx, id),
       ]);
     return {
       card,
@@ -154,6 +159,7 @@ export const getCardAction = workspaceAction(
       attachments: attachments.map(withUrl),
       comments,
       followers,
+      myVote,
       me: ctx.userId,
       canModerate: ctx.role !== "member",
     };
@@ -209,6 +215,12 @@ export const setCardArchivedAction = workspaceAction(
 export const deleteCardAction = workspaceAction(
   cardIdSchema,
   async (ctx, { id }) => mutate(ctx, () => deleteCard(db, ctx, id)),
+);
+
+/** The team member votes (or unvotes) a card from its drawer. */
+export const toggleCardVoteAction = workspaceAction(
+  cardIdSchema,
+  async (ctx, { id }) => mutate(ctx, () => toggleTeamCardVote(db, ctx, id)),
 );
 
 export const duplicateCardAction = workspaceAction(

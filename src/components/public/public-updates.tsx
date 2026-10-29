@@ -11,6 +11,7 @@ import {
   SheetTitle,
 } from "@/components/ui/sheet";
 import type { PublicPost } from "@/server/services/public-updates";
+import { SubscribeBox } from "./subscribe-box";
 import {
   CategoryChip,
   type PublicPostView,
@@ -31,6 +32,7 @@ export function PublicUpdates({
   category,
   embed,
   roadmapBase,
+  justSubscribed,
 }: {
   /** e.g. "/acme/product/updates" */
   base: string;
@@ -40,6 +42,8 @@ export function PublicUpdates({
   category: string;
   embed: boolean;
   roadmapBase: string | null;
+  /** Arrived from the confirmation email link. */
+  justSubscribed: boolean;
 }) {
   const [open, setOpen] = useState<PublicPostView | null>(null);
 
@@ -109,6 +113,10 @@ export function PublicUpdates({
           </a>
         )}
       </search>
+
+      <div className="mx-auto w-full max-w-3xl">
+        <SubscribeBox justConfirmed={justSubscribed} />
+      </div>
 
       {posts.length ? (
         <div className="mx-auto flex w-full max-w-3xl flex-col gap-6">

@@ -165,7 +165,14 @@ export const templates: { [T in EmailTemplate]: TemplateDef<T> } = {
   "feedback-digest": {
     subject: ({ workspaceName, ideas, comments }) =>
       `${workspaceName}: ${count(ideas.length, "new idea")}, ${count(comments.length, "comment")}`,
-    render: ({ workspaceName, ideas, comments, url, settingsUrl }) => (
+    render: ({
+      workspaceName,
+      ideas,
+      comments,
+      subscribers,
+      url,
+      settingsUrl,
+    }) => (
       <EmailLayout
         preview={`What happened in ${workspaceName} today`}
         heading={`Today in ${workspaceName}`}
@@ -195,6 +202,47 @@ export const templates: { [T in EmailTemplate]: TemplateDef<T> } = {
             ))}
           </>
         ) : null}
+        {subscribers ? (
+          <Text style={{ fontWeight: 600 }}>
+            {count(subscribers, "new update subscriber")}
+          </Text>
+        ) : null}
+        <Unsubscribe url={settingsUrl} />
+      </EmailLayout>
+    ),
+  },
+  "subscribe-confirm": {
+    subject: ({ siteName }) =>
+      `Confirm your subscription to ${siteName} updates`,
+    render: ({ siteName, url }) => (
+      <EmailLayout
+        preview={`Confirm to get ${siteName} updates by email`}
+        heading="Confirm your subscription"
+        action={{ label: "Yes, send me updates", url }}
+      >
+        <Text>
+          Someone (hopefully you) asked to get <strong>{siteName}</strong>{" "}
+          updates by email. Confirm with the button below.
+        </Text>
+        <Text style={{ color: "#888", fontSize: 12 }}>
+          If it wasn't you, ignore this email: you won't hear from us.
+        </Text>
+      </EmailLayout>
+    ),
+  },
+  "new-subscriber": {
+    subject: ({ workspaceName, email }) =>
+      `${email} subscribed to ${workspaceName} updates`,
+    render: ({ workspaceName, email, total, url, settingsUrl }) => (
+      <EmailLayout
+        preview={`${count(total, "subscriber")} now`}
+        heading="New subscriber"
+        action={{ label: "See subscribers", url }}
+      >
+        <Text>
+          <strong>{email}</strong> subscribed to {workspaceName} updates. You
+          now have {count(total, "subscriber")}.
+        </Text>
         <Unsubscribe url={settingsUrl} />
       </EmailLayout>
     ),

@@ -31,3 +31,6 @@ export const SUBMIT_LIMITS = { perIpHour: 5, perIpDay: 20 };
 
 /** Public comments per IP. */
 export const COMMENT_LIMITS = { perIpHour: 10, perIpDay: 40 };
+
+/** Update subscriptions: per IP, and confirmation emails per address. */
+export const SUBSCRIBE_LIMITS = { perIpHour: 10, perEmailHour: 3 };

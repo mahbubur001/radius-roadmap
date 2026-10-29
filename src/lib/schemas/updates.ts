@@ -55,3 +55,10 @@ export const publishUpdateSchema = z.object({
   id,
   at: z.iso.datetime({ offset: true }).optional(),
 });
+
+/** Public "Get updates by email". Email is optional for logged-in voters. */
+export const subscribeSchema = z.object({
+  workspaceId: id,
+  email: z.email("Enter a valid email").trim().toLowerCase().optional(),
+  turnstileToken: z.string().max(4096).optional(),
+});

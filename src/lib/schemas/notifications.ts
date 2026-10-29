@@ -13,5 +13,7 @@ export const FREQUENCY_LABELS: Record<Frequency, string> = {
 export const notificationPrefsSchema = z.object({
   newFeedback: z.enum(FREQUENCIES),
   newComment: z.enum(FREQUENCIES),
+  /** Phase 4 (doc 23): off by default for everyone. */
+  newSubscriber: z.enum(FREQUENCIES),
 });
 export type NotificationPrefs = z.infer<typeof notificationPrefsSchema>;

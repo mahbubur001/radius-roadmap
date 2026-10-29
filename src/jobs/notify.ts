@@ -8,6 +8,7 @@ import {
   digestEmails,
   newCommentEmails,
   newFeedbackEmails,
+  newSubscriberEmails,
 } from "@/server/services/notifications";
 import { publishDue } from "@/server/services/update-publish";
 
@@ -36,6 +37,13 @@ export async function notifyJob(job: Job<NotifyJob>) {
     emails = (await newCommentEmails(db, data.commentId)).map(
       ({ userId, ...email }) => ({
         id: `nc-${data.commentId}-${userId}`,
+        email,
+      }),
+    );
+  } else if (data.type === "new-subscriber") {
+    emails = (await newSubscriberEmails(db, data.subscriberId)).map(
+      ({ userId, ...email }) => ({
+        id: `ns-${data.subscriberId}-${userId}`,
         email,
       }),
     );

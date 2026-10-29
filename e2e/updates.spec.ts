@@ -1,6 +1,7 @@
 import { randomUUID } from "node:crypto";
 import { expect, test } from "@playwright/test";
 import { signUpOwner } from "./helpers";
+import { firstLink, waitForMail } from "./mail";
 
 // Updates / changelog (doc 23).
 
@@ -119,4 +120,44 @@ test("publish a post: public Updates tab, post page and RSS; schedule another", 
   expect((await page.request.get(`${listUrl}/coming-tomorrow`)).status()).toBe(
     404,
   );
+});
+
+test("a visitor subscribes with double opt-in and shows up for the team", async ({
+  page,
+  browser,
+}) => {
+  const id = randomUUID().slice(0, 8);
+  const { slug } = await signUpOwner(page, id);
+
+  // Something must be published for the Updates tab to exist.
+  await page.goto(`/dashboard/${slug}/updates`);
+  await page.getByRole("button", { name: "New post" }).click();
+  await expect(page).toHaveURL(/\/updates\/[0-9a-f-]{36}$/);
+  await page.getByRole("textbox", { name: "Title" }).fill("First news");
+  await page
+    .getByRole("region", { name: "Publishing" })
+    .getByRole("button", { name: "Publish now" })
+    .click();
+  const postUrl = await page
+    .getByRole("link", { name: "View public post" })
+    .getAttribute("href");
+  if (!postUrl) throw new Error("No public link");
+  const listUrl = postUrl.replace(/\/first-news$/, "");
+
+  const visitor = await (await browser.newContext()).newPage();
+  await visitor.goto(listUrl);
+  const box = visitor.getByRole("form", { name: "Get updates by email" });
+  const email = `reader-${id}@example.test`;
+  await box.getByRole("textbox", { name: "Email" }).fill(email);
+  await box.getByRole("button", { name: "Subscribe" }).click();
+  await expect(visitor.getByText("confirm your email")).toBeVisible();
+
+  const mail = await waitForMail(email, "Confirm your subscription");
+  await visitor.goto(firstLink(mail.text));
+  await expect(visitor).toHaveURL(/\/updates\?subscribed=1$/);
+  await expect(visitor.getByText("You're subscribed.")).toBeVisible();
+
+  await page.goto(`/dashboard/${slug}/updates/subscribers`);
+  const row = page.getByRole("row", { name: new RegExp(email) });
+  await expect(row).toContainText("Active");
 });

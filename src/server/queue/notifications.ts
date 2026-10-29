@@ -9,6 +9,7 @@ export const NOTIFY_QUEUE = "notify";
 export type NotifyJob =
   | { type: "new-feedback"; feedbackId: string }
   | { type: "new-comment"; commentId: string }
+  | { type: "new-subscriber"; subscriberId: string }
   | { type: "digest" }
   /** A scheduled post goes live (doc 23 U3). */
   | { type: "publish-update"; updateId: string; at: string };
@@ -41,7 +42,9 @@ export async function notify(
   const jobId =
     job.type === "new-feedback"
       ? `new-feedback-${job.feedbackId}`
-      : `new-comment-${job.commentId}`;
+      : job.type === "new-comment"
+        ? `new-comment-${job.commentId}`
+        : `new-subscriber-${job.subscriberId}`;
   try {
     await notifyQueue.add(job.type, job, { jobId });
   } catch (error) {

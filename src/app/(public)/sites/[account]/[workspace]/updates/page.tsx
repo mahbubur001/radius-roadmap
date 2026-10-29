@@ -35,6 +35,7 @@ async function load(props: Props) {
     q,
     category,
     embed: first(query.embed) === "1",
+    subscribed: first(query.subscribed) === "1",
   };
 }
 
@@ -69,7 +70,7 @@ export default function PublicUpdatesPage(props: Props) {
 async function Updates(props: Props) {
   const data = await load(props);
   if (!data) notFound();
-  const { site, ws, q, category, embed } = data;
+  const { site, ws, q, category, embed, subscribed } = data;
   return (
     <SiteShell
       account={site.slug}
@@ -92,6 +93,7 @@ async function Updates(props: Props) {
           roadmapBase={
             ws.modules.roadmap ? `/${site.slug}/${ws.slug}/roadmap` : null
           }
+          justSubscribed={subscribed}
         />
       </div>
     </SiteShell>

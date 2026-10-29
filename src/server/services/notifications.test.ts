@@ -90,8 +90,13 @@ describe("preferences", () => {
     expect(await getMyPrefs(db, member)).toEqual({
       newFeedback: "off",
       newComment: "off",
+      newSubscriber: "off",
     });
-    await setMyPrefs(db, member, { newFeedback: "instant", newComment: "off" });
+    await setMyPrefs(db, member, {
+      newFeedback: "instant",
+      newComment: "off",
+      newSubscriber: "off",
+    });
     expect((await getMyPrefs(db, member)).newFeedback).toBe("instant");
   });
 
@@ -99,6 +104,7 @@ describe("preferences", () => {
     await setMyPrefs(db, outsider, {
       newFeedback: "instant",
       newComment: "instant",
+      newSubscriber: "off",
     });
     const to = (
       await recipients(
@@ -164,7 +170,11 @@ describe("instant alerts", () => {
 
 describe("daily digest", () => {
   it("collects the day's ideas and comments for daily subscribers", async () => {
-    await setMyPrefs(db, admin, { newFeedback: "daily", newComment: "daily" });
+    await setMyPrefs(db, admin, {
+      newFeedback: "daily",
+      newComment: "daily",
+      newSubscriber: "off",
+    });
     const since = new Date(Date.now() - 60_000);
     await visitorIdea("Digest me");
     const digests = (await digestEmails(db, since)).filter(

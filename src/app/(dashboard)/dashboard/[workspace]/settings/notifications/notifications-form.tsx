@@ -38,6 +38,11 @@ const ROWS: { name: keyof NotificationPrefs; label: string; hint: string }[] = [
     label: "New comments",
     hint: "Comments from visitors and teammates on ideas and roadmap cards.",
   },
+  {
+    name: "newSubscriber",
+    label: "New subscribers",
+    hint: "When someone confirms they want your updates by email.",
+  },
 ];
 
 /** The member's own email alerts for this workspace. */

@@ -1,6 +1,6 @@
 "use client";
 
-import { CalendarClock, Pin, Plus, Search, Shapes } from "lucide-react";
+import { CalendarClock, Pin, Plus, Search, Shapes, Users } from "lucide-react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useState } from "react";
@@ -130,6 +130,12 @@ export function UpdatesView({
             ))}
           </select>
         </form>
+        <Button variant="secondary" asChild>
+          <Link href={`${base}/subscribers`}>
+            <Users />
+            Subscribers
+          </Link>
+        </Button>
         {canManage ? (
           <Button variant="secondary" onClick={() => setCategoriesOpen(true)}>
             <Shapes />

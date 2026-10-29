@@ -1,5 +1,6 @@
 "use server";
 
+import { z } from "zod";
 import {
   cardSearchSchema,
   createUpdateSchema,
@@ -15,6 +16,11 @@ import { db } from "@/server/db/client";
 import { invalidatePublic, invalidateSite } from "@/server/public-cache";
 import { schedulePublish } from "@/server/queue/notifications";
 import type { WorkspaceContext } from "@/server/services/context";
+import { assertRole } from "@/server/services/context";
+import {
+  removeSubscriber,
+  subscribersCsv,
+} from "@/server/services/subscribers";
 import {
   createUpdateCategory,
   deleteUpdateCategory,
@@ -130,5 +136,25 @@ export const unpublishUpdateAction = workspaceAction(
     await unpublishUpdate(db, ctx, id);
     invalidatePublic(ctx.workspaceId);
     invalidateSite(ctx.accountId);
+  },
+);
+
+/** Removes a subscriber (admins). They can subscribe again later. */
+export const removeSubscriberAction = workspaceAction(
+  updateIdSchema,
+  async (ctx, { id }) => {
+    assertRole(ctx, "admin");
+    await removeSubscriber(db, ctx, id);
+  },
+);
+
+export const exportSubscribersAction = workspaceAction(
+  z.looseObject({}),
+  async (ctx) => {
+    assertRole(ctx, "admin");
+    return {
+      filename: `${ctx.workspaceSlug}-subscribers-${new Date().toISOString().slice(0, 10)}.csv`,
+      csv: await subscribersCsv(db, ctx),
+    };
   },
 );

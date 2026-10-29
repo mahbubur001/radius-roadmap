@@ -45,6 +45,18 @@ export type EmailTemplateProps = {
       excerpt: string;
       url: string;
     }[];
+    /** New confirmed update subscribers (doc 23). */
+    subscribers?: number;
+    url: string;
+    settingsUrl: string;
+  };
+  /** Double opt-in for update emails (doc 23 U1). */
+  "subscribe-confirm": { siteName: string; url: string };
+  /** Team alert: someone confirmed an update subscription. */
+  "new-subscriber": {
+    workspaceName: string;
+    email: string;
+    total: number;
     url: string;
     settingsUrl: string;
   };

@@ -24,6 +24,7 @@ import {
   roadmapCards,
   roadmaps,
   trackedUsers,
+  updateSubscribers,
   user,
   workspaceMembers,
   workspaces,
@@ -39,7 +40,7 @@ import { type Role, toRole, type WorkspaceContext } from "./context";
 
 export function defaultPrefs(role: Role): NotificationPrefs {
   const f: Frequency = role === "member" ? "off" : "instant";
-  return { newFeedback: f, newComment: f };
+  return { newFeedback: f, newComment: f, newSubscriber: "off" };
 }
 
 export async function getMyPrefs(db: Db, ctx: WorkspaceContext) {
@@ -54,7 +55,11 @@ export async function getMyPrefs(db: Db, ctx: WorkspaceContext) {
     )
     .limit(1);
   return row
-    ? { newFeedback: row.newFeedback, newComment: row.newComment }
+    ? {
+        newFeedback: row.newFeedback,
+        newComment: row.newComment,
+        newSubscriber: row.newSubscriber,
+      }
     : defaultPrefs(ctx.role);
 }
 
@@ -101,6 +106,7 @@ export async function recipients(
       role: member.role,
       newFeedback: notificationPreferences.newFeedback,
       newComment: notificationPreferences.newComment,
+      newSubscriber: notificationPreferences.newSubscriber,
     })
     .from(member)
     .innerJoin(user, eq(user.id, member.userId))
@@ -290,6 +296,7 @@ export async function digestEmails(
       or(
         eq(notificationPreferences.newFeedback, "daily"),
         eq(notificationPreferences.newComment, "daily"),
+        eq(notificationPreferences.newSubscriber, "daily"),
       ),
     )
     .groupBy(
@@ -358,12 +365,27 @@ export async function digestEmails(
         ),
     ]);
 
-    const [forIdeas, forComments] = await Promise.all([
+    const [forIdeas, forComments, forSubscribers, [subs]] = await Promise.all([
       recipients(db, scope, "newFeedback", "daily"),
       recipients(db, scope, "newComment", "daily"),
+      recipients(db, scope, "newSubscriber", "daily"),
+      db
+        .select({ n: sql<number>`count(*)::int` })
+        .from(updateSubscribers)
+        .where(
+          and(
+            eq(updateSubscribers.accountId, scope.accountId),
+            eq(updateSubscribers.workspaceId, scope.workspaceId),
+            eq(updateSubscribers.status, "active"),
+            gt(updateSubscribers.confirmedAt, since),
+          ),
+        ),
     ]);
     const people = new Map(
-      [...forIdeas, ...forComments].map((r) => [r.userId, r]),
+      [...forIdeas, ...forComments, ...forSubscribers].map((r) => [
+        r.userId,
+        r,
+      ]),
     );
     for (const r of people.values()) {
       const wantsIdeas = forIdeas.some((x) => x.userId === r.userId);
@@ -389,7 +411,10 @@ export async function digestEmails(
                 : l.card(c.roadmapSlug ?? "", c.cardId ?? ""),
             }))
         : [];
-      if (!myIdeas.length && !myComments.length) continue;
+      const mySubscribers = forSubscribers.some((x) => x.userId === r.userId)
+        ? (subs?.n ?? 0)
+        : 0;
+      if (!myIdeas.length && !myComments.length && !mySubscribers) continue;
       out.push({
         userId: r.userId,
         workspaceId: scope.workspaceId,
@@ -399,6 +424,7 @@ export async function digestEmails(
           workspaceName: ws.name,
           ideas: myIdeas,
           comments: myComments,
+          subscribers: mySubscribers,
           url: `${l.base}/feedback`,
           settingsUrl: l.settings,
         },
@@ -406,4 +432,50 @@ export async function digestEmails(
     }
   }
   return out;
+}
+
+/** Instant alerts for a newly confirmed update subscriber (doc 23). */
+export async function newSubscriberEmails(
+  db: Db,
+  subscriberId: string,
+): Promise<(EmailJob & { userId: string })[]> {
+  const [sub] = await db
+    .select({
+      email: updateSubscribers.email,
+      status: updateSubscribers.status,
+      accountId: updateSubscribers.accountId,
+      workspaceId: updateSubscribers.workspaceId,
+      wsName: workspaces.name,
+      wsSlug: workspaces.slug,
+    })
+    .from(updateSubscribers)
+    .innerJoin(workspaces, eq(workspaces.id, updateSubscribers.workspaceId))
+    .where(eq(updateSubscribers.id, subscriberId))
+    .limit(1);
+  if (!sub || sub.status !== "active") return [];
+  const [[total], to] = await Promise.all([
+    db
+      .select({ n: sql<number>`count(*)::int` })
+      .from(updateSubscribers)
+      .where(
+        and(
+          eq(updateSubscribers.workspaceId, sub.workspaceId),
+          eq(updateSubscribers.status, "active"),
+        ),
+      ),
+    recipients(db, sub, "newSubscriber", "instant"),
+  ]);
+  const l = links(sub.wsSlug);
+  return to.map((r) => ({
+    userId: r.userId,
+    template: "new-subscriber",
+    to: r.email,
+    props: {
+      workspaceName: sub.wsName,
+      email: sub.email,
+      total: total?.n ?? 1,
+      url: `${l.base}/updates/subscribers`,
+      settingsUrl: l.settings,
+    },
+  }));
 }

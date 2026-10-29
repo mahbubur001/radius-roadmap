@@ -1,12 +1,13 @@
 import { db } from "@/server/db/client";
+import { listIdeaSitemapEntries } from "@/server/services/public-ideas";
 import { listSitemapEntries } from "@/server/services/public-site";
-import { loadSite, loadWorkspaces, siteUrl } from "../data";
+import { loadSite, loadWorkspace, loadWorkspaces, siteUrl } from "../data";
 
 function escapeXml(value: string) {
   return value.replace(/[<>&'"]/g, (c) => `&#${c.charCodeAt(0)};`);
 }
 
-/** Roadmap and card URLs of workspaces that allow indexing. */
+/** Roadmap, card, Ideas and idea URLs of workspaces that allow indexing. */
 export async function GET(
   _request: Request,
   ctx: RouteContext<"/sites/[account]/sitemap.xml">,
@@ -14,19 +15,36 @@ export async function GET(
   const site = await loadSite(decodeURIComponent((await ctx.params).account));
   if (!site) return new Response("Not found", { status: 404 });
   const origin = siteUrl(site.slug);
-  const [workspaces, cards] = await Promise.all([
+  const scope = { accountId: site.accountId };
+  const [workspaces, cards, ideas] = await Promise.all([
     loadWorkspaces(site.accountId),
-    listSitemapEntries(db, { accountId: site.accountId }),
+    listSitemapEntries(db, scope),
+    listIdeaSitemapEntries(db, scope),
   ]);
-  const urls = [
-    ...workspaces
+  const modules = await Promise.all(
+    workspaces
       .filter((w) => w.settings.indexPublicPages !== false)
-      .map((w) => ({ loc: `${origin}/${w.slug}/roadmap`, lastmod: null })),
+      .map((w) => loadWorkspace(site.accountId, w.slug)),
+  );
+  const urls = [
+    ...modules.flatMap((w) =>
+      w
+        ? (["roadmap", "ideas"] as const)
+            .filter((m) => w.modules[m])
+            .map((m) => ({ loc: `${origin}/${w.slug}/${m}`, lastmod: null }))
+        : [],
+    ),
     ...cards
       .filter((c) => c.indexable)
       .map((c) => ({
         loc: `${origin}/${c.workspace}/roadmap/${c.card}`,
         lastmod: c.updatedAt.toISOString(),
+      })),
+    ...ideas
+      .filter((i) => i.indexable)
+      .map((i) => ({
+        loc: `${origin}/${i.workspace}/ideas/${i.idea}`,
+        lastmod: i.updatedAt.toISOString(),
       })),
   ];
   const body = `<?xml version="1.0" encoding="UTF-8"?>

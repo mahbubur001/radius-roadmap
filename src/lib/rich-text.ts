@@ -46,6 +46,30 @@ export function richTextToPlain(doc: unknown): string {
     .trim();
 }
 
+/**
+ * A Tiptap doc from plain text (public idea submissions): blank lines split
+ * paragraphs, single newlines become hard breaks. No marks, no links.
+ */
+export function plainToRichText(text: string): RichTextNode {
+  const paragraphs = text
+    .replace(/\r\n?/g, "\n")
+    .split(/\n{2,}/)
+    .map((p) => p.trim())
+    .filter(Boolean);
+  return {
+    type: "doc",
+    content: paragraphs.map((p) => ({
+      type: "paragraph",
+      content: p
+        .split("\n")
+        .flatMap((line, i) => [
+          ...(i ? [{ type: "hardBreak" }] : []),
+          ...(line ? [{ type: "text", text: line }] : []),
+        ]),
+    })),
+  };
+}
+
 function escapeHtml(value: string) {
   return value
     .replace(/&/g, "&amp;")

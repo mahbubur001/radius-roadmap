@@ -2,7 +2,7 @@
 
 import { ArrowUp } from "lucide-react";
 import { cn } from "@/lib/utils";
-import { useVoter } from "./voter-provider";
+import { useVoter, type VoteKind } from "./voter-provider";
 
 /**
  * Upvote toggle (↑ everywhere, doc 22 P5). `votes` is null when the roadmap
@@ -13,10 +13,13 @@ export function VoteButton({
   cardId,
   votes,
   variant = "inline",
+  kind = "card",
 }: {
+  /** The card's or idea's id. */
   cardId: string;
   votes: number | null;
   variant?: "inline" | "pill";
+  kind?: VoteKind;
 }) {
   const { voted, totals, toggleVote } = useVoter();
   const active = voted.has(cardId);
@@ -30,7 +33,7 @@ export function VoteButton({
       onClick={(e) => {
         e.preventDefault();
         e.stopPropagation();
-        void toggleVote(cardId);
+        void toggleVote(cardId, kind);
       }}
       className={cn(
         "flex shrink-0 items-center gap-1.5 rounded-md font-medium transition-colors focus-visible:ring-2 focus-visible:ring-ring focus-visible:outline-none",

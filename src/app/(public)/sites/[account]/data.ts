@@ -4,6 +4,11 @@ import { env } from "@/lib/env";
 import { db } from "@/server/db/client";
 import { publicTag, siteTag } from "@/server/public-cache";
 import {
+  getPublicIdea,
+  getPublicIdeas,
+  type IdeaSort,
+} from "@/server/services/public-ideas";
+import {
   getPublicCard,
   getPublicRoadmap,
   getPublicWorkspace,
@@ -62,6 +67,28 @@ export async function loadCard(
   cacheLife("hours");
   cacheTag(publicTag(workspaceId));
   return getPublicCard(db, { accountId }, workspaceId, slug);
+}
+
+export async function loadIdeas(
+  accountId: string,
+  workspaceId: string,
+  opts: { board?: string; q?: string; sort?: IdeaSort; status?: string },
+) {
+  "use cache";
+  cacheLife("hours");
+  cacheTag(publicTag(workspaceId));
+  return getPublicIdeas(db, { accountId }, workspaceId, opts);
+}
+
+export async function loadIdea(
+  accountId: string,
+  workspaceId: string,
+  slug: string,
+) {
+  "use cache";
+  cacheLife("hours");
+  cacheTag(publicTag(workspaceId));
+  return getPublicIdea(db, { accountId }, workspaceId, slug);
 }
 
 /** Absolute base URL of a public site (<app>/<account>), for canonical URLs and sitemaps. */

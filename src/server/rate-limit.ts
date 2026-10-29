@@ -25,3 +25,6 @@ export const VOTE_LIMITS = {
   /** Sign-in codes requested per email per hour. */
   codesPerEmailHour: 5,
 };
+
+/** Public idea submissions per IP (doc 20 §4.2). */
+export const SUBMIT_LIMITS = { perIpHour: 5, perIpDay: 20 };

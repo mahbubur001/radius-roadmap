@@ -59,14 +59,30 @@ afterAll(() => cleanup(db, accounts, users));
 describe("public site modules", () => {
   it("shows the roadmap by default", async () => {
     const ws = await getPublicWorkspace(db, pub, "mod");
-    expect(ws?.modules).toEqual({ roadmap: true, ideas: false });
+    // New workspaces also get a public ideas board.
+    expect(ws?.modules).toEqual({ roadmap: true, ideas: true });
     expect(await publicPathStatus(db, pub, ["mod", "roadmap"])).toBe("ok");
   });
 
   it("hides the roadmap everywhere when switched off, and back on", async () => {
     await updatePublicSite(db, owner, { ...ON, showRoadmap: false });
-    expect(await getPublicWorkspace(db, pub, "mod")).toBeNull();
+    expect((await getPublicWorkspace(db, pub, "mod"))?.modules).toEqual({
+      roadmap: false,
+      ideas: true,
+    });
     expect(await publicPathStatus(db, pub, ["mod", "roadmap"])).toBe("missing");
+    // The workspace root now opens Ideas.
+    expect(await publicPathStatus(db, pub, ["mod"])).toEqual({
+      redirect: "/mod/ideas",
+    });
+
+    // With Ideas off too, the workspace isn't public at all.
+    await updatePublicSite(db, owner, {
+      ...ON,
+      showRoadmap: false,
+      showIdeas: false,
+    });
+    expect(await getPublicWorkspace(db, pub, "mod")).toBeNull();
     expect(
       (await listPublicWorkspaces(db, pub)).map((w) => w.slug),
     ).not.toContain("mod");

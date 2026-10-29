@@ -8,7 +8,7 @@ import { isSiteWorkspace } from "@/server/services/public-site";
 
 const schema = z.object({
   workspaceId: z.uuid(),
-  type: z.enum(["page_view", "card_view"]),
+  type: z.enum(["page_view", "card_view", "feedback_view"]),
   subjectId: z.uuid().nullable().optional(),
 });
 

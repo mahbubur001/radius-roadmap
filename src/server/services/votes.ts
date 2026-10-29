@@ -36,14 +36,11 @@ export type VoteMeta = {
   source: VoteSource;
 };
 
-function voterWhere(cardId: string, voter: Voter) {
+function voterWhere(target: SQL | undefined, voter: Voter) {
   return voter.trackedUserId
-    ? and(
-        eq(votes.cardId, cardId),
-        eq(votes.trackedUserId, voter.trackedUserId),
-      )
+    ? and(target, eq(votes.trackedUserId, voter.trackedUserId))
     : and(
-        eq(votes.cardId, cardId),
+        target,
         isNull(votes.trackedUserId),
         eq(votes.visitorId, voter.visitorId ?? ""),
       );
@@ -62,10 +59,15 @@ async function bump(tx: DbOrTx, cardId: string, by: number) {
 }
 
 async function bumpFeedback(tx: DbOrTx, feedbackId: string, by: number) {
-  await tx
+  const [row] = await tx
     .update(feedbackItems)
     .set({ voteCount: sql`greatest(${feedbackItems.voteCount} + ${by}, 0)` })
-    .where(eq(feedbackItems.id, feedbackId));
+    .where(eq(feedbackItems.id, feedbackId))
+    .returning({
+      voteCount: feedbackItems.voteCount,
+      importedVotes: feedbackItems.importedVotes,
+    });
+  return (row?.voteCount ?? 0) + (row?.importedVotes ?? 0);
 }
 
 /**
@@ -83,7 +85,10 @@ export async function toggleVote(
     const [removed] = await tx
       .delete(votes)
       .where(
-        and(eq(votes.accountId, ctx.accountId), voterWhere(card.id, voter)),
+        and(
+          eq(votes.accountId, ctx.accountId),
+          voterWhere(eq(votes.cardId, card.id), voter),
+        ),
       )
       .returning({ id: votes.id });
     if (removed) return { voted: false, total: await bump(tx, card.id, -1) };
@@ -104,8 +109,51 @@ export async function toggleVote(
   });
 }
 
-/** Card ids (among `cardIds`) this voter has voted for. */
-export async function votedCardIds(
+/**
+ * Same as toggleVote, for a public idea (doc 20 D1: one votes table). The
+ * caller has already checked the idea is visible (public-ideas.ts).
+ */
+export async function toggleFeedbackVote(
+  db: Db,
+  ctx: PublicContext,
+  item: { id: string; workspaceId: string },
+  voter: Voter,
+  meta: VoteMeta,
+): Promise<{ voted: boolean; total: number }> {
+  return db.transaction(async (tx) => {
+    const [removed] = await tx
+      .delete(votes)
+      .where(
+        and(
+          eq(votes.accountId, ctx.accountId),
+          voterWhere(eq(votes.feedbackId, item.id), voter),
+        ),
+      )
+      .returning({ id: votes.id });
+    if (removed) {
+      return { voted: false, total: await bumpFeedback(tx, item.id, -1) };
+    }
+    const [added] = await tx
+      .insert(votes)
+      .values({
+        accountId: ctx.accountId,
+        workspaceId: item.workspaceId,
+        feedbackId: item.id,
+        trackedUserId: voter.trackedUserId ?? null,
+        visitorId: voter.visitorId ?? null,
+        ...meta,
+      })
+      .onConflictDoNothing()
+      .returning({ id: votes.id });
+    return {
+      voted: true,
+      total: await bumpFeedback(tx, item.id, added ? 1 : 0),
+    };
+  });
+}
+
+/** Card and idea ids in a workspace this voter has voted for. */
+export async function votedIds(
   db: Db,
   ctx: PublicContext,
   voter: { trackedUserId?: string | null; visitorId?: string | null },
@@ -113,7 +161,7 @@ export async function votedCardIds(
 ) {
   if (!voter.trackedUserId && !voter.visitorId) return [];
   const rows = await db
-    .select({ cardId: votes.cardId })
+    .select({ cardId: votes.cardId, feedbackId: votes.feedbackId })
     .from(votes)
     .where(
       and(
@@ -127,7 +175,10 @@ export async function votedCardIds(
             ),
       ),
     );
-  return rows.flatMap((r) => (r.cardId ? [r.cardId] : []));
+  return rows.flatMap((r) => {
+    const id = r.cardId ?? r.feedbackId;
+    return id ? [id] : [];
+  });
 }
 
 /**

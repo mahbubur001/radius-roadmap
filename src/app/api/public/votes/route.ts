@@ -5,12 +5,13 @@ import { invalidatePublic } from "@/server/public-cache";
 import { notFound, publicRequest } from "@/server/public-request";
 import { hit, VOTE_LIMITS } from "@/server/rate-limit";
 import { trackEvent } from "@/server/services/events";
+import { getVotableIdea } from "@/server/services/public-ideas";
 import { getVotableCard } from "@/server/services/public-site";
-import { toggleVote } from "@/server/services/votes";
+import { toggleFeedbackVote, toggleVote } from "@/server/services/votes";
 import { verifyTurnstile } from "@/server/turnstile";
 
 /**
- * Toggle the caller's vote on a public card (doc 19 §4.3). A route handler
+ * Toggle the caller's vote on a public card or idea (doc 19 §4.3, doc 20 D1). A route handler
  * rather than a server action so the embed and (later) the widget can call it.
  */
 export async function POST(request: NextRequest) {
@@ -22,8 +23,13 @@ export async function POST(request: NextRequest) {
     return req.respond({ error: "Invalid request." }, { status: 400 });
   }
 
-  const card = await getVotableCard(db, req.ctx, parsed.data.cardId);
-  if (!card) return req.respond({ error: "Card not found." }, { status: 404 });
+  const { cardId, feedbackId } = parsed.data;
+  const card = cardId
+    ? await getVotableCard(db, req.ctx, cardId)
+    : feedbackId
+      ? await getVotableIdea(db, req.ctx, feedbackId)
+      : null;
+  if (!card) return req.respond({ error: "Not found." }, { status: 404 });
 
   if (card.requireVoterLogin && !req.voter) {
     return req.respond(
@@ -69,13 +75,13 @@ export async function POST(request: NextRequest) {
   }
 
   const source = req.embed ? "embed" : "public";
-  const result = await toggleVote(
-    db,
-    req.ctx,
-    card,
-    req.voter ? { trackedUserId: req.voter.id } : { visitorId: req.visitorId },
-    { ipHash: req.ipHash, ...req.location, source },
-  );
+  const voter = req.voter
+    ? { trackedUserId: req.voter.id }
+    : { visitorId: req.visitorId };
+  const meta = { ipHash: req.ipHash, ...req.location, source } as const;
+  const result = cardId
+    ? await toggleVote(db, req.ctx, card, voter, meta)
+    : await toggleFeedbackVote(db, req.ctx, card, voter, meta);
   await trackEvent(db, req.ctx, {
     workspaceId: card.workspaceId,
     type: result.voted ? "vote" : "unvote",

@@ -2,11 +2,12 @@ import type { NextRequest } from "next/server";
 import { z } from "zod";
 import { db } from "@/server/db/client";
 import { notFound, publicRequest } from "@/server/public-request";
-import { votedCardIds } from "@/server/services/votes";
+import { pendingIdeas } from "@/server/services/public-ideas";
+import { votedIds } from "@/server/services/votes";
 
 /**
  * The caller's voter state for one workspace: who they are (if signed in)
- * and which cards they voted for. Read by the public pages after load, so
+ * which cards and ideas they voted for, and their ideas waiting for review. Read by the public pages after load, so
  * the pages themselves stay cacheable.
  */
 export async function GET(request: NextRequest) {
@@ -18,12 +19,17 @@ export async function GET(request: NextRequest) {
   if (!workspaceId.success) {
     return req.respond({ error: "Invalid request." }, { status: 400 });
   }
-  const voted = await votedCardIds(
-    db,
-    req.ctx,
-    req.voter ? { trackedUserId: req.voter.id } : { visitorId: req.visitorId },
-    workspaceId.data,
-  );
+  const [voted, pending] = await Promise.all([
+    votedIds(
+      db,
+      req.ctx,
+      req.voter
+        ? { trackedUserId: req.voter.id }
+        : { visitorId: req.visitorId },
+      workspaceId.data,
+    ),
+    req.voter ? pendingIdeas(db, req.ctx, workspaceId.data, req.voter.id) : [],
+  ]);
   return req.respond({
     voter: req.voter
       ? {
@@ -33,6 +39,7 @@ export async function GET(request: NextRequest) {
         }
       : null,
     voted,
+    pending,
     visitor: req.visitorToken,
   });
 }

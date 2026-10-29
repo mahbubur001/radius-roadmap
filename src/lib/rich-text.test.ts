@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { renderRichText, richTextToPlain } from "./rich-text";
+import { plainToRichText, renderRichText, richTextToPlain } from "./rich-text";
 
 const doc = (...content: unknown[]) => ({ type: "doc", content });
 const p = (...content: unknown[]) => ({ type: "paragraph", content });
@@ -76,6 +76,16 @@ describe("richTextToPlain", () => {
   it("joins blocks with newlines", () => {
     expect(richTextToPlain(doc(p(text("One")), p(text("Two"))))).toBe(
       "One\nTwo",
+    );
+  });
+});
+
+describe("plainToRichText", () => {
+  it("keeps text as plain paragraphs and breaks, escaped when rendered", () => {
+    const doc = plainToRichText("Line one\nline two\n\n<b>Second</b>");
+    expect(richTextToPlain(doc)).toBe("Line one\nline two\n<b>Second</b>");
+    expect(renderRichText(doc)).toBe(
+      "<p>Line one<br>line two</p><p>&lt;b&gt;Second&lt;/b&gt;</p>",
     );
   });
 });

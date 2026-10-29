@@ -20,6 +20,7 @@ import {
   cardFeedbackLinks,
   cardTags,
   comments,
+  feedbackBoards,
   feedbackItems,
   objectives,
   organization,
@@ -32,6 +33,7 @@ import {
 import { likePattern } from "./cards";
 import type { PublicContext } from "./context";
 import { byPosition } from "./positions";
+import { boardIsPublic, hasPublicIdeas, ideaPathStatus } from "./public-ideas";
 
 // Public site queries (doc 19 §4.1). The account comes from the URL path
 // (/<account>/…), never from an account id sent by the client. Only public roadmaps, public columns and public,
@@ -78,7 +80,7 @@ export async function resolveSite(
   return row ?? null;
 }
 
-/** Workspaces that have at least one public roadmap. */
+/** Workspaces with at least one public roadmap or public ideas board. */
 export async function listPublicWorkspaces(db: Db, ctx: PublicContext) {
   return db
     .select({
@@ -92,13 +94,26 @@ export async function listPublicWorkspaces(db: Db, ctx: PublicContext) {
     .where(
       and(
         eq(workspaces.accountId, ctx.accountId),
-        exists(
-          db
-            .select({ one: sql`1` })
-            .from(roadmaps)
-            .where(
-              and(eq(roadmaps.workspaceId, workspaces.id), roadmapIsPublic),
-            ),
+        or(
+          exists(
+            db
+              .select({ one: sql`1` })
+              .from(roadmaps)
+              .where(
+                and(eq(roadmaps.workspaceId, workspaces.id), roadmapIsPublic),
+              ),
+          ),
+          exists(
+            db
+              .select({ one: sql`1` })
+              .from(feedbackBoards)
+              .where(
+                and(
+                  eq(feedbackBoards.workspaceId, workspaces.id),
+                  boardIsPublic,
+                ),
+              ),
+          ),
         ),
       ),
     )
@@ -110,12 +125,23 @@ export async function getPublicWorkspace(
   ctx: PublicContext,
   slug: string,
 ) {
+  return publicWorkspace(db, ctx, eq(workspaces.slug, slug));
+}
+
+/** Same as getPublicWorkspace, by id (public API routes). */
+export async function getPublicWorkspaceById(
+  db: Db,
+  ctx: PublicContext,
+  id: string,
+) {
+  return publicWorkspace(db, ctx, eq(workspaces.id, id));
+}
+
+async function publicWorkspace(db: Db, ctx: PublicContext, match: SQL) {
   const [ws] = await db
     .select()
     .from(workspaces)
-    .where(
-      and(eq(workspaces.accountId, ctx.accountId), eq(workspaces.slug, slug)),
-    )
+    .where(and(eq(workspaces.accountId, ctx.accountId), match))
     .limit(1);
   if (!ws) return null;
   const boards = await db
@@ -133,7 +159,8 @@ export async function getPublicWorkspace(
       ),
     )
     .orderBy(byPosition(roadmaps.position));
-  if (!boards.length) return null;
+  const ideas = await hasPublicIdeas(db, ctx, ws.id);
+  if (!boards.length && !ideas) return null;
   return {
     id: ws.id,
     name: ws.name,
@@ -141,8 +168,7 @@ export async function getPublicWorkspace(
     logo: ws.logo,
     settings: ws.settings,
     roadmaps: boards,
-    // Ideas join in doc 22 step 4.
-    modules: { roadmap: boards.length > 0, ideas: false },
+    modules: { roadmap: boards.length > 0, ideas },
   };
 }
 
@@ -471,6 +497,11 @@ export async function isSiteWorkspace(
   return !!row;
 }
 
+/** The first module a workspace shows: its tab when you open /<ws>. */
+function homeModule(ws: { modules: { roadmap: boolean } }) {
+  return ws.modules.roadmap ? "roadmap" : "ideas";
+}
+
 export type PublicPathStatus = "ok" | "missing" | { redirect: string };
 
 /**
@@ -490,13 +521,20 @@ export async function publicPathStatus(
   if (!ws) {
     const list = await listPublicWorkspaces(db, ctx);
     const [only] = list;
-    return list.length === 1 && only
-      ? { redirect: `/${only.slug}/roadmap` }
-      : "ok";
+    if (list.length !== 1 || !only) return "ok";
+    const home = await getPublicWorkspace(db, ctx, only.slug);
+    return home ? { redirect: `/${only.slug}/${homeModule(home)}` } : "ok";
   }
   if (segments.length === 1 && ws === "sitemap.xml") return "ok";
+  if (module === "ideas") {
+    return rest.length ? "missing" : ideaPathStatus(db, ctx, ws, cardSlug);
+  }
   if (rest.length || (module !== undefined && module !== "roadmap")) {
     return "missing";
+  }
+  if (!module) {
+    const home = await getPublicWorkspace(db, ctx, ws);
+    return home ? { redirect: `/${ws}/${homeModule(home)}` } : "missing";
   }
 
   const roadmapScope = and(

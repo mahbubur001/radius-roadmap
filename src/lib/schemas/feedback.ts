@@ -196,3 +196,34 @@ export const pickerSearchSchema = z.object({
   /** Leave this item out of the results (merge picker). */
   excludeId: id.optional(),
 });
+
+/** Public "Add new" idea form (doc 20 §4.2, doc 22 step 4). */
+export const submitIdeaSchema = z.object({
+  workspaceId: z.uuid(),
+  board: z.string().trim().min(1).max(80),
+  title: z
+    .string()
+    .trim()
+    .min(3, "At least 3 characters")
+    .max(200, "Keep the title under 200 characters"),
+  details: z.string().trim().max(5000, "Keep it under 5000 characters"),
+  acceptTerms: z.boolean().optional(),
+  turnstileToken: z.string().max(4096).optional(),
+});
+
+export type SubmitIdeaInput = z.input<typeof submitIdeaSchema>;
+
+/**
+ * The public idea form as the visitor fills it in. Name and email are only
+ * asked (and required) when nobody is logged in; the server re-checks the
+ * idea with submitIdeaSchema and the guest with guestSignInSchema.
+ */
+export const ideaFormSchema = z.object({
+  title: submitIdeaSchema.shape.title,
+  details: submitIdeaSchema.shape.details,
+  name: z.string().trim().max(80).optional(),
+  email: z.string().trim().max(254).optional(),
+  acceptTerms: z.boolean().optional(),
+});
+
+export type IdeaFormInput = z.infer<typeof ideaFormSchema>;

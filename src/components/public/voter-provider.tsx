@@ -13,14 +13,20 @@ import { toast } from "sonner";
 import { SignInDialog } from "./sign-in-dialog";
 import { turnstileToken } from "./turnstile";
 
-// Visitor state for a public site: who is signed in and which cards they
-// voted for. Loaded after the (cached) page renders, from /api/public/me.
+// Visitor state for a public site: who is signed in, which cards and ideas
+// they voted for, and their ideas waiting for review. Loaded after the (cached) page renders, from /api/public/me.
 
 export type Voter = {
   name: string | null;
   email: string | null;
   verified: boolean;
 };
+
+/** What a vote is for: a roadmap card or a public idea. */
+export type VoteKind = "card" | "idea";
+
+/** The visitor's own idea still waiting for the team's review. */
+export type PendingIdea = { id: string; boardId: string; title: string };
 
 type VoterState = {
   /** Account slug of this public site (/<site>/…). */
@@ -29,9 +35,11 @@ type VoterState = {
   embed: boolean;
   voter: Voter | null;
   voted: Set<string>;
-  /** Vote totals changed in this session, by card id. */
+  /** Vote totals changed in this session, by card or idea id. */
   totals: Record<string, number>;
-  toggleVote: (cardId: string) => Promise<void>;
+  toggleVote: (id: string, kind?: VoteKind) => Promise<void>;
+  pendingIdeas: PendingIdea[];
+  addPendingIdea: (idea: PendingIdea) => void;
   openSignIn: () => void;
   signOut: () => Promise<void>;
   setVoter: (voter: Voter | null) => void;
@@ -107,15 +115,18 @@ export function VoterProvider({
   const [totals, setTotals] = useState<Record<string, number>>({});
   const [signInOpen, setSignInOpen] = useState(false);
   const [pending, setPending] = useState<string | null>(null);
+  const [pendingIdeas, setPendingIdeas] = useState<PendingIdea[]>([]);
 
   const refresh = useCallback(async () => {
-    const res = await publicApi<{ voter: Voter | null; voted: string[] }>(
-      `/api/public/me?workspace=${workspaceId}`,
-      { site, embed },
-    );
+    const res = await publicApi<{
+      voter: Voter | null;
+      voted: string[];
+      pending?: PendingIdea[];
+    }>(`/api/public/me?workspace=${workspaceId}`, { site, embed });
     if (!res.ok) return;
     setVoter(res.data.voter);
     setVoted(new Set(res.data.voted));
+    setPendingIdeas(res.data.pending ?? []);
   }, [site, workspaceId, embed]);
 
   useEffect(() => {
@@ -123,7 +134,7 @@ export function VoterProvider({
   }, [refresh]);
 
   const toggleVote = useCallback(
-    async (cardId: string) => {
+    async (cardId: string, kind: VoteKind = "card") => {
       if (pending) return;
       setPending(cardId);
       try {
@@ -137,7 +148,10 @@ export function VoterProvider({
           { site, embed },
           {
             method: "POST",
-            body: { cardId, turnstileToken: token },
+            body: {
+              ...(kind === "idea" ? { feedbackId: cardId } : { cardId }),
+              turnstileToken: token,
+            },
           },
         );
         if (res.status === 401 && res.data.signIn) {
@@ -186,6 +200,8 @@ export function VoterProvider({
       voted,
       totals,
       toggleVote,
+      pendingIdeas,
+      addPendingIdea: (idea) => setPendingIdeas((all) => [idea, ...all]),
       openSignIn: () => setSignInOpen(true),
       signOut,
       setVoter: (next) => {
@@ -201,6 +217,7 @@ export function VoterProvider({
       voted,
       totals,
       toggleVote,
+      pendingIdeas,
       signOut,
       refresh,
     ],

@@ -71,6 +71,13 @@
       "when": 1793269961430,
       "tag": "0009_edit_roadmap",
       "breakpoints": true
+    },
+    {
+      "idx": 10,
+      "version": "7",
+      "when": 1793271841730,
+      "tag": "0010_articles",
+      "breakpoints": true
     }
   ]
 }

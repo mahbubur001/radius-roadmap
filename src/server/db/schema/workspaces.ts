@@ -28,12 +28,15 @@ export type WorkspaceSettings = {
   showIdeas?: boolean;
   /** Phase 4 (doc 23 U7). Missing = shown. */
   showUpdates?: boolean;
+  /** Phase 5 (doc 25). Missing = shown. */
+  showArticles?: boolean;
   /** Logo in the public site's header (doc 24 R6). Missing = shown. */
   showLogo?: boolean;
   /** Renamed header tabs; null/missing = the default name. */
   roadmapLabel?: string | null;
   updatesLabel?: string | null;
   ideasLabel?: string | null;
+  articlesLabel?: string | null;
   /** Linked from the idea form's terms checkbox (shown only when set). */
   termsUrl?: string | null;
   privacyUrl?: string | null;

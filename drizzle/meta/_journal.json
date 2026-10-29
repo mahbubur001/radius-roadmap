@@ -57,6 +57,13 @@
       "when": 1793266511036,
       "tag": "0007_updates",
       "breakpoints": true
+    },
+    {
+      "idx": 8,
+      "version": "7",
+      "when": 1793268969977,
+      "tag": "0008_follow_emails",
+      "breakpoints": true
     }
   ]
 }

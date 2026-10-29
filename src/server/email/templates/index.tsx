@@ -274,6 +274,41 @@ export const templates: { [T in EmailTemplate]: TemplateDef<T> } = {
       </EmailLayout>
     ),
   },
+  "idea-status-changed": {
+    subject: ({ ideaTitle, status }) => `“${ideaTitle}” is now ${status.name}`,
+    render: ({ siteName, ideaTitle, status, url, unfollowUrl }) => (
+      <EmailLayout
+        preview={`An idea you follow is now ${status.name}`}
+        heading="An idea you follow moved"
+        action={{ label: "See the idea", url }}
+      >
+        <Text>
+          <strong>{ideaTitle}</strong> on {siteName} is now{" "}
+          <span style={{ color: status.color, fontWeight: 600 }}>
+            {status.name}
+          </span>
+          .
+        </Text>
+        <FollowFooter siteName={siteName} url={unfollowUrl} />
+      </EmailLayout>
+    ),
+  },
+  "idea-shipped": {
+    subject: ({ ideaTitle }) => `Shipped: ${ideaTitle}`,
+    render: ({ siteName, ideaTitle, postTitle, postUrl, unfollowUrl }) => (
+      <EmailLayout
+        preview={`${ideaTitle} has shipped`}
+        heading="An idea you follow shipped"
+        action={{ label: "Read the update", url: postUrl }}
+      >
+        <Text>
+          Good news: <strong>{ideaTitle}</strong> is live. {siteName} wrote
+          about it in “{postTitle}”.
+        </Text>
+        <FollowFooter siteName={siteName} url={unfollowUrl} />
+      </EmailLayout>
+    ),
+  },
   "new-subscriber": {
     subject: ({ workspaceName, email }) =>
       `${email} subscribed to ${workspaceName} updates`,
@@ -295,6 +330,14 @@ export const templates: { [T in EmailTemplate]: TemplateDef<T> } = {
 
 function count(n: number, noun: string) {
   return `${n} ${noun}${n === 1 ? "" : "s"}`;
+}
+
+function FollowFooter({ siteName, url }: { siteName: string; url: string }) {
+  return (
+    <Text style={{ color: "#888", fontSize: 12 }}>
+      You follow this idea on {siteName}. <a href={url}>Stop following it</a>.
+    </Text>
+  );
 }
 
 function Unsubscribe({ url }: { url: string }) {

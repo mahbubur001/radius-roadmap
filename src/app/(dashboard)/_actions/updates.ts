@@ -119,7 +119,10 @@ export const publishUpdateAction = workspaceAction(
       at ? new Date(at) : undefined,
     );
     if (scheduledFor) await schedulePublish(post.id, scheduledFor);
-    else await notify({ type: "send-update", updateId: post.id });
+    else {
+      await notify({ type: "send-update", updateId: post.id });
+      await notify({ type: "idea-shipped", updateId: post.id });
+    }
     invalidatePublic(ctx.workspaceId);
     invalidateSite(ctx.accountId);
     return {

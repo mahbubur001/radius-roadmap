@@ -158,7 +158,8 @@ export async function insertFeedback(
     try {
       const [row] = await db
         .insert(feedbackItems)
-        .values({ ...values, slug })
+        // Followers hear about status *changes*, not the starting status.
+        .values({ ...values, slug, notifiedStatusId: values.statusId })
         .returning();
       if (!row) throw new Error("Failed to create feedback.");
       return row;

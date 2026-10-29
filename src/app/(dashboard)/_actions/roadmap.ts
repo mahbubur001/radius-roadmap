@@ -25,6 +25,7 @@ import { MAX_ATTACHMENT_BYTES } from "@/lib/schemas/upload";
 import { workspaceAction } from "@/server/action";
 import { db } from "@/server/db/client";
 import { invalidatePublic, invalidateSite } from "@/server/public-cache";
+import { queueStatusSweep } from "@/server/queue/notifications";
 import {
   addAttachment,
   attachmentPrefix,
@@ -83,6 +84,8 @@ async function mutate<T>(ctx: WorkspaceContext, run: () => Promise<T>) {
   const result = await run();
   invalidatePublic(ctx.workspaceId);
   invalidateSite(ctx.accountId);
+  // Moving or completing a card can change linked ideas' statuses.
+  await queueStatusSweep(ctx.workspaceId);
   return result;
 }
 

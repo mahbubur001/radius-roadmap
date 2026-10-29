@@ -393,3 +393,26 @@ export async function followedIdeaIds(
 export type PendingComment = Awaited<
   ReturnType<typeof listPendingComments>
 >[number];
+
+/** The idea behind a signed unfollow link, if it's still followed. */
+export async function followedIdea(
+  db: Db,
+  ctx: PublicContext,
+  trackedUserId: string,
+  feedbackId: string,
+) {
+  const [row] = await db
+    .select({ title: feedbackItems.title, email: trackedUsers.email })
+    .from(follows)
+    .innerJoin(feedbackItems, eq(feedbackItems.id, follows.feedbackId))
+    .innerJoin(trackedUsers, eq(trackedUsers.id, follows.trackedUserId))
+    .where(
+      and(
+        eq(follows.accountId, ctx.accountId),
+        eq(follows.trackedUserId, trackedUserId),
+        eq(follows.feedbackId, feedbackId),
+      ),
+    )
+    .limit(1);
+  return row ?? null;
+}

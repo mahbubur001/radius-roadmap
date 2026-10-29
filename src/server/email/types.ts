@@ -64,6 +64,22 @@ export type EmailTemplateProps = {
     url: string;
     unsubscribeUrl: string;
   };
+  /** To idea followers: its status changed (doc 23 step 6). */
+  "idea-status-changed": {
+    siteName: string;
+    ideaTitle: string;
+    status: { name: string; color: string };
+    url: string;
+    unfollowUrl: string;
+  };
+  /** To idea followers: a published post shipped it. */
+  "idea-shipped": {
+    siteName: string;
+    ideaTitle: string;
+    postTitle: string;
+    postUrl: string;
+    unfollowUrl: string;
+  };
   /** Team alert: someone confirmed an update subscription. */
   "new-subscriber": {
     workspaceName: string;

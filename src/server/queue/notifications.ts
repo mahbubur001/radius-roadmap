@@ -14,7 +14,11 @@ export type NotifyJob =
   /** A scheduled post goes live (doc 23 U3). */
   | { type: "publish-update"; updateId: string; at: string }
   /** Email a published post to its subscribers (doc 23 step 5). */
-  | { type: "send-update"; updateId: string };
+  | { type: "send-update"; updateId: string }
+  /** Email followers of ideas whose status moved (doc 23 step 6). */
+  | { type: "idea-status-sweep"; workspaceId: string }
+  /** Email followers of ideas a published post shipped. */
+  | { type: "idea-shipped"; updateId: string };
 
 const globalForQueue = globalThis as typeof globalThis & {
   notifyQueue?: Queue<NotifyJob>;
@@ -39,7 +43,10 @@ globalForQueue.notifyQueue = notifyQueue;
  * request (the error is logged).
  */
 export async function notify(
-  job: Exclude<NotifyJob, { type: "digest" | "publish-update" }>,
+  job: Exclude<
+    NotifyJob,
+    { type: "digest" | "publish-update" | "idea-status-sweep" }
+  >,
 ) {
   const jobId =
     job.type === "new-feedback"
@@ -48,7 +55,9 @@ export async function notify(
         ? `new-comment-${job.commentId}`
         : job.type === "new-subscriber"
           ? `new-subscriber-${job.subscriberId}`
-          : `send-update-${job.updateId}`;
+          : job.type === "idea-shipped"
+            ? `idea-shipped-${job.updateId}`
+            : `send-update-${job.updateId}`;
   try {
     await notifyQueue.add(job.type, job, { jobId });
   } catch (error) {
@@ -69,4 +78,22 @@ export async function schedulePublish(updateId: string, at: Date) {
       delay: Math.max(0, at.getTime() - Date.now()),
     },
   );
+}
+
+/**
+ * After anything that may change idea statuses: check the workspace in a
+ * minute. Changes within the same minute share one job, and quick
+ * back-and-forth changes end up as one email (or none).
+ */
+export async function queueStatusSweep(workspaceId: string) {
+  const minute = Math.floor(Date.now() / 60_000);
+  try {
+    await notifyQueue.add(
+      "idea-status-sweep",
+      { type: "idea-status-sweep", workspaceId },
+      { jobId: `idea-status-${workspaceId}-${minute}`, delay: 60_000 },
+    );
+  } catch (error) {
+    console.error("[notify] status sweep enqueue failed", workspaceId, error);
+  }
 }

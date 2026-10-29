@@ -4,6 +4,7 @@ import type { EmailJob } from "@/server/email/types";
 import { enqueueEmail } from "@/server/queue/email";
 import { type NotifyJob, notify } from "@/server/queue/notifications";
 import { revalidateFromWorker } from "@/server/revalidate-from-worker";
+import { shippedEmails, statusSweep } from "@/server/services/follow-emails";
 import {
   digestEmails,
   newCommentEmails,
@@ -30,8 +31,18 @@ export async function notifyJob(job: Job<NotifyJob>) {
     if (post) {
       await revalidateFromWorker(post.accountId, post.workspaceId);
       await notify({ type: "send-update", updateId: post.id });
+      await notify({ type: "idea-shipped", updateId: post.id });
     }
     return { published: !!post };
+  }
+
+  if (data.type === "idea-status-sweep" || data.type === "idea-shipped") {
+    const followEmails =
+      data.type === "idea-status-sweep"
+        ? await statusSweep(db, data.workspaceId)
+        : await shippedEmails(db, data.updateId);
+    for (const { id, email } of followEmails) await enqueueEmail(email, id);
+    return { sent: followEmails.length };
   }
 
   if (data.type === "send-update") {

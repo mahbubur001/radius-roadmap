@@ -137,6 +137,13 @@ export const feedbackItems = pgTable(
     statusId: uuid()
       .notNull()
       .references(() => feedbackStatuses.id, { onDelete: "no action" }),
+    /**
+     * The status followers were last emailed about (doc 23 step 6). A sweep
+     * emails them when status_id moves away from it.
+     */
+    notifiedStatusId: uuid().references(() => feedbackStatuses.id, {
+      onDelete: "set null",
+    }),
     objectiveId: uuid().references(() => objectives.id, {
       onDelete: "set null",
     }),

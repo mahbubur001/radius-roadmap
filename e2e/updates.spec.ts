@@ -206,3 +206,87 @@ test("a visitor subscribes with double opt-in and shows up for the team", async 
   });
   expect(oneClick.status()).toBe(200);
 });
+
+test("a follower hears when the idea ships, and can stop following", async ({
+  page,
+  browser,
+}) => {
+  const id = randomUUID().slice(0, 8);
+  const { slug } = await signUpOwner(page, id);
+
+  // Follows on; an idea pushed to the roadmap.
+  await page.goto(`/dashboard/${slug}/public-settings`);
+  await page.getByRole("switch", { name: "Follows", exact: true }).click();
+  await page.getByRole("button", { name: "Save changes" }).click();
+  await expect(page.getByText("Public site saved.")).toBeVisible();
+  await page.goto(`/dashboard/${slug}/feedback`);
+  await page.getByRole("button", { name: "New feedback" }).click();
+  await page
+    .getByRole("dialog")
+    .getByRole("textbox", { name: "Title" })
+    .fill("Dark mode");
+  await page
+    .getByRole("dialog")
+    .getByRole("button", { name: "Create" })
+    .click();
+  const drawer = page.getByRole("dialog", { name: "Edit feedback" });
+  await expect(
+    drawer.getByRole("textbox", { name: "Title", exact: true }),
+  ).toHaveValue("Dark mode");
+  await drawer.getByRole("button", { name: "Feedback actions" }).click();
+  await page.getByRole("menuitem", { name: "Push to roadmap…" }).click();
+  await page
+    .getByRole("dialog", { name: "Push to roadmap" })
+    .getByRole("button", { name: "Create card" })
+    .click();
+  await expect(page.getByText("Card created on the roadmap.")).toBeVisible();
+
+  // A voter logs in with an email code (verified) and follows the idea.
+  await page.goto(`/dashboard/${slug}/roadmap`);
+  await page.getByRole("button", { name: "More" }).click();
+  const roadmapUrl = await page
+    .getByRole("menuitem", { name: "View public roadmap" })
+    .getAttribute("href");
+  await page.keyboard.press("Escape");
+  if (!roadmapUrl) throw new Error("No public link");
+  const voter = await (await browser.newContext()).newPage();
+  await voter.goto(roadmapUrl.replace(/\/roadmap$/, "/ideas/dark-mode"));
+  await voter.getByRole("button", { name: "Follow" }).click();
+  const login = voter.getByRole("dialog", { name: "Log in" });
+  const email = `fan-${id}@example.test`;
+  await login.getByRole("textbox", { name: "Email" }).fill(email);
+  await login.getByRole("button", { name: "Email me a code" }).click();
+  const code = (await waitForMail(email, "sign-in code")).subject.slice(0, 6);
+  await login.getByRole("textbox", { name: "Code" }).fill(code);
+  await login.getByRole("button", { name: "Log in" }).click();
+  await expect(login).toHaveCount(0);
+  await voter.getByRole("button", { name: "Follow" }).click();
+  await expect(voter.getByRole("button", { name: "Following" })).toBeVisible();
+
+  // The team completes the card and announces it.
+  await page.getByRole("button", { name: "Dark mode", exact: true }).click();
+  const rail = page
+    .getByRole("dialog")
+    .getByRole("complementary", { name: "More options" });
+  await rail.getByRole("button", { name: "Mark as complete" }).click();
+  await rail.getByRole("button", { name: "Announce…" }).click();
+  await expect(page).toHaveURL(/\/updates\/[0-9a-f-]{36}$/);
+  await page.getByRole("textbox", { name: "Title" }).fill("Dark mode is here");
+  await expect(page.getByText(/^Saved ·/)).toBeVisible();
+  await page
+    .getByRole("region", { name: "Publishing" })
+    .getByRole("button", { name: "Publish now" })
+    .click();
+
+  const shipped = await waitForMail(email, "Shipped: Dark mode");
+  expect(shipped.text).toContain("Dark mode is here");
+  const unfollow = shipped.html
+    .match(/href="([^"]*\/api\/public\/unfollow[^"]*)"/)?.[1]
+    ?.replaceAll("&amp;", "&");
+  if (!unfollow) throw new Error("No unfollow link");
+  await voter.goto(unfollow);
+  await voter.getByRole("button", { name: "Stop following" }).click();
+  await expect(
+    voter.getByRole("heading", { name: /stopped following “Dark mode”/ }),
+  ).toBeVisible();
+});

@@ -21,6 +21,7 @@ import {
 import { workspaceAction } from "@/server/action";
 import { db } from "@/server/db/client";
 import { invalidatePublic, invalidateSite } from "@/server/public-cache";
+import { queueStatusSweep } from "@/server/queue/notifications";
 import { listTeamComments } from "@/server/services/comments";
 import type { WorkspaceContext } from "@/server/services/context";
 import {
@@ -62,6 +63,8 @@ async function mutate<T>(ctx: WorkspaceContext, run: () => Promise<T>) {
   const result = await run();
   invalidatePublic(ctx.workspaceId);
   invalidateSite(ctx.accountId);
+  // A status may have changed: followers hear about it (doc 23 step 6).
+  await queueStatusSweep(ctx.workspaceId);
   return result;
 }
 

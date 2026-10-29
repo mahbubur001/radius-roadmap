@@ -43,6 +43,10 @@ async function PublicSettings({ slug }: { slug: Promise<string> }) {
           commentsEnabled: !!settings.commentsEnabled,
           approveComments: !!settings.approveComments,
           followsEnabled: !!settings.followsEnabled,
+          showLogo: settings.showLogo !== false,
+          roadmapLabel: settings.roadmapLabel ?? "",
+          updatesLabel: settings.updatesLabel ?? "",
+          ideasLabel: settings.ideasLabel ?? "",
           termsUrl: settings.termsUrl ?? "",
           privacyUrl: settings.privacyUrl ?? "",
         }}

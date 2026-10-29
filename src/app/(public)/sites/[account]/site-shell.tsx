@@ -6,6 +6,7 @@ import { VoterProvider } from "@/components/public/voter-provider";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { initials } from "@/lib/initials";
 import { cn } from "@/lib/utils";
+import type { WorkspaceSettings } from "@/server/db/schema";
 
 /**
  * Chrome around every public page of a workspace. In embed mode (inside the
@@ -35,7 +36,14 @@ export function SiteShell({
     name: string;
     slug: string;
     logoUrl: string | null;
-    settings: { darkModeDefault?: boolean };
+    settings: Pick<
+      WorkspaceSettings,
+      | "darkModeDefault"
+      | "showLogo"
+      | "roadmapLabel"
+      | "updatesLabel"
+      | "ideasLabel"
+    >;
     /** Modules switched on and with something public (doc 22 P2). */
     modules: Record<SiteModule, boolean>;
   };
@@ -70,14 +78,16 @@ export function SiteShell({
                 href={`/${account}/${workspace.slug}/${home}`}
                 className="flex items-center gap-2 font-semibold"
               >
-                <Avatar className="size-7 rounded-md">
-                  {workspace.logoUrl ? (
-                    <AvatarImage src={workspace.logoUrl} alt="" />
-                  ) : null}
-                  <AvatarFallback className="rounded-md text-xs">
-                    {initials(workspace.name)}
-                  </AvatarFallback>
-                </Avatar>
+                {workspace.settings.showLogo !== false ? (
+                  <Avatar className="size-7 rounded-md">
+                    {workspace.logoUrl ? (
+                      <AvatarImage src={workspace.logoUrl} alt="" />
+                    ) : null}
+                    <AvatarFallback className="rounded-md text-xs">
+                      {initials(workspace.name)}
+                    </AvatarFallback>
+                  </Avatar>
+                ) : null}
                 {workspace.name}
               </Link>
               <nav
@@ -94,7 +104,7 @@ export function SiteShell({
                       m.key === active ? "bg-muted" : "text-muted-foreground",
                     )}
                   >
-                    {m.label}
+                    {workspace.settings[`${m.key}Label`] || m.label}
                   </Link>
                 ))}
               </nav>

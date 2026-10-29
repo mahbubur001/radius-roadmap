@@ -65,6 +65,31 @@ export function PublicSiteForm({
               label="Ideas"
               description="Public feedback boards where visitors suggest and vote on ideas."
             />
+            <FieldSeparator>Header</FieldSeparator>
+            <SwitchField
+              control={form.control}
+              name="showLogo"
+              label="Logo"
+              description="Show the workspace logo next to its name."
+            />
+            <TextField
+              control={form.control}
+              name="roadmapLabel"
+              label="Roadmap tab"
+              placeholder="Roadmap"
+            />
+            <TextField
+              control={form.control}
+              name="updatesLabel"
+              label="Updates tab"
+              placeholder="Updates"
+            />
+            <TextField
+              control={form.control}
+              name="ideasLabel"
+              label="Ideas tab"
+              placeholder="Ideas"
+            />
             <FieldSeparator>Comments and follows</FieldSeparator>
             <SwitchField
               control={form.control}

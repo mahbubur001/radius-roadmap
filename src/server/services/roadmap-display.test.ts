@@ -22,9 +22,13 @@ import {
   type PublicContext,
   type WorkspaceContext,
 } from "./context";
-import { getPublicCard, getPublicRoadmap } from "./public-site";
+import {
+  getPublicCard,
+  getPublicRoadmap,
+  getPublicWorkspace,
+} from "./public-site";
 import { listColumns, listRoadmaps, saveRoadmapSettings } from "./roadmaps";
-import { createWorkspace } from "./workspaces";
+import { createWorkspace, updatePublicSite } from "./workspaces";
 
 // Internal/public display toggles, summaries and header images (doc 24).
 
@@ -144,5 +148,31 @@ describe("public display", () => {
     // The dashboard still has the image.
     const [onBoard] = await listBoardCards(db, ws, roadmapId);
     expect(onBoard?.headerImageUrl).not.toBeNull();
+  });
+});
+
+describe("public site header (R6)", () => {
+  it("stores the logo switch and tab names; blank names fall back", async () => {
+    await updatePublicSite(db, ws, {
+      showRoadmap: true,
+      showIdeas: true,
+      showUpdates: true,
+      commentsEnabled: false,
+      approveComments: false,
+      followsEnabled: false,
+      showLogo: false,
+      roadmapLabel: "  Plans ",
+      updatesLabel: "",
+      ideasLabel: null,
+      termsUrl: "",
+      privacyUrl: "",
+    });
+    const site = await getPublicWorkspace(db, pub, "disp");
+    expect(site?.settings).toMatchObject({
+      showLogo: false,
+      roadmapLabel: "Plans",
+      updatesLabel: null,
+      ideasLabel: null,
+    });
   });
 });

@@ -56,7 +56,15 @@ const optionalUrl = z
   .transform((v) => v || null)
   .nullable();
 
-/** Public settings → "Public site" (doc 22 step 2). */
+const tabLabel = z
+  .string()
+  .trim()
+  .max(24, "At most 24 characters")
+  .transform((v) => v || null)
+  .nullable()
+  .optional();
+
+/** Public settings → "Public site" (doc 22 step 2, doc 24 R6). */
 export const publicSiteSchema = z.object({
   showRoadmap: z.boolean(),
   showIdeas: z.boolean(),
@@ -67,6 +75,10 @@ export const publicSiteSchema = z.object({
   approveComments: z.boolean(),
   /** Visitors follow ideas (emails from Phase 4). */
   followsEnabled: z.boolean(),
+  showLogo: z.boolean().default(true),
+  roadmapLabel: tabLabel,
+  updatesLabel: tabLabel,
+  ideasLabel: tabLabel,
   termsUrl: optionalUrl,
   privacyUrl: optionalUrl,
 });

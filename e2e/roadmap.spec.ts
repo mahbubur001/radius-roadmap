@@ -128,6 +128,60 @@ test("admin builds a roadmap: add, drag, set objective, autosave", async ({
   );
 });
 
+test("edit roadmap: staged columns, discard, internal and public toggles", async ({
+  page,
+}) => {
+  const id = randomUUID().slice(0, 8);
+  const { slug } = await signUpOwner(page, id);
+  await openRoadmap(page, slug);
+  await addCard(page, "Up next", "Calendar sync");
+  await expect(page.getByTitle("Votes")).toHaveCount(1);
+
+  await page.getByRole("button", { name: "Edit roadmap" }).click();
+  const dialog = page.getByRole("dialog", { name: "Edit roadmap" });
+  const columnName = dialog.getByRole("textbox", { name: "Column name" });
+
+  // Changes are staged: Discard goes back to what's saved.
+  await columnName.nth(2).fill("Later");
+  await dialog.getByRole("button", { name: "Discard" }).click();
+  await expect(columnName.nth(2)).toHaveValue("Future");
+
+  await columnName.nth(2).fill("Later");
+  await dialog.getByRole("button", { name: "Add column" }).click();
+  await columnName.nth(4).fill("Icebox");
+  await dialog.getByRole("switch", { name: "Votes (internal)" }).click();
+  await dialog.getByRole("tab", { name: "Public summary" }).click();
+  await dialog
+    .locator('[aria-label="Public summary"]')
+    .fill("Where we are going");
+  await dialog.getByRole("button", { name: "Save changes" }).click();
+  await expect(dialog).toHaveCount(0);
+
+  await expect(page.getByRole("region", { name: "Later" })).toBeVisible();
+  await expect(page.getByRole("region", { name: "Icebox" })).toBeVisible();
+  // Internal "Votes" off hides the board's vote counts.
+  await expect(page.getByTitle("Votes")).toHaveCount(0);
+  const site = await publicUrl(page);
+
+  // A column with cards can't be deleted; nothing is saved.
+  await page.getByRole("button", { name: "Edit roadmap" }).click();
+  await dialog.getByRole("button", { name: "Delete column Up next" }).click();
+  await dialog.getByRole("button", { name: "Save changes" }).click();
+  await expect(
+    page.getByText(/Move or delete the cards in "Up next"/),
+  ).toBeVisible();
+  await dialog.getByRole("button", { name: "Close" }).click();
+  await expect(page.getByRole("region", { name: "Up next" })).toBeVisible();
+
+  // The public side keeps its own toggles: votes still show there.
+  await page.goto(site);
+  await expect(page.getByText("Where we are going")).toBeVisible();
+  await expect(page.getByRole("heading", { name: /Later/ })).toBeVisible();
+  await expect(
+    publicCard(page, "Calendar sync").getByRole("button", { name: /vote/i }),
+  ).toBeVisible();
+});
+
 test("objective quick-picker on cards; filters panel narrows the board", async ({
   page,
 }) => {

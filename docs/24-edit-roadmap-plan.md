@@ -1,6 +1,6 @@
 # 24. Edit roadmap redesign (LoopedIn parity)
 
-Status: **APPROVED 2026-10-29** (R1–R7 as recommended). Building steps 1 → 7.
+Status: **APPROVED 2026-10-29** (R1–R7 as recommended). **Built 2026-10-29** (see "As built").
 Source: 5 LoopedIn screenshots of the "Edit roadmap" modal (owner, 2026-10-29).
 
 ## 1. What LoopedIn shows vs what we have
@@ -47,8 +47,20 @@ Then Phase 5 (Articles / knowledge base): plan doc for approval.
 
 ## 4. Done when
 
-- [ ] Every LoopedIn setting above is either in the modal or linked from it.
-- [ ] Internal and public toggles each change only their own side.
-- [ ] Column and display changes save together or not at all; Discard undoes.
-- [ ] Completing a card emails followers once, only when the roadmap allows it.
-- [ ] Checks green (unit, e2e, lint, typecheck, build).
+- [x] Every LoopedIn setting above is either in the modal or linked from it.
+- [x] Internal and public toggles each change only their own side.
+- [x] Column and display changes save together or not at all; Discard undoes.
+- [x] Completing a card emails followers once, only when the roadmap allows it.
+- [x] Checks green (unit, e2e, lint, typecheck, build).
+
+## 5. As built (2026-10-29)
+
+- **Migration `0009_edit_roadmap`:** `roadmaps.internal_display`, `internal_summary_json`, `public_summary_json` (plain-text summaries backfilled as paragraphs), `notify_on_complete`; `roadmap_cards.header_image_key`, `completion_notified_at` (backfilled from `completed_at`, so old completions never email). The plan's separate record table was not needed: the card column claims the email once.
+- **Service:** `saveRoadmapSettings` (`roadmaps.ts`) replaces `updateRoadmap` and the per-column create/update/delete (only `moveColumn` stays, for dragging on the board). One transaction; a removed column that still has cards raises `ConflictError` and nothing is saved. Test helper `src/test/roadmap-settings.ts` (`currentSettings`).
+- **Modal** (`roadmap-settings-dialog.tsx`): header band in the sidebar brand colour, sections General (title/summary tabs, `RichTextEditor`), Emails, Columns (tiles with Public status, Done, move left/right, Delete, "+ Add column"), Public roadmap (switch, URL with `?board=`, link to Public site settings), General and Roadmap cards Internal/Public matrices, Board's feedback (link), Danger zone; sticky Discard / Save changes. The form unmounts when closed, so it always opens with saved values.
+- **Dashboard (internal set):** `board-display.tsx` context; cards hide objective, description, tags, feature progress, votes, dates and header images per toggle; the drawer hides the Features, Attachments and Votes tabs and the vote box; "Completed cards" toggle starts from the setting (`?done=show|hide` overrides); Title off shows "Roadmaps" in the switcher; Summary shows the internal summary above the board.
+- **Public (public set):** title (kept for screen readers when hidden), rich summary, feature progress bar separate from the features list, attachments on the card page/drawer (off by default), header images.
+- **Header images:** `ImageUploadField` (`src/components/form/image-upload-field.tsx`, shared with the Updates cover); key checked against the workspace's `cardImages` prefix; old file deleted on change and when the card is deleted; copies don't share the file.
+- **R4 change:** completion emails go to **team members following the card** (still in the account, verified email). People following linked ideas are not emailed again: completing a card already moves the ideas to a "done" status and they get the status-change email (doc 23 step 6). Runs in the existing debounced `idea-status-sweep` job (`completionSweep`, `card-completion-emails.ts`), template `card-completed`.
+- **R6:** Public site settings gain a Header section: Logo switch and Roadmap / Updates / Ideas tab names (max 24 chars, blank = default).
+- **Tests:** `roadmaps.test.ts` (settings), `roadmap-display.test.ts`, `card-completion-emails.test.ts`; e2e "edit roadmap: staged columns, discard, internal and public toggles". 191 unit, 26 e2e.

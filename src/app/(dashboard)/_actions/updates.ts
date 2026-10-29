@@ -5,13 +5,15 @@ import {
   createUpdateSchema,
   editUpdateCategorySchema,
   patchUpdateSchema,
+  publishUpdateSchema,
   updateCardsSchema,
   updateCategorySchema,
   updateIdSchema,
 } from "@/lib/schemas/updates";
 import { workspaceAction } from "@/server/action";
 import { db } from "@/server/db/client";
-import { invalidatePublic } from "@/server/public-cache";
+import { invalidatePublic, invalidateSite } from "@/server/public-cache";
+import { schedulePublish } from "@/server/queue/notifications";
 import type { WorkspaceContext } from "@/server/services/context";
 import {
   createUpdateCategory,
@@ -23,8 +25,10 @@ import {
   deleteUpdate,
   duplicateUpdate,
   patchUpdate,
+  publishUpdate,
   searchCardsForUpdate,
   setUpdateCards,
+  unpublishUpdate,
 } from "@/server/services/updates";
 
 // Updates (doc 23). Published posts are public, so changes drop the
@@ -96,4 +100,35 @@ export const editUpdateCategoryAction = workspaceAction(
 export const deleteUpdateCategoryAction = workspaceAction(
   updateIdSchema,
   async (ctx, { id }) => mutate(ctx, () => deleteUpdateCategory(db, ctx, id)),
+);
+
+/** Publish now, or schedule (a delayed job publishes it, doc 23 U3). */
+export const publishUpdateAction = workspaceAction(
+  publishUpdateSchema,
+  async (ctx, { id, at }) => {
+    const { post, scheduledFor } = await publishUpdate(
+      db,
+      ctx,
+      id,
+      at ? new Date(at) : undefined,
+    );
+    if (scheduledFor) await schedulePublish(post.id, scheduledFor);
+    invalidatePublic(ctx.workspaceId);
+    invalidateSite(ctx.accountId);
+    return {
+      status: post.status,
+      slug: post.slug,
+      publishAt: post.publishAt?.toISOString() ?? null,
+      publishedAt: post.publishedAt?.toISOString() ?? null,
+    };
+  },
+);
+
+export const unpublishUpdateAction = workspaceAction(
+  updateIdSchema,
+  async (ctx, { id }) => {
+    await unpublishUpdate(db, ctx, id);
+    invalidatePublic(ctx.workspaceId);
+    invalidateSite(ctx.accountId);
+  },
 );

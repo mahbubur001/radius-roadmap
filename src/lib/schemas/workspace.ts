@@ -60,6 +60,7 @@ const optionalUrl = z
 export const publicSiteSchema = z.object({
   showRoadmap: z.boolean(),
   showIdeas: z.boolean(),
+  showUpdates: z.boolean(),
   /** Visitors comment on ideas and cards (doc 20 D3, off by default). */
   commentsEnabled: z.boolean(),
   /** Hold visitors' comments until the team approves them. */

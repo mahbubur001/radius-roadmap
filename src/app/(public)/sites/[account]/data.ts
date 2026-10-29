@@ -15,6 +15,10 @@ import {
   listPublicWorkspaces,
   resolveSite,
 } from "@/server/services/public-site";
+import {
+  getPublicUpdate,
+  listPublicUpdates,
+} from "@/server/services/public-updates";
 import { fileUrl } from "@/server/storage";
 
 // Cached reads for the public site. Roadmap data is tagged per workspace and
@@ -89,6 +93,36 @@ export async function loadIdea(
   cacheLife("hours");
   cacheTag(publicTag(workspaceId));
   return getPublicIdea(db, { accountId }, workspaceId, slug);
+}
+
+// Updates use a short lifetime as well as tags: a scheduled post goes live
+// from the worker, which refreshes the cache through a signed call but may
+// miss (doc 23 step 3).
+export async function loadUpdates(
+  accountId: string,
+  workspaceId: string,
+  opts: { q?: string; category?: string },
+) {
+  "use cache";
+  cacheLife("minutes");
+  cacheTag(publicTag(workspaceId));
+  const data = await listPublicUpdates(db, { accountId }, workspaceId, opts);
+  return {
+    ...data,
+    posts: data.posts.map((p) => ({ ...p, cover: fileUrl(p.cover) })),
+  };
+}
+
+export async function loadUpdate(
+  accountId: string,
+  workspaceId: string,
+  slug: string,
+) {
+  "use cache";
+  cacheLife("minutes");
+  cacheTag(publicTag(workspaceId));
+  const post = await getPublicUpdate(db, { accountId }, workspaceId, slug);
+  return post ? { ...post, cover: fileUrl(post.cover) } : null;
 }
 
 /** Absolute base URL of a public site (<app>/<account>), for canonical URLs and sitemaps. */

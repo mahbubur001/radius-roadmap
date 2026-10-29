@@ -180,6 +180,7 @@ describe("public ideas", () => {
     await updatePublicSite(db, ws, {
       showRoadmap: true,
       showIdeas: false,
+      showUpdates: true,
       commentsEnabled: false,
       approveComments: false,
       followsEnabled: false,
@@ -204,6 +205,7 @@ describe("public ideas", () => {
     await updatePublicSite(db, ws, {
       showRoadmap: true,
       showIdeas: true,
+      showUpdates: true,
       commentsEnabled: false,
       approveComments: false,
       followsEnabled: false,

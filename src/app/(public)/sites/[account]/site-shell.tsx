@@ -12,10 +12,12 @@ import { cn } from "@/lib/utils";
  * customer's iframe) the header and footer are dropped and the height is
  * reported to embed.js.
  */
-export type SiteModule = "roadmap" | "ideas";
+export type SiteModule = "roadmap" | "updates" | "ideas";
 
+/** LoopedIn's tab order: Roadmap, Updates, Ideas (Articles in Phase 5). */
 const MODULES: { key: SiteModule; label: string }[] = [
   { key: "roadmap", label: "Roadmap" },
+  { key: "updates", label: "Updates" },
   { key: "ideas", label: "Ideas" },
 ];
 

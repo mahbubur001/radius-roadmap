@@ -39,6 +39,7 @@ async function PublicSettings({ slug }: { slug: Promise<string> }) {
         defaults={{
           showRoadmap: settings.showRoadmap !== false,
           showIdeas: settings.showIdeas !== false,
+          showUpdates: settings.showUpdates !== false,
           commentsEnabled: !!settings.commentsEnabled,
           approveComments: !!settings.approveComments,
           followsEnabled: !!settings.followsEnabled,

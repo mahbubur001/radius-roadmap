@@ -1,6 +1,16 @@
 "use client";
 
-import { ArrowLeft, Copy, ImageUp, Plus, Trash2, X } from "lucide-react";
+import {
+  ArrowLeft,
+  CalendarClock,
+  Copy,
+  ExternalLink,
+  ImageUp,
+  Plus,
+  Send,
+  Trash2,
+  X,
+} from "lucide-react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useCallback, useEffect, useRef, useState } from "react";
@@ -9,8 +19,10 @@ import {
   deleteUpdateAction,
   duplicateUpdateAction,
   patchUpdateAction,
+  publishUpdateAction,
   searchCardsForUpdateAction,
   setUpdateCardsAction,
+  unpublishUpdateAction,
 } from "@/app/(dashboard)/_actions/updates";
 import {
   requestUploadAction,
@@ -20,6 +32,7 @@ import {
   autosaveLabel,
   useAutosave,
 } from "@/components/dashboard/use-autosave";
+import { DatePicker } from "@/components/form/date-picker";
 import {
   RichTextEditor,
   type RichTextValue,
@@ -36,6 +49,14 @@ import {
 } from "@/components/ui/alert-dialog";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import {
@@ -73,11 +94,14 @@ const NONE = "none";
 export function UpdateEditor({
   workspace,
   workspaceId,
+  publicBase,
   post,
   categories,
 }: {
   workspace: string;
   workspaceId: string;
+  /** Absolute URL of the public Updates page. */
+  publicBase: string;
   post: Post;
   categories: CategoryOption[];
 }) {
@@ -174,22 +198,23 @@ export function UpdateEditor({
           aria-label="Post settings"
           className="flex w-full shrink-0 flex-col gap-5 rounded-lg border bg-muted/30 p-5 lg:w-80"
         >
-          <div className="flex items-center gap-2">
-            <Badge
-              variant={post.status === "published" ? "default" : "secondary"}
-            >
-              {post.status === "published"
-                ? "Published"
-                : post.status === "scheduled"
-                  ? "Scheduled"
-                  : "Draft"}
-            </Badge>
-            {post.publishedAt ? (
-              <span className="text-xs text-muted-foreground">
-                {new Date(post.publishedAt).toLocaleDateString("en")}
-              </span>
-            ) : null}
-          </div>
+          <PublishPanel
+            workspace={workspace}
+            postId={post.id}
+            publicBase={publicBase}
+            initial={{
+              status: post.status,
+              slug: post.slug,
+              publishAt: post.publishAt
+                ? new Date(post.publishAt).toISOString()
+                : null,
+              publishedAt: post.publishedAt
+                ? new Date(post.publishedAt).toISOString()
+                : null,
+            }}
+            beforePublish={flush}
+            emailsOn={emailSubscribers && !post.emailedAt}
+          />
 
           <div className="flex flex-col gap-2">
             <Label htmlFor="post-category">Category</Label>
@@ -541,5 +566,192 @@ function ShippedCards({
         </PopoverContent>
       </Popover>
     </div>
+  );
+}
+
+type PublishState = {
+  status: "draft" | "scheduled" | "published";
+  slug: string;
+  publishAt: string | null;
+  publishedAt: string | null;
+};
+
+/** Half-hour slots for the schedule time ("HH:MM", local time). */
+const TIMES = Array.from({ length: 48 }, (_, i) => {
+  const h = String(Math.floor(i / 2)).padStart(2, "0");
+  return `${h}:${i % 2 ? "30" : "00"}`;
+});
+
+function when(iso: string) {
+  return new Date(iso).toLocaleString("en", {
+    dateStyle: "medium",
+    timeStyle: "short",
+  });
+}
+
+/** Status, publish now, schedule, unpublish (doc 23 step 3). */
+function PublishPanel({
+  workspace,
+  postId,
+  publicBase,
+  initial,
+  beforePublish,
+  emailsOn,
+}: {
+  workspace: string;
+  postId: string;
+  publicBase: string;
+  initial: PublishState;
+  beforePublish: () => Promise<void>;
+  /** Subscribers will be emailed on publish. */
+  emailsOn: boolean;
+}) {
+  const router = useRouter();
+  const [state, setState] = useState(initial);
+  const [busy, setBusy] = useState(false);
+  const [scheduling, setScheduling] = useState(false);
+  const [date, setDate] = useState<string | null>(null);
+  const [time, setTime] = useState("09:00");
+
+  async function publish(at?: string) {
+    setBusy(true);
+    await beforePublish();
+    const result = await publishUpdateAction({ workspace, id: postId, at });
+    setBusy(false);
+    if (!result.ok) return toast.error(result.error);
+    setState(result.data);
+    setScheduling(false);
+    toast.success(
+      result.data.status === "scheduled"
+        ? `Scheduled for ${when(result.data.publishAt ?? "")}.`
+        : "Published.",
+    );
+    router.refresh();
+  }
+
+  async function unpublish() {
+    setBusy(true);
+    const result = await unpublishUpdateAction({ workspace, id: postId });
+    setBusy(false);
+    if (!result.ok) return toast.error(result.error);
+    setState((s) => ({ ...s, status: "draft", publishAt: null }));
+    toast.success("Moved back to drafts.");
+    router.refresh();
+  }
+
+  const scheduleAt = date && time ? new Date(`${date}T${time}:00`) : null;
+
+  return (
+    <section aria-label="Publishing" className="flex flex-col gap-3">
+      <div className="flex flex-wrap items-center gap-2 text-xs text-muted-foreground">
+        <Badge variant={state.status === "published" ? "default" : "secondary"}>
+          {state.status === "published"
+            ? "Published"
+            : state.status === "scheduled"
+              ? "Scheduled"
+              : "Draft"}
+        </Badge>
+        {state.status === "published" && state.publishedAt
+          ? when(state.publishedAt)
+          : state.status === "scheduled" && state.publishAt
+            ? `Goes live ${when(state.publishAt)}`
+            : null}
+      </div>
+
+      {state.status === "published" ? (
+        <div className="flex flex-col gap-2">
+          <Button variant="outline" asChild>
+            <a
+              href={`${publicBase}/${state.slug}`}
+              target="_blank"
+              rel="noreferrer"
+            >
+              <ExternalLink />
+              View public post
+            </a>
+          </Button>
+          <Button variant="ghost" disabled={busy} onClick={unpublish}>
+            Unpublish
+          </Button>
+        </div>
+      ) : (
+        <div className="flex flex-col gap-2">
+          <Button disabled={busy} onClick={() => publish()}>
+            <Send />
+            Publish now
+          </Button>
+          <Button
+            variant="outline"
+            disabled={busy}
+            onClick={() => setScheduling(true)}
+          >
+            <CalendarClock />
+            {state.status === "scheduled" ? "Reschedule…" : "Schedule…"}
+          </Button>
+          {state.status === "scheduled" ? (
+            <Button variant="ghost" disabled={busy} onClick={unpublish}>
+              Unschedule
+            </Button>
+          ) : null}
+          {emailsOn ? (
+            <p className="text-xs text-muted-foreground">
+              Subscribers get this post by email when it goes live.
+            </p>
+          ) : null}
+        </div>
+      )}
+
+      <Dialog open={scheduling} onOpenChange={setScheduling}>
+        <DialogContent className="sm:max-w-sm">
+          <DialogHeader>
+            <DialogTitle>Schedule post</DialogTitle>
+            <DialogDescription>
+              It goes live automatically at this time (your local time).
+            </DialogDescription>
+          </DialogHeader>
+          <div className="grid grid-cols-[1fr_7rem] gap-2">
+            <div className="flex flex-col gap-2">
+              <Label htmlFor="schedule-date">Date</Label>
+              <DatePicker
+                id="schedule-date"
+                value={date}
+                onChange={setDate}
+                clearable={false}
+              />
+            </div>
+            <div className="flex flex-col gap-2">
+              <Label htmlFor="schedule-time">Time</Label>
+              <Select value={time} onValueChange={setTime}>
+                <SelectTrigger id="schedule-time" className="w-full">
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  {TIMES.map((t) => (
+                    <SelectItem key={t} value={t}>
+                      {t}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+          </div>
+          {scheduleAt && scheduleAt.getTime() <= Date.now() ? (
+            <p className="text-sm text-destructive">
+              Pick a time in the future.
+            </p>
+          ) : null}
+          <DialogFooter>
+            <Button
+              disabled={
+                busy || !scheduleAt || scheduleAt.getTime() <= Date.now()
+              }
+              onClick={() => scheduleAt && publish(scheduleAt.toISOString())}
+            >
+              Schedule
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+    </section>
   );
 }

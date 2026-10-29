@@ -49,7 +49,7 @@
   - Real 404 / 308 statuses for public sites, checked in `src/proxy.ts` (`publicPathStatus`).
   - Playwright flows 1–5 (`e2e/roadmap.spec.ts`).
 - Rate-limit bypass fixed: `cf-*` headers trusted only with `TRUST_CLOUDFLARE=1` (new env var); `src/server/rate-limit.test.ts`.
-- **Checks:** `pnpm lint`, `typecheck`, `test` (161 tests), `test:e2e` (22 tests in `e2e/roadmap.spec.ts`, `feedback.spec.ts`, `ideas.spec.ts`, `team.spec.ts`) and `build` pass.
+- **Checks:** `pnpm lint`, `typecheck`, `test` (168 tests), `test:e2e` (23 tests in `e2e/roadmap.spec.ts`, `feedback.spec.ts`, `ideas.spec.ts`, `team.spec.ts`) and `build` pass.
 - **Git:** doc 21 work is committed locally on `main` (sidebar `668679c`, step A `e853923`, step B `92ae9fa`, step C + docs after it). **Not pushed yet.**
 - **Dev tip:** Turbopack's dev cache sometimes serves stale code after edits (seen twice: CSS and a new service export). If a change doesn't show up, stop `pnpm dev`, delete `.next/dev`, and start it again.
 - **Dev test account on this Mac:** `claude-dev@example.test` / `devpassword123` (account `claude-dev`, workspace `dev-product`). Local dev DB only.
@@ -58,7 +58,7 @@
 
 ## Next step
 Resume here. On a new session say: *"Read docs/PROGRESS.md and continue from Next step."*
-1. **Phase 4 (doc 23, approved 2026-10-29), step 3:** publish / schedule / unpublish (delayed BullMQ job) + public Updates tab, post page, RSS, sitemap, proxy statuses, Updates switch. Steps 1–2 are done (schema `0007`, admin list + editor + categories + Announce). Then steps 4–7 (subscribers, post emails, follow emails, reactions + Home tiles).
+1. **Phase 4 (doc 23, approved 2026-10-29), step 4:** subscribers (public Subscribe box, double opt-in email, one-click unsubscribe + suppressions, admin list + CSV, "New subscribers" alert). Steps 1–3 are done. Then steps 5–7 (post emails, follow emails, reactions + Home tiles). **Rule learned:** anything the worker imports must not import `server-only` (guarded by `src/test/worker-imports.test.ts`).
 2. **Owner (blocking for the imports):** export from LoopedIn and put both files in `docs/samples/`: the roadmap (Roadmap → More → Export) and the feedback (Boards → More → Export).
 3. With the exports: Phase 2 step 10 (LoopedIn roadmap import at `/dashboard/<workspace>/roadmap/import?r=<roadmap-slug>`: papaparse, preview step, idempotent by `external_ref`, totals into `imported_votes`, Vitest + Playwright flow 6), then Phase 3 step 9 (feedback import + CSV export). Tick doc 19 "Done when" and mark Phase 2 done.
 4. Open follow-ups: a strict Content-Security-Policy on public pages (they now share the dashboard's origin, doc 19 "D1 revised"); optional redirect from old dashboard URLs `/<workspace>/…` to `/dashboard/<workspace>/…`.
@@ -105,7 +105,7 @@ Resume here. On a new session say: *"Read docs/PROGRESS.md and continue from Nex
 - [ ] Phase 2 — Roadmap + voting + public page + embed (all built except step 10, LoopedIn import)
 - [ ] Phase 3 — Feedback + triage + import (steps 1–8 built; step 9 import waits for the LoopedIn export)
 - [x] Roadmap admin redesign — doc 21 (steps A–C)
-- [ ] Phase 4 — Updates + email (doc 23; steps 1–2 of 7 built)
+- [ ] Phase 4 — Updates + email (doc 23; steps 1–3 of 7 built)
 - [ ] Phase 5 — Knowledge base
 - [ ] Phase 6 — Billing, widget, domains, white-label
 
@@ -132,3 +132,4 @@ Resume here. On a new session say: *"Read docs/PROGRESS.md and continue from Nex
 | 2026-10-29 | radiustheme (Mac 2) | Phase 3 step 7: public comments on ideas + cards (approval, team replies, internal notes, moderation page), idea follows (auto on vote/submit), Public settings switches; shared comments service replaces card-only comments. 147 unit + 21 e2e | Phase 3 step 8 (notification emails) |
 | 2026-10-29 | radiustheme (Mac 2) | Phase 3 step 8: team email alerts (new idea, new comment; instant / daily digest / off per member), notify queue + daily scheduler, Settings → Notifications. 152 unit + 21 e2e | Phase 4 plan (Updates) |
 | 2026-10-29 | radiustheme (Mac 2) | Fixes: one tab underline, team vote from the card drawer, dashboard max width 1500px. Phase 4 plan (doc 23) approved; steps 1–2: updates schema `0007` + default categories, admin Updates list, editor, categories, Announce from cards. 161 unit + 22 e2e | Phase 4 step 3 (publish + public Updates) |
+| 2026-10-29 | radiustheme (Mac 2) | Phase 4 step 3: publish / schedule / unpublish (delayed job + signed revalidate from the worker), public Updates tab, post pages, RSS, sitemap, Updates switch; worker import guard test. 168 unit + 23 e2e | Phase 4 step 4 (subscribers) |

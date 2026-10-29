@@ -1,6 +1,7 @@
 import { db } from "@/server/db/client";
 import { listIdeaSitemapEntries } from "@/server/services/public-ideas";
 import { listSitemapEntries } from "@/server/services/public-site";
+import { listUpdateSitemapEntries } from "@/server/services/public-updates";
 import { loadSite, loadWorkspace, loadWorkspaces, siteUrl } from "../data";
 
 function escapeXml(value: string) {
@@ -16,10 +17,11 @@ export async function GET(
   if (!site) return new Response("Not found", { status: 404 });
   const origin = siteUrl(site.slug);
   const scope = { accountId: site.accountId };
-  const [workspaces, cards, ideas] = await Promise.all([
+  const [workspaces, cards, ideas, posts] = await Promise.all([
     loadWorkspaces(site.accountId),
     listSitemapEntries(db, scope),
     listIdeaSitemapEntries(db, scope),
+    listUpdateSitemapEntries(db, scope),
   ]);
   const modules = await Promise.all(
     workspaces
@@ -29,7 +31,7 @@ export async function GET(
   const urls = [
     ...modules.flatMap((w) =>
       w
-        ? (["roadmap", "ideas"] as const)
+        ? (["roadmap", "updates", "ideas"] as const)
             .filter((m) => w.modules[m])
             .map((m) => ({ loc: `${origin}/${w.slug}/${m}`, lastmod: null }))
         : [],
@@ -39,6 +41,12 @@ export async function GET(
       .map((c) => ({
         loc: `${origin}/${c.workspace}/roadmap/${c.card}`,
         lastmod: c.updatedAt.toISOString(),
+      })),
+    ...posts
+      .filter((p) => p.indexable)
+      .map((p) => ({
+        loc: `${origin}/${p.workspace}/updates/${p.post}`,
+        lastmod: p.updatedAt.toISOString(),
       })),
     ...ideas
       .filter((i) => i.indexable)

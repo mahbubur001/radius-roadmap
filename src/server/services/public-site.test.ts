@@ -32,6 +32,7 @@ const users: string[] = [];
 const ON = {
   showRoadmap: true,
   showIdeas: true,
+  showUpdates: true,
   commentsEnabled: false,
   approveComments: false,
   followsEnabled: false,
@@ -68,7 +69,11 @@ describe("public site modules", () => {
   it("shows the roadmap by default", async () => {
     const ws = await getPublicWorkspace(db, pub, "mod");
     // New workspaces also get a public ideas board.
-    expect(ws?.modules).toEqual({ roadmap: true, ideas: true });
+    expect(ws?.modules).toEqual({
+      roadmap: true,
+      updates: false,
+      ideas: true,
+    });
     expect(await publicPathStatus(db, pub, ["mod", "roadmap"])).toBe("ok");
   });
 
@@ -76,6 +81,7 @@ describe("public site modules", () => {
     await updatePublicSite(db, owner, { ...ON, showRoadmap: false });
     expect((await getPublicWorkspace(db, pub, "mod"))?.modules).toEqual({
       roadmap: false,
+      updates: false,
       ideas: true,
     });
     expect(await publicPathStatus(db, pub, ["mod", "roadmap"])).toBe("missing");
@@ -89,6 +95,7 @@ describe("public site modules", () => {
       ...ON,
       showRoadmap: false,
       showIdeas: false,
+      showUpdates: true,
     });
     expect(await getPublicWorkspace(db, pub, "mod")).toBeNull();
     expect(

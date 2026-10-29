@@ -49,3 +49,9 @@ export const updateCardsSchema = z.object({
 
 export const updateIdSchema = z.object({ id });
 export const cardSearchSchema = z.object({ q: z.string().trim().max(100) });
+
+/** Publish now (no `at`) or schedule for a future time. */
+export const publishUpdateSchema = z.object({
+  id,
+  at: z.iso.datetime({ offset: true }).optional(),
+});

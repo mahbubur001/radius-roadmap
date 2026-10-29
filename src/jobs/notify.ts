@@ -3,11 +3,13 @@ import { db } from "@/server/db/client";
 import type { EmailJob } from "@/server/email/types";
 import { enqueueEmail } from "@/server/queue/email";
 import type { NotifyJob } from "@/server/queue/notifications";
+import { revalidateFromWorker } from "@/server/revalidate-from-worker";
 import {
   digestEmails,
   newCommentEmails,
   newFeedbackEmails,
 } from "@/server/services/notifications";
+import { publishDue } from "@/server/services/update-publish";
 
 /**
  * Fans an event out to one email job per recipient. Email job ids include
@@ -16,6 +18,12 @@ import {
 export async function notifyJob(job: Job<NotifyJob>) {
   const data = job.data;
   let emails: { id: string; email: EmailJob }[] = [];
+
+  if (data.type === "publish-update") {
+    const post = await publishDue(db, data.updateId, new Date(data.at));
+    if (post) await revalidateFromWorker(post.accountId, post.workspaceId);
+    return { published: !!post };
+  }
 
   if (data.type === "new-feedback") {
     emails = (await newFeedbackEmails(db, data.feedbackId)).map(

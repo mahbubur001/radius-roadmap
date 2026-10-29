@@ -38,6 +38,9 @@ import {
   type WorkspaceContext,
 } from "./context";
 import { inWorkspace } from "./roadmaps";
+import { publishNow } from "./update-publish";
+
+export { publishDue } from "./update-publish";
 
 // Update posts (doc 23 step 2). Everyone with access to the workspace can
 // write and edit posts (like cards); publishing comes in step 3.
@@ -375,4 +378,45 @@ export async function searchCardsForUpdate(
       desc(roadmapCards.updatedAt),
     )
     .limit(20);
+}
+
+// ── Publishing (doc 23 step 3) ─────────────────────────────────────────
+// The worker-safe parts (publishNow, publishDue) live in update-publish.ts.
+
+/**
+ * Publish now, or schedule for `at` (a future time). Returns the post and,
+ * when scheduled, the time the caller must queue the publish job for.
+ */
+export async function publishUpdate(
+  db: Db,
+  ctx: WorkspaceContext,
+  id: string,
+  at?: Date,
+) {
+  const post = await getUpdate(db, ctx, id);
+  if (at && at.getTime() > Date.now() + 30_000) {
+    const [row] = await db
+      .update(updates)
+      .set({ status: "scheduled", publishAt: at })
+      .where(and(inWorkspace(updates, ctx), eq(updates.id, id)))
+      .returning();
+    if (!row) throw new NotFoundError("Post not found.");
+    return { post: row, scheduledFor: at };
+  }
+  return { post: await publishNow(db, post), scheduledFor: null };
+}
+
+/** Back to draft (a scheduled post's job then finds nothing to do). */
+export async function unpublishUpdate(
+  db: Db,
+  ctx: WorkspaceContext,
+  id: string,
+) {
+  const [row] = await db
+    .update(updates)
+    .set({ status: "draft", publishAt: null })
+    .where(and(inWorkspace(updates, ctx), eq(updates.id, id)))
+    .returning();
+  if (!row) throw new NotFoundError("Post not found.");
+  return row;
 }

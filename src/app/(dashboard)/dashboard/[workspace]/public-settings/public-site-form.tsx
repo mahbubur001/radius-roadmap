@@ -55,6 +55,12 @@ export function PublicSiteForm({
             />
             <SwitchField
               control={form.control}
+              name="showUpdates"
+              label="Updates"
+              description="Your published posts (changelog), with an RSS feed and email subscriptions."
+            />
+            <SwitchField
+              control={form.control}
               name="showIdeas"
               label="Ideas"
               description="Public feedback boards where visitors suggest and vote on ideas."

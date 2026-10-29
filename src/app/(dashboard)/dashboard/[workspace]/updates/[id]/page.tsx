@@ -2,6 +2,8 @@ import type { Metadata } from "next";
 import { Suspense } from "react";
 import { Skeleton } from "@/components/ui/skeleton";
 import { db } from "@/server/db/client";
+import { appOrigin } from "@/server/public-url";
+import { getAccount } from "@/server/services/accounts";
 import { listUpdateCategories } from "@/server/services/update-categories";
 import { getUpdateDetail } from "@/server/services/updates";
 import { requireWorkspace } from "@/server/session";
@@ -27,9 +29,10 @@ async function Editor({
 }) {
   const { workspace, id } = await params;
   const ctx = await requireWorkspace(workspace);
-  const [post, categories] = await Promise.all([
+  const [post, categories, account] = await Promise.all([
     getUpdateDetail(db, ctx, id),
     listUpdateCategories(db, ctx),
+    getAccount(db, ctx),
   ]);
   return (
     <UpdateEditor
@@ -37,6 +40,7 @@ async function Editor({
       key={post.id}
       workspace={ctx.workspaceSlug}
       workspaceId={ctx.workspaceId}
+      publicBase={`${appOrigin()}/${account.slug}/${ctx.workspaceSlug}/updates`}
       post={{ ...post, coverUrl: fileUrl(post.cover) }}
       categories={categories.map((c) => ({
         id: c.id,

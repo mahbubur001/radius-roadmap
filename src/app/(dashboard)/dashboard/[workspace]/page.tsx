@@ -93,6 +93,9 @@ async function Home({
         <Stat label="Page views" value={totals.views} />
         <Stat label="Unique visitors" value={totals.visitors} />
         <Stat label="Votes" value={totals.votes} />
+        <Stat label="Update subscribers" value={totals.subscribers} />
+        <Stat label="Update views" value={totals.postViews} />
+        <Stat label="Reactions" value={totals.reactions} />
       </div>
 
       <section className="rounded-lg border p-4">

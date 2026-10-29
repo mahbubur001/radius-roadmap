@@ -10,9 +10,11 @@ import type { PublicContext, WorkspaceContext } from "./context";
 import { getPublicWorkspace, publicPathStatus } from "./public-site";
 import {
   getPublicUpdate,
+  getReactablePost,
   listPublicUpdates,
   updatePathStatus,
 } from "./public-updates";
+import { myReactions, toggleReaction } from "./reactions";
 import {
   createUpdate,
   patchUpdate,
@@ -156,5 +158,45 @@ describe("publishing", () => {
         )
       ).posts,
     ).toEqual([]);
+  });
+});
+
+describe("reactions", () => {
+  it("toggle per visitor and emoji, count, and only on public posts", async () => {
+    const p = await post("React to me");
+    expect(await getReactablePost(db, pub, p.id)).toBeNull(); // draft
+    const { post: published } = await publishUpdate(db, ws, p.id);
+    const live = await getReactablePost(db, pub, p.id);
+    if (!live) throw new Error("not reactable");
+
+    const a = { visitorId: "visitor-a" };
+    const b = { visitorId: "visitor-b" };
+    expect(await toggleReaction(db, pub, live.id, "tada", a)).toEqual({
+      reacted: true,
+      count: 1,
+    });
+    expect(await toggleReaction(db, pub, live.id, "tada", b)).toEqual({
+      reacted: true,
+      count: 2,
+    });
+    await toggleReaction(db, pub, live.id, "heart", a);
+    expect(await myReactions(db, pub, ws.workspaceId, a)).toEqual(
+      expect.arrayContaining([`${live.id}:tada`, `${live.id}:heart`]),
+    );
+    const shown = await getPublicUpdate(
+      db,
+      pub,
+      ws.workspaceId,
+      published.slug,
+    );
+    expect(shown?.reactions).toEqual({ tada: 2, heart: 1 });
+
+    expect(await toggleReaction(db, pub, live.id, "tada", a)).toEqual({
+      reacted: false,
+      count: 1,
+    });
+    expect(
+      await getReactablePost(db, { accountId: other.accountId }, live.id),
+    ).toBeNull();
   });
 });

@@ -10,9 +10,11 @@ import { publicApi, useVoter } from "./voter-provider";
 export function PageView({
   cardId,
   ideaId,
+  postId,
 }: {
   cardId?: string;
   ideaId?: string;
+  postId?: string;
 }) {
   const { site, workspaceId, embed } = useVoter();
   useEffect(() => {
@@ -23,11 +25,17 @@ export function PageView({
         method: "POST",
         body: {
           workspaceId,
-          type: cardId ? "card_view" : ideaId ? "feedback_view" : "page_view",
-          subjectId: cardId ?? ideaId ?? null,
+          type: cardId
+            ? "card_view"
+            : ideaId
+              ? "feedback_view"
+              : postId
+                ? "update_view"
+                : "page_view",
+          subjectId: cardId ?? ideaId ?? postId ?? null,
         },
       },
     ).catch(() => undefined);
-  }, [site, workspaceId, embed, cardId, ideaId]);
+  }, [site, workspaceId, embed, cardId, ideaId, postId]);
   return null;
 }

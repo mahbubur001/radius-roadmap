@@ -362,12 +362,12 @@ describe("analytics", () => {
     });
     await toggleVote(db, pubA, card, { visitorId: "v2" }, meta);
 
-    expect(await summary(db, wsA, "7d")).toEqual({
+    expect(await summary(db, wsA, "7d")).toMatchObject({
       views: 3,
       visitors: 2,
       votes: 1,
     });
-    expect(await summary(db, wsB, "7d")).toEqual({
+    expect(await summary(db, wsB, "7d")).toMatchObject({
       views: 0,
       visitors: 0,
       votes: 0,

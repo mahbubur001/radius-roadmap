@@ -11,6 +11,7 @@ import {
   SheetTitle,
 } from "@/components/ui/sheet";
 import type { PublicPost } from "@/server/services/public-updates";
+import { ReactionBar } from "./reaction-bar";
 import { SubscribeBox } from "./subscribe-box";
 import {
   CategoryChip,
@@ -173,6 +174,11 @@ export function PublicUpdates({
                     {post.excerpt}
                   </p>
                 ) : null}
+                <ReactionBar
+                  postId={post.id}
+                  counts={post.reactions}
+                  className="mt-2"
+                />
               </div>
             </article>
           ))}

@@ -26,7 +26,7 @@
 - Phase 3 plan (approved 2026-10-28, being built): `docs/20-phase-3-plan.md`
 - Roadmap admin redesign (LoopedIn layout, attachments, comments, follow, export; approved + built 2026-10-29): `docs/21-roadmap-admin-redesign.md`
 - Public site redesign + "Objective" naming (approved + steps 1–4 built 2026-10-29): `docs/22-public-site-redesign.md`
-- Phase 4 plan (Updates, subscribers, emails; approved 2026-10-29, steps 1–2 built): `docs/23-phase-4-plan.md`
+- Phase 4 plan (Updates, subscribers, emails; approved + built 2026-10-29): `docs/23-phase-4-plan.md`
 - Stack versions as built: `docs/14-dev-tools.md` → "Versions as built"
 
 ## Current status
@@ -49,7 +49,7 @@
   - Real 404 / 308 statuses for public sites, checked in `src/proxy.ts` (`publicPathStatus`).
   - Playwright flows 1–5 (`e2e/roadmap.spec.ts`).
 - Rate-limit bypass fixed: `cf-*` headers trusted only with `TRUST_CLOUDFLARE=1` (new env var); `src/server/rate-limit.test.ts`.
-- **Checks:** `pnpm lint`, `typecheck`, `test` (181 tests), `test:e2e` (25 tests in `e2e/roadmap.spec.ts`, `feedback.spec.ts`, `ideas.spec.ts`, `team.spec.ts`) and `build` pass.
+- **Checks:** `pnpm lint`, `typecheck`, `test` (182 tests), `test:e2e` (25 tests in `e2e/roadmap.spec.ts`, `feedback.spec.ts`, `ideas.spec.ts`, `team.spec.ts`) and `build` pass.
 - **Git:** doc 21 work is committed locally on `main` (sidebar `668679c`, step A `e853923`, step B `92ae9fa`, step C + docs after it). **Not pushed yet.**
 - **Migrations to run on the other Mac:** `0005`–`0008` (`pnpm db:migrate`), then restart `pnpm worker:dev`.
 - **Dev tip:** Turbopack's dev cache sometimes serves stale code after edits (seen twice: CSS and a new service export). If a change doesn't show up, stop `pnpm dev`, delete `.next/dev`, and start it again.
@@ -59,7 +59,7 @@
 
 ## Next step
 Resume here. On a new session say: *"Read docs/PROGRESS.md and continue from Next step."*
-1. **Phase 4 (doc 23, approved 2026-10-29), step 7:** emoji reactions on public posts (👍 ❤️ 🎉 👀, one per visitor per emoji) + Home tiles (subscribers, post views, reactions); then mark Phase 4 done. Steps 1–6 are done. **Rule learned:** anything the worker imports must not import `server-only` (guarded by `src/test/worker-imports.test.ts`).
+1. **Phase 5 plan** (Knowledge base / Articles, doc 06 and doc 22 §2.5): write the plan doc for approval. Articles get their own `article_categories`; public Article tab (centered search, Recent articles, Categories) — the last LoopedIn tab.
 2. **Owner (blocking for the imports):** export from LoopedIn and put both files in `docs/samples/`: the roadmap (Roadmap → More → Export) and the feedback (Boards → More → Export).
 3. With the exports: Phase 2 step 10 (LoopedIn roadmap import at `/dashboard/<workspace>/roadmap/import?r=<roadmap-slug>`: papaparse, preview step, idempotent by `external_ref`, totals into `imported_votes`, Vitest + Playwright flow 6), then Phase 3 step 9 (feedback import + CSV export). Tick doc 19 "Done when" and mark Phase 2 done.
 4. Open follow-ups: a strict Content-Security-Policy on public pages (they now share the dashboard's origin, doc 19 "D1 revised"); optional redirect from old dashboard URLs `/<workspace>/…` to `/dashboard/<workspace>/…`.
@@ -106,7 +106,7 @@ Resume here. On a new session say: *"Read docs/PROGRESS.md and continue from Nex
 - [ ] Phase 2 — Roadmap + voting + public page + embed (all built except step 10, LoopedIn import)
 - [ ] Phase 3 — Feedback + triage + import (steps 1–8 built; step 9 import waits for the LoopedIn export)
 - [x] Roadmap admin redesign — doc 21 (steps A–C)
-- [ ] Phase 4 — Updates + email (doc 23; steps 1–6 of 7 built)
+- [x] Phase 4 — Updates + email (doc 23, built 2026-10-29)
 - [ ] Phase 5 — Knowledge base
 - [ ] Phase 6 — Billing, widget, domains, white-label
 
@@ -137,3 +137,4 @@ Resume here. On a new session say: *"Read docs/PROGRESS.md and continue from Nex
 | 2026-10-29 | radiustheme (Mac 2) | Phase 4 step 4: update subscribers (double opt-in, scanner-safe unsubscribe + one-click, suppressions, admin list + CSV, "New subscribers" alert). 173 unit + 24 e2e | Phase 4 step 5 (post emails) |
 | 2026-10-29 | radiustheme (Mac 2) | Phase 4 step 5: published posts emailed to subscribers (claimed once, batched, idempotent, signed one-click unsubscribe + List-Unsubscribe headers, SES rate limit). 177 unit + 24 e2e | Phase 4 step 6 (follow emails) |
 | 2026-10-29 | radiustheme (Mac 2) | Phase 4 step 6: follow emails (status changed via a debounced sweep + notified_status_id, migration 0008; shipped on publish), verified addresses only, signed unfollow. 181 unit + 25 e2e | Phase 4 step 7 (reactions + Home tiles) |
+| 2026-10-29 | radiustheme (Mac 2) | Phase 4 step 7: emoji reactions on posts, update views tracked, Home tiles. **Phase 4 done.** 182 unit + 25 e2e | Phase 5 plan (Articles) |

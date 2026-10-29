@@ -5,6 +5,7 @@ import {
   events,
   roadmapCards,
   trackedUsers,
+  updateSubscribers,
   type VoteSource,
   votes,
 } from "@/server/db/schema";
@@ -130,7 +131,7 @@ export async function topCards(db: Db, ctx: WorkspaceContext, limit = 5) {
 /** Headline numbers for the Home stat tiles. */
 export async function summary(db: Db, ctx: WorkspaceContext, range: Range) {
   const since = new Date(Date.now() - RANGES[range] * 86_400_000);
-  const [[views], [voteRow]] = await Promise.all([
+  const [[views], [voteRow], [updateRow], [subs]] = await Promise.all([
     db
       .select({
         views: count(),
@@ -155,10 +156,38 @@ export async function summary(db: Db, ctx: WorkspaceContext, range: Range) {
           gte(votes.createdAt, since),
         ),
       ),
+    // Phase 4 (doc 23): post views and reactions in the period.
+    db
+      .select({
+        postViews: sql<number>`count(*) filter (where ${events.type} = 'update_view')::int`,
+        reactions: sql<number>`count(*) filter (where ${events.type} = 'reaction')::int`,
+      })
+      .from(events)
+      .where(
+        and(
+          eq(events.accountId, ctx.accountId),
+          eq(events.workspaceId, ctx.workspaceId),
+          gte(events.createdAt, since),
+        ),
+      ),
+    // Subscribers is a running total, not per period.
+    db
+      .select({ n: count() })
+      .from(updateSubscribers)
+      .where(
+        and(
+          eq(updateSubscribers.accountId, ctx.accountId),
+          eq(updateSubscribers.workspaceId, ctx.workspaceId),
+          eq(updateSubscribers.status, "active"),
+        ),
+      ),
   ]);
   return {
     views: views?.views ?? 0,
     visitors: views?.visitors ?? 0,
     votes: voteRow?.votes ?? 0,
+    postViews: updateRow?.postViews ?? 0,
+    reactions: updateRow?.reactions ?? 0,
+    subscribers: subs?.n ?? 0,
   };
 }

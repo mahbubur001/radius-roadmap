@@ -1,4 +1,5 @@
 import { and, desc, eq, ilike, or, type SQL, sql } from "drizzle-orm";
+import type { ReactionCounts } from "@/lib/reactions";
 import { renderRichText } from "@/lib/rich-text";
 import type { Db } from "@/server/db/client";
 import {
@@ -13,6 +14,7 @@ import {
 import { likePattern } from "./cards";
 import type { PublicContext } from "./context";
 import { byPosition } from "./positions";
+import { reactionCounts } from "./reactions";
 
 // The public Updates pages (doc 23 step 3). The account comes from the URL.
 // Visitors see published, public posts of workspaces that show Updates.
@@ -33,6 +35,7 @@ export type PublicPost = {
   category: { id: string; name: string; color: string } | null;
   pinned: boolean;
   publishedAt: string;
+  reactions: ReactionCounts;
 };
 
 function postColumns() {
@@ -71,6 +74,7 @@ function toPost(r: {
     cover: r.cover,
     pinned: r.pinned,
     publishedAt: (r.publishedAt ?? new Date(0)).toISOString(),
+    reactions: {},
     category:
       r.categoryId && r.categoryName && r.categoryColor
         ? { id: r.categoryId, name: r.categoryName, color: r.categoryColor }
@@ -141,7 +145,16 @@ export async function listPublicUpdates(
       )
       .orderBy(byPosition(updateCategories.position)),
   ]);
-  return { posts: rows.map(toPost), categories };
+  const posts = rows.map(toPost);
+  const counts = await reactionCounts(
+    db,
+    ctx,
+    posts.map((p) => p.id),
+  );
+  return {
+    posts: posts.map((p) => ({ ...p, reactions: counts[p.id] ?? {} })),
+    categories,
+  };
 }
 
 /** One post with its body and the public roadmap cards it shipped. */
@@ -185,8 +198,10 @@ export async function getPublicUpdate(
         sql`coalesce(${workspaces.settings}->>'showRoadmap', 'true') <> 'false'`,
       ),
     );
+  const counts = await reactionCounts(db, ctx, [row.id]);
   return {
     ...toPost(row),
+    reactions: counts[row.id] ?? {},
     html: renderRichText(row.bodyJson) || null,
     cards,
   };
@@ -227,4 +242,24 @@ export async function listUpdateSitemapEntries(db: Db, ctx: PublicContext) {
     .from(updates)
     .innerJoin(workspaces, eq(workspaces.id, updates.workspaceId))
     .where(and(eq(updates.accountId, ctx.accountId), postIsPublic));
+}
+
+/** A post visitors may react to, or null. */
+export async function getReactablePost(
+  db: Db,
+  ctx: PublicContext,
+  updateId: string,
+) {
+  const [row] = await db
+    .select({ id: updates.id, workspaceId: updates.workspaceId })
+    .from(updates)
+    .where(
+      and(
+        eq(updates.accountId, ctx.accountId),
+        eq(updates.id, updateId),
+        postIsPublic,
+      ),
+    )
+    .limit(1);
+  return row ?? null;
 }

@@ -70,7 +70,7 @@ async function Post(props: Props) {
       active="updates"
       embed={embed}
     >
-      <PageView />
+      <PageView postId={post.id} />
       <div className="mx-auto flex max-w-3xl flex-col gap-6">
         <Link
           href={`/${site.slug}/${ws.slug}/updates${suffix}`}

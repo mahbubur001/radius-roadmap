@@ -1,6 +1,6 @@
 # 23 — Phase 4 plan: Updates (changelog), subscribers and emails
 
-Status: **APPROVED 2026-10-29** (U1–U7 as recommended in §2). Building steps 1 → 7.
+Status: **APPROVED 2026-10-29** (U1–U7 as recommended in §2). **Built 2026-10-29** (steps 1–7, see "As built").
 
 Phase 4 adds LoopedIn's **Updates**: posts announcing what shipped, a public changelog, subscribers who get each post by email, and the follow emails deferred from Phase 3 (doc 20 D3: "status changed" and "shipped" for people following an idea).
 
@@ -91,10 +91,10 @@ Sources:
 7. Reactions + Home tiles; docs and PROGRESS.
 
 ## Done when
-- [ ] A post can be drafted, scheduled, published, unpublished; only published public posts are public.
-- [ ] Subscribers confirm, receive post emails once, and can unsubscribe in one click.
-- [ ] Idea followers get status-changed and shipped emails (when follows are on).
-- [ ] Public Updates tab, post pages, RSS and sitemap work; checks green.
+- [x] A post can be drafted, scheduled, published, unpublished; only published public posts are public.
+- [x] Subscribers confirm, receive post emails once, and can unsubscribe in one click.
+- [x] Idea followers get status-changed and shipped emails (when follows are on).
+- [x] Public Updates tab, post pages, RSS and sitemap work; checks green.
 
 ---
 
@@ -108,3 +108,5 @@ Sources:
 - **Step 4 (2026-10-29):** `src/server/services/subscribers.ts` (subscribe with double opt-in; verified voters active at once; one random token per subscriber, only its SHA-256 stored; confirm; unsubscribe with optional "stop every email from this site" = `email_suppressions` `unsubscribed_all`; re-subscribing lifts that, never a bounce/complaint; admin list/counts/remove/CSV). Public: "Get updates by email" box on the Updates page, `POST /api/public/subscribe` (Turnstile, 10/hour per IP, 3/hour per address, same answer whether or not already subscribed), `GET /api/public/subscribe/confirm` (redirects to `/updates?subscribed=1`), `/api/public/unsubscribe` — **GET only shows a page with a button** (mail scanners open links), POST unsubscribes, also accepting the RFC 8058 one-click POST. Dashboard: Updates → Subscribers (tiles, search, status filter, remove, Export CSV). "New subscribers" alert (instant / daily in the digest / off, default off) via the `notify` queue.
 - **Step 5 (2026-10-29):** post emails. On publish (immediately, or by the worker after a scheduled post goes live) a `send-update` job on the `notify` queue claims the post once (`emailed_at`, only published + public + "email subscribers" on), pages through active, unsuppressed subscribers (500 per batch, keyset by id) and queues one `update-published` email per subscriber (job id post + subscriber). Each email carries a **signed, non-expiring unsubscribe link** (`s` + `sig`, HMAC of the subscriber id; tokens are stored hashed so they can't be reused) and `List-Unsubscribe` + `List-Unsubscribe-Post` headers (SES v2 `Simple.Headers`, SMTP headers). The email worker is rate-limited to 12/s (under SES's default 14/s). `fileUrl` moved to the worker-safe `src/server/storage/url.ts`.
 - **Step 6 (2026-10-29):** follow emails. Migration `0008`: `feedback_items.notified_status_id` (backfilled to the current status). Feedback and roadmap actions queue a debounced per-workspace **status sweep** (job id per workspace per minute, 60 s delay); the sweep (`follow-emails.ts`, worker-safe) emails followers of ideas whose status differs from `notified_status_id`, then records it — no false positives, and a change + change-back inside the minute sends nothing. Publishing a public post queues `idea-shipped`: followers of ideas linked to its cards get "Shipped: …". Both only when follows are on, only to **verified** addresses (guest emails are typed unchecked), never to suppressed ones; email job ids are per idea/status/follower. Signed "stop following" link (`/api/public/unfollow`, GET page + POST + one-click, optional "stop every email").
+- **Step 7 (2026-10-29):** emoji reactions (👍 ❤️ 🎉 👀, `src/lib/reactions.ts`, `reactions.ts` service, `POST /api/public/reactions` with 60/hour per IP, no sign-in; counts in the cached post data, the visitor's own in `/api/public/me`). Post page views are tracked as `update_view`. Home gets three tiles: update subscribers (running total), update views and reactions (per period).
+- Checks at the end of Phase 4: 182 unit, 25 e2e, lint, typecheck, build.

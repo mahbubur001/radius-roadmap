@@ -43,6 +43,11 @@ type VoterState = {
   /** Ideas the logged-in voter follows. */
   following: Set<string>;
   toggleFollow: (feedbackId: string) => Promise<void>;
+  /** "<postId>:<emoji>" the visitor reacted with. */
+  reactions: Set<string>;
+  /** Reaction counts changed in this session, by "<postId>:<emoji>". */
+  reactionTotals: Record<string, number>;
+  toggleReaction: (postId: string, emoji: string) => Promise<void>;
   openSignIn: () => void;
   signOut: () => Promise<void>;
   setVoter: (voter: Voter | null) => void;
@@ -120,6 +125,10 @@ export function VoterProvider({
   const [pending, setPending] = useState<string | null>(null);
   const [pendingIdeas, setPendingIdeas] = useState<PendingIdea[]>([]);
   const [following, setFollowing] = useState<Set<string>>(new Set());
+  const [reactions, setReactions] = useState<Set<string>>(new Set());
+  const [reactionTotals, setReactionTotals] = useState<Record<string, number>>(
+    {},
+  );
 
   const refresh = useCallback(async () => {
     const res = await publicApi<{
@@ -127,12 +136,14 @@ export function VoterProvider({
       voted: string[];
       pending?: PendingIdea[];
       following?: string[];
+      reactions?: string[];
     }>(`/api/public/me?workspace=${workspaceId}`, { site, embed });
     if (!res.ok) return;
     setVoter(res.data.voter);
     setVoted(new Set(res.data.voted));
     setPendingIdeas(res.data.pending ?? []);
     setFollowing(new Set(res.data.following ?? []));
+    setReactions(new Set(res.data.reactions ?? []));
   }, [site, workspaceId, embed]);
 
   useEffect(() => {
@@ -215,6 +226,29 @@ export function VoterProvider({
     [site, embed, voter, following],
   );
 
+  const toggleReaction = useCallback(
+    async (postId: string, emoji: string) => {
+      const key = `${postId}:${emoji}`;
+      const res = await publicApi<{ reacted: boolean; count: number }>(
+        "/api/public/reactions",
+        { site, embed },
+        { method: "POST", body: { updateId: postId, emoji } },
+      );
+      if (!res.ok) {
+        toast.error(res.data.error ?? "Couldn't save your reaction.");
+        return;
+      }
+      setReactions((all) => {
+        const next = new Set(all);
+        if (res.data.reacted) next.add(key);
+        else next.delete(key);
+        return next;
+      });
+      setReactionTotals((all) => ({ ...all, [key]: res.data.count }));
+    },
+    [site, embed],
+  );
+
   const signOut = useCallback(async () => {
     await publicApi(
       "/api/public/auth/sign-out",
@@ -238,6 +272,9 @@ export function VoterProvider({
       addPendingIdea: (idea) => setPendingIdeas((all) => [idea, ...all]),
       following,
       toggleFollow,
+      reactions,
+      reactionTotals,
+      toggleReaction,
       openSignIn: () => setSignInOpen(true),
       signOut,
       setVoter: (next) => {
@@ -256,6 +293,9 @@ export function VoterProvider({
       pendingIdeas,
       following,
       toggleFollow,
+      reactions,
+      reactionTotals,
+      toggleReaction,
       signOut,
       refresh,
     ],

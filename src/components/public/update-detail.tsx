@@ -1,5 +1,6 @@
 import { Map as MapIcon, Pin } from "lucide-react";
 import type { PublicPost } from "@/server/services/public-updates";
+import { ReactionBar } from "./reaction-bar";
 
 export type PublicPostView = PublicPost & {
   html?: string | null;
@@ -75,6 +76,7 @@ export function UpdateDetail({
             {post.excerpt}
           </p>
         ) : null}
+        <ReactionBar postId={post.id} counts={post.reactions} />
         {roadmapBase && post.cards?.length ? (
           <section className="flex flex-col gap-2 rounded-md border bg-muted/40 p-4">
             <h2 className="text-sm font-medium">Shipped from the roadmap</h2>

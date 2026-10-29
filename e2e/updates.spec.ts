@@ -84,6 +84,19 @@ test("publish a post: public Updates tab, post page and RSS; schedule another", 
     page.getByRole("heading", { level: 1, name: "Hello changelog" }),
   ).toBeVisible();
   await expect(page.getByText("Our first update.")).toBeVisible();
+
+  // Anyone can react; the reaction survives a reload.
+  const reactions = page.getByRole("group", { name: "Reactions" });
+  await reactions.getByRole("button", { name: /Celebrate/ }).click();
+  await expect(
+    reactions.getByRole("button", { name: "Celebrate (1)" }),
+  ).toHaveAttribute("aria-pressed", "true");
+  await page.reload();
+  await expect(
+    page
+      .getByRole("group", { name: "Reactions" })
+      .getByRole("button", { name: "Celebrate (1)" }),
+  ).toHaveAttribute("aria-pressed", "true");
   const feed = await page.request.get(`${listUrl}/feed.xml`);
   expect(feed.status()).toBe(200);
   expect(await feed.text()).toContain("<title>Hello changelog</title>");

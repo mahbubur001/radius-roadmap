@@ -171,7 +171,7 @@ describe("articles", () => {
       ),
     ).toContain("Orphan");
     expect(await articleCounts(db, ws)).toMatchObject({ published: 2 });
-    expect(await articleStats(db, ws, new Date(0))).toMatchObject({
+    expect(await articleStats(db, ws)).toMatchObject({
       published: 2,
       likes: 0,
       views: 0,

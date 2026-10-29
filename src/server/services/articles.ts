@@ -336,8 +336,8 @@ export async function articleCounts(db: Db, ctx: WorkspaceContext) {
   >;
 }
 
-/** LoopedIn's Articles tiles (doc 16 §5): published, ratings, views. */
-export async function articleStats(db: Db, ctx: WorkspaceContext, since: Date) {
+/** LoopedIn's Articles tiles (doc 16 §5): published, ratings, views in the last `days`. */
+export async function articleStats(db: Db, ctx: WorkspaceContext, days = 30) {
   const [[totals], [views]] = await Promise.all([
     db
       .select({
@@ -356,7 +356,7 @@ export async function articleStats(db: Db, ctx: WorkspaceContext, since: Date) {
           eq(events.accountId, ctx.accountId),
           eq(events.workspaceId, ctx.workspaceId),
           eq(events.type, "article_view"),
-          gte(events.createdAt, since),
+          gte(events.createdAt, sql`now() - make_interval(days => ${days})`),
         ),
       ),
   ]);

@@ -309,6 +309,25 @@ export const templates: { [T in EmailTemplate]: TemplateDef<T> } = {
       </EmailLayout>
     ),
   },
+  "card-completed": {
+    subject: ({ cardTitle }) => `Completed: ${cardTitle}`,
+    render: ({ workspaceName, roadmapTitle, cardTitle, url }) => (
+      <EmailLayout
+        preview={`${cardTitle} is done`}
+        heading="A card you follow is done"
+        action={{ label: "Open the card", url }}
+      >
+        <Text>
+          <strong>{cardTitle}</strong> was completed on the {roadmapTitle}{" "}
+          roadmap of {workspaceName}.
+        </Text>
+        <Text style={{ color: "#888", fontSize: 12 }}>
+          You follow this card. Open it and choose Unfollow to stop these
+          emails.
+        </Text>
+      </EmailLayout>
+    ),
+  },
   "new-subscriber": {
     subject: ({ workspaceName, email }) =>
       `${email} subscribed to ${workspaceName} updates`,

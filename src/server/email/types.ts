@@ -80,6 +80,13 @@ export type EmailTemplateProps = {
     postUrl: string;
     unfollowUrl: string;
   };
+  /** To team members following a card: it was completed (doc 24 R4). */
+  "card-completed": {
+    workspaceName: string;
+    roadmapTitle: string;
+    cardTitle: string;
+    url: string;
+  };
   /** Team alert: someone confirmed an update subscription. */
   "new-subscriber": {
     workspaceName: string;

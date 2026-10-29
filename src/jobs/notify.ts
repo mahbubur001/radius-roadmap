@@ -4,6 +4,7 @@ import type { EmailJob } from "@/server/email/types";
 import { enqueueEmail } from "@/server/queue/email";
 import { type NotifyJob, notify } from "@/server/queue/notifications";
 import { revalidateFromWorker } from "@/server/revalidate-from-worker";
+import { completionSweep } from "@/server/services/card-completion-emails";
 import { shippedEmails, statusSweep } from "@/server/services/follow-emails";
 import {
   digestEmails,
@@ -37,9 +38,14 @@ export async function notifyJob(job: Job<NotifyJob>) {
   }
 
   if (data.type === "idea-status-sweep" || data.type === "idea-shipped") {
+    // The sweep runs after every roadmap/feedback change (debounced), so it
+    // also tells card followers about completed cards.
     const followEmails =
       data.type === "idea-status-sweep"
-        ? await statusSweep(db, data.workspaceId)
+        ? [
+            ...(await statusSweep(db, data.workspaceId)),
+            ...(await completionSweep(db, data.workspaceId)),
+          ]
         : await shippedEmails(db, data.updateId);
     for (const { id, email } of followEmails) await enqueueEmail(email, id);
     return { sent: followEmails.length };

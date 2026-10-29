@@ -354,7 +354,7 @@ function SettingsForm({
           <SwitchRow
             id="rm-notify"
             label="Email notifications"
-            hint="When a card is completed, people following it and its linked ideas get an email."
+            hint="When a card is completed, team members following it get an email. People following its linked ideas already hear when the idea's status changes."
             checked={form.notifyOnComplete}
             onChange={(notifyOnComplete) =>
               setForm({ ...form, notifyOnComplete })

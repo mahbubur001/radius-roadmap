@@ -5,7 +5,7 @@ import type { ReactNode } from "react";
 import { Button } from "@/components/ui/button";
 import { Checkbox } from "@/components/ui/checkbox";
 import { cn } from "@/lib/utils";
-import type { BoardCard, CategoryOption, TagOption } from "./types";
+import type { BoardCard, ObjectiveOption, TagOption } from "./types";
 
 // The roadmap board's filters (doc 21 §2 step A). Filtering runs on the
 // client over the loaded cards; the state is mirrored in the URL.
@@ -13,7 +13,7 @@ import type { BoardCard, CategoryOption, TagOption } from "./types";
 type Presence = "all" | "some" | "none";
 
 export type RoadmapFilters = {
-  /** Category id, "none" (no objective) or "all". */
+  /** Objective id, "none" (no objective) or "all". */
   objective: string;
   /** Cards with any of these tags. */
   tags: string[];
@@ -101,8 +101,8 @@ export function matchesFilters(card: BoardCard, f: RoadmapFilters) {
   return (
     (f.objective === "all" ||
       (f.objective === "none"
-        ? !card.categoryId
-        : card.categoryId === f.objective)) &&
+        ? !card.objectiveId
+        : card.objectiveId === f.objective)) &&
     (!f.tags.length || f.tags.some((t) => card.tagIds.includes(t))) &&
     (f.visibility === "all" || card.isPublic === (f.visibility === "public")) &&
     present(f.votes, card.votes > 0) &&
@@ -123,7 +123,7 @@ export function FiltersPanel({
 }: {
   filters: RoadmapFilters;
   onChange: (next: RoadmapFilters) => void;
-  objectives: CategoryOption[];
+  objectives: ObjectiveOption[];
   tags: TagOption[];
 }) {
   const set = (change: Partial<RoadmapFilters>) =>

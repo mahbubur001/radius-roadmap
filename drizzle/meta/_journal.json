@@ -43,6 +43,13 @@
       "when": 1793258553089,
       "tag": "0005_silky_banshee",
       "breakpoints": true
+    },
+    {
+      "idx": 6,
+      "version": "7",
+      "when": 1793260030210,
+      "tag": "0006_objectives_rename",
+      "breakpoints": true
     }
   ]
 }

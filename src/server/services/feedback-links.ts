@@ -36,7 +36,7 @@ export async function roadmapTargets(db: Db, ctx: WorkspaceContext) {
 }
 
 /**
- * New card from the feedback (title as given, description and category
+ * New card from the feedback (title as given, description and objective
  * copied), appended to `columnId`, and linked. The feedback moves to the
  * first `planned` status, or `done` when the column is a done column.
  */
@@ -69,7 +69,7 @@ export async function pushToRoadmap(
       title: input.title,
       summaryJson: item.summaryJson,
       summaryText: item.summaryText,
-      categoryId: item.categoryId,
+      objectiveId: item.objectiveId,
       position: keyAfter(last?.position),
       completedAt: column.isDone ? new Date() : null,
       createdBy: ctx.userId,

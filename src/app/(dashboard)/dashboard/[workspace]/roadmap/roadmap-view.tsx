@@ -21,7 +21,7 @@ import { useCallback, useEffect, useMemo, useState } from "react";
 import { toast } from "sonner";
 import {
   createCardAction,
-  createCategoryAction,
+  createObjectiveAction,
   createRoadmapAction,
   exportRoadmapAction,
   moveCardAction,
@@ -42,7 +42,6 @@ import {
 import { Input } from "@/components/ui/input";
 import { Board, type CardMove, type ColumnMove } from "./board";
 import { CardDrawer } from "./card-drawer";
-import { CategoriesDialog } from "./categories-dialog";
 import {
   activeFilterCount,
   FiltersPanel,
@@ -51,12 +50,13 @@ import {
   matchesFilters,
   type RoadmapFilters,
 } from "./filters-panel";
+import { ObjectivesDialog } from "./objectives-dialog";
 import { RoadmapSettingsDialog } from "./roadmap-settings-dialog";
 import {
   type BoardCard,
   type BoardData,
   byPosition,
-  type CategoryOption,
+  type ObjectiveOption,
 } from "./types";
 
 /** Toolbar toggles: muted when off, outlined when on. */
@@ -83,11 +83,11 @@ export function RoadmapView({
   const { workspace } = data;
   const [cards, setCards] = useState(data.cards);
   const [columns, setColumns] = useState(data.columns);
-  const [categories, setCategories] = useState(data.categories);
+  const [objectives, setObjectives] = useState(data.objectives);
   const [tags, setTags] = useState(data.tags);
   useEffect(() => setCards(data.cards), [data.cards]);
   useEffect(() => setColumns(data.columns), [data.columns]);
-  useEffect(() => setCategories(data.categories), [data.categories]);
+  useEffect(() => setObjectives(data.objectives), [data.objectives]);
   useEffect(() => setTags(data.tags), [data.tags]);
 
   const searchParams = useSearchParams();
@@ -105,7 +105,7 @@ export function RoadmapView({
     initialCardId ?? null,
   );
   const [settingsOpen, setSettingsOpen] = useState(false);
-  const [categoriesOpen, setCategoriesOpen] = useState(false);
+  const [objectivesOpen, setObjectivesOpen] = useState(false);
 
   const visible = useMemo(() => {
     const needle = q.trim().toLowerCase();
@@ -147,33 +147,33 @@ export function RoadmapView({
     setCards((all) => all.filter((c) => c.id !== id));
   }, []);
 
-  async function setObjective(cardId: string, categoryId: string | null) {
-    const before = cards.find((c) => c.id === cardId)?.categoryId ?? null;
-    patchCard(cardId, { categoryId });
+  async function setObjective(cardId: string, objectiveId: string | null) {
+    const before = cards.find((c) => c.id === cardId)?.objectiveId ?? null;
+    patchCard(cardId, { objectiveId });
     const result = await updateCardAction({
       workspace,
       id: cardId,
-      categoryId,
+      objectiveId,
     });
     if (!result.ok) {
-      patchCard(cardId, { categoryId: before });
+      patchCard(cardId, { objectiveId: before });
       toast.error(result.error);
     }
   }
 
   const createObjective = useCallback(
-    async (name: string): Promise<CategoryOption | null> => {
-      const color = SWATCHES[categories.length % SWATCHES.length] ?? "#2563eb";
-      const result = await createCategoryAction({ workspace, name, color });
+    async (name: string): Promise<ObjectiveOption | null> => {
+      const color = SWATCHES[objectives.length % SWATCHES.length] ?? "#2563eb";
+      const result = await createObjectiveAction({ workspace, name, color });
       if (!result.ok) {
         toast.error(result.error);
         return null;
       }
       const created = { id: result.data.id, name, color };
-      setCategories((all) => [...all, created]);
+      setObjectives((all) => [...all, created]);
       return created;
     },
-    [workspace, categories.length],
+    [workspace, objectives.length],
   );
 
   async function moveCard(move: CardMove) {
@@ -271,7 +271,7 @@ export function RoadmapView({
         title,
         publicTitle: null,
         summaryText: "",
-        categoryId: null,
+        objectiveId: null,
         plannedFor: null,
         isPublic: true,
         completed: !!column?.isDone,
@@ -401,7 +401,7 @@ export function RoadmapView({
             <DropdownMenuContent align="end">
               {data.canManage ? (
                 <>
-                  <DropdownMenuItem onSelect={() => setCategoriesOpen(true)}>
+                  <DropdownMenuItem onSelect={() => setObjectivesOpen(true)}>
                     <Shapes />
                     Objectives and tags
                   </DropdownMenuItem>
@@ -460,7 +460,7 @@ export function RoadmapView({
           <FiltersPanel
             filters={filters}
             onChange={setFilters}
-            objectives={categories}
+            objectives={objectives}
             tags={tags}
           />
         ) : null}
@@ -469,7 +469,7 @@ export function RoadmapView({
             columns={columns}
             cards={cards}
             visible={visible}
-            categories={categories}
+            objectives={objectives}
             canManage={data.canManage}
             summaryView={summaryView}
             onMoveCard={moveCard}
@@ -487,7 +487,7 @@ export function RoadmapView({
         workspaceId={data.workspaceId}
         cardId={openCardId}
         publicUrl={data.publicUrl}
-        categories={categories}
+        objectives={objectives}
         tags={tags}
         onClose={closeCard}
         onOpenCard={openCard}
@@ -514,13 +514,13 @@ export function RoadmapView({
             publicUrl={data.publicUrl}
             onColumnsChange={setColumns}
           />
-          <CategoriesDialog
-            open={categoriesOpen}
-            onOpenChange={setCategoriesOpen}
+          <ObjectivesDialog
+            open={objectivesOpen}
+            onOpenChange={setObjectivesOpen}
             workspace={workspace}
-            categories={categories}
+            objectives={objectives}
             tags={tags}
-            onCategoriesChange={setCategories}
+            onObjectivesChange={setObjectives}
             onTagsChange={setTags}
           />
         </>

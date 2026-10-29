@@ -17,7 +17,7 @@ import {
   uuid,
 } from "drizzle-orm/pg-core";
 import { organization, user } from "./auth";
-import { categories, roadmapCards, tags } from "./roadmaps";
+import { objectives, roadmapCards, tags } from "./roadmaps";
 import { trackedUsers } from "./tracked-users";
 import { workspaces } from "./workspaces";
 
@@ -137,7 +137,7 @@ export const feedbackItems = pgTable(
     statusId: uuid()
       .notNull()
       .references(() => feedbackStatuses.id, { onDelete: "no action" }),
-    categoryId: uuid().references(() => categories.id, {
+    objectiveId: uuid().references(() => objectives.id, {
       onDelete: "set null",
     }),
     isPublic: boolean().notNull().default(true),
@@ -323,9 +323,9 @@ export const feedbackItemsRelations = relations(
       fields: [feedbackItems.statusId],
       references: [feedbackStatuses.id],
     }),
-    category: one(categories, {
-      fields: [feedbackItems.categoryId],
-      references: [categories.id],
+    objective: one(objectives, {
+      fields: [feedbackItems.objectiveId],
+      references: [objectives.id],
     }),
     tags: many(feedbackTags),
     cardLinks: many(cardFeedbackLinks),

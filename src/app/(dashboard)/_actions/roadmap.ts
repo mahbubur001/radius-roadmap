@@ -5,22 +5,22 @@ import {
   cardCommentSchema,
   cardFlagSchema,
   cardIdSchema,
-  categorySchema,
   createCardSchema,
   createColumnSchema,
   createFeatureSchema,
   createRoadmapSchema,
   moveCardSchema,
   moveColumnSchema,
+  objectiveSchema,
   requestAttachmentSchema,
   roadmapIdSchema,
   tagSchema,
   transferCardSchema,
   updateCardCommentSchema,
   updateCardSchema,
-  updateCategorySchema,
   updateColumnSchema,
   updateFeatureSchema,
+  updateObjectiveSchema,
   updateRoadmapSchema,
 } from "@/lib/schemas/roadmap";
 import { MAX_ATTACHMENT_BYTES } from "@/lib/schemas/upload";
@@ -61,17 +61,17 @@ import {
 } from "@/server/services/feedback-links";
 import { exportRoadmapCsv } from "@/server/services/roadmap-export";
 import {
-  createCategory,
   createColumn,
+  createObjective,
   createRoadmap,
   createTag,
-  deleteCategory,
   deleteColumn,
+  deleteObjective,
   deleteRoadmap,
   deleteTag,
   moveColumn,
-  updateCategory,
   updateColumn,
+  updateObjective,
   updateRoadmap,
 } from "@/server/services/roadmaps";
 import { listVoters } from "@/server/services/votes";
@@ -262,28 +262,28 @@ export const deleteFeatureAction = workspaceAction(
   async (ctx, { id }) => mutate(ctx, () => deleteFeature(db, ctx, id)),
 );
 
-// ── Categories (admin+) and tags ────────────────────────────────────────
+// ── Objectives (admin+) and tags ────────────────────────────────────────
 
-export const createCategoryAction = workspaceAction(
-  categorySchema,
+export const createObjectiveAction = workspaceAction(
+  objectiveSchema,
   async (ctx, input) =>
     mutate(ctx, async () => {
-      const category = await createCategory(db, ctx, input);
-      return { id: category?.id ?? "" };
+      const objective = await createObjective(db, ctx, input);
+      return { id: objective?.id ?? "" };
     }),
 );
 
-export const updateCategoryAction = workspaceAction(
-  updateCategorySchema,
+export const updateObjectiveAction = workspaceAction(
+  updateObjectiveSchema,
   async (ctx, input) =>
     mutate(ctx, async () => {
-      await updateCategory(db, ctx, input);
+      await updateObjective(db, ctx, input);
     }),
 );
 
-export const deleteCategoryAction = workspaceAction(
+export const deleteObjectiveAction = workspaceAction(
   cardIdSchema,
-  async (ctx, { id }) => mutate(ctx, () => deleteCategory(db, ctx, id)),
+  async (ctx, { id }) => mutate(ctx, () => deleteObjective(db, ctx, id)),
 );
 
 export const createTagAction = workspaceAction(tagSchema, async (ctx, input) =>

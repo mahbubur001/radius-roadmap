@@ -4,10 +4,10 @@ import { Trash2 } from "lucide-react";
 import { useState } from "react";
 import { toast } from "sonner";
 import {
-  createCategoryAction,
-  deleteCategoryAction,
+  createObjectiveAction,
+  deleteObjectiveAction,
   deleteTagAction,
-  updateCategoryAction,
+  updateObjectiveAction,
 } from "@/app/(dashboard)/_actions/roadmap";
 import { ColorPicker, SWATCHES } from "@/components/form/color-picker";
 import { Button } from "@/components/ui/button";
@@ -20,23 +20,23 @@ import {
 } from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import type { CategoryOption, TagOption } from "./types";
+import type { ObjectiveOption, TagOption } from "./types";
 
-export function CategoriesDialog({
+export function ObjectivesDialog({
   open,
   onOpenChange,
   workspace,
-  categories,
+  objectives,
   tags,
-  onCategoriesChange,
+  onObjectivesChange,
   onTagsChange,
 }: {
   open: boolean;
   onOpenChange: (open: boolean) => void;
   workspace: string;
-  categories: CategoryOption[];
+  objectives: ObjectiveOption[];
   tags: TagOption[];
-  onCategoriesChange: (categories: CategoryOption[]) => void;
+  onObjectivesChange: (objectives: ObjectiveOption[]) => void;
   onTagsChange: (tags: TagOption[]) => void;
 }) {
   const [name, setName] = useState("");
@@ -44,40 +44,40 @@ export function CategoriesDialog({
   async function add() {
     const value = name.trim();
     if (!value) return;
-    const color = SWATCHES[categories.length % SWATCHES.length] ?? "#2563eb";
-    const result = await createCategoryAction({
+    const color = SWATCHES[objectives.length % SWATCHES.length] ?? "#2563eb";
+    const result = await createObjectiveAction({
       workspace,
       name: value,
       color,
     });
     if (!result.ok) return toast.error(result.error);
-    onCategoriesChange([
-      ...categories,
+    onObjectivesChange([
+      ...objectives,
       { id: result.data.id, name: value, color },
     ]);
     setName("");
   }
 
   async function update(
-    category: CategoryOption,
-    patch: Partial<CategoryOption>,
+    objective: ObjectiveOption,
+    patch: Partial<ObjectiveOption>,
   ) {
-    const next = { ...category, ...patch };
+    const next = { ...objective, ...patch };
     if (!next.name.trim()) return;
-    onCategoriesChange(
-      categories.map((c) => (c.id === category.id ? next : c)),
+    onObjectivesChange(
+      objectives.map((c) => (c.id === objective.id ? next : c)),
     );
-    const result = await updateCategoryAction({ workspace, ...next });
+    const result = await updateObjectiveAction({ workspace, ...next });
     if (!result.ok) {
       toast.error(result.error);
-      onCategoriesChange(categories);
+      onObjectivesChange(objectives);
     }
   }
 
-  async function remove(category: CategoryOption) {
-    const result = await deleteCategoryAction({ workspace, id: category.id });
+  async function remove(objective: ObjectiveOption) {
+    const result = await deleteObjectiveAction({ workspace, id: objective.id });
     if (!result.ok) return toast.error(result.error);
-    onCategoriesChange(categories.filter((c) => c.id !== category.id));
+    onObjectivesChange(objectives.filter((c) => c.id !== objective.id));
   }
 
   async function removeTag(tag: TagOption) {
@@ -90,19 +90,19 @@ export function CategoriesDialog({
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent>
         <DialogHeader>
-          <DialogTitle>Categories and tags</DialogTitle>
+          <DialogTitle>Objectives and tags</DialogTitle>
           <DialogDescription>
             Shared by every roadmap in this workspace. Changes save right away.
           </DialogDescription>
         </DialogHeader>
-        <Tabs defaultValue="categories">
+        <Tabs defaultValue="objectives">
           <TabsList>
-            <TabsTrigger value="categories">Categories</TabsTrigger>
+            <TabsTrigger value="objectives">Objectives</TabsTrigger>
             <TabsTrigger value="tags">Tags</TabsTrigger>
           </TabsList>
-          <TabsContent value="categories" className="flex flex-col gap-2 pt-2">
+          <TabsContent value="objectives" className="flex flex-col gap-2 pt-2">
             <ul className="flex flex-col gap-2">
-              {categories.map((c) => (
+              {objectives.map((c) => (
                 <li key={c.id} className="flex items-center gap-2">
                   <ColorPicker
                     label={`Colour of ${c.name}`}
@@ -110,7 +110,7 @@ export function CategoriesDialog({
                     onChange={(color) => update(c, { color })}
                   />
                   <Input
-                    aria-label="Category name"
+                    aria-label="Objective name"
                     defaultValue={c.name}
                     className="h-8"
                     onBlur={(e) => {
@@ -123,7 +123,7 @@ export function CategoriesDialog({
                     variant="ghost"
                     size="icon"
                     className="size-8"
-                    aria-label={`Delete category ${c.name}`}
+                    aria-label={`Delete objective ${c.name}`}
                     onClick={() => remove(c)}
                   >
                     <Trash2 />
@@ -139,8 +139,8 @@ export function CategoriesDialog({
               }}
             >
               <Input
-                aria-label="New category"
-                placeholder="New category"
+                aria-label="New objective"
+                placeholder="New objective"
                 value={name}
                 onChange={(e) => setName(e.target.value)}
               />

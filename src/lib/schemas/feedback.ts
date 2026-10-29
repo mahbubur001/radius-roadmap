@@ -49,7 +49,7 @@ export const updateFeedbackSchema = z.object({
   summaryJson: richText.nullable().optional(),
   boardId: id.optional(),
   statusId: id.optional(),
-  categoryId: id.nullable().optional(),
+  objectiveId: id.nullable().optional(),
   isPublic: z.boolean().optional(),
   impact: size.nullable().optional(),
   effort: size.nullable().optional(),
@@ -78,7 +78,7 @@ export const feedbackFilterSchema = z.object({
     .enum(Object.keys(FEEDBACK_SORTS) as [FeedbackSort, ...FeedbackSort[]])
     .default("votes"),
   statusId: id.optional(),
-  categoryId: id.optional(),
+  objectiveId: id.optional(),
   tagId: id.optional(),
   visibility: z.enum(["all", "public", "private"]).default("all"),
   linked: z.enum(["all", "linked", "unlinked"]).default("all"),
@@ -117,7 +117,7 @@ export const reviewFeedbackSchema = z.object({
 export const bulkUpdateFeedbackSchema = z.object({
   ids,
   statusId: id.optional(),
-  categoryId: id.nullable().optional(),
+  objectiveId: id.nullable().optional(),
   addTagIds: z.array(id).max(20).optional(),
 });
 

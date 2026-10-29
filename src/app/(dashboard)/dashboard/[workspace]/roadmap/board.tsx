@@ -41,7 +41,7 @@ import {
   type BoardCard,
   type BoardColumn,
   byPosition,
-  type CategoryOption,
+  type ObjectiveOption,
 } from "./types";
 
 const COLUMN_PREFIX = "col:";
@@ -66,7 +66,7 @@ export function Board({
   columns,
   cards,
   visible,
-  categories,
+  objectives,
   canManage,
   summaryView,
   onMoveCard,
@@ -80,7 +80,7 @@ export function Board({
   cards: BoardCard[];
   /** Ids that pass the current filters. */
   visible: Set<string>;
-  categories: CategoryOption[];
+  objectives: ObjectiveOption[];
   canManage: boolean;
   /** Show card summaries on the board. */
   summaryView: boolean;
@@ -88,8 +88,8 @@ export function Board({
   onMoveColumn: (move: ColumnMove) => void;
   onOpenCard: (id: string) => void;
   onQuickAdd: (columnId: string, title: string) => Promise<boolean>;
-  onSetObjective: (cardId: string, categoryId: string | null) => void;
-  onCreateObjective?: (name: string) => Promise<CategoryOption | null>;
+  onSetObjective: (cardId: string, objectiveId: string | null) => void;
+  onCreateObjective?: (name: string) => Promise<ObjectiveOption | null>;
 }) {
   const sortedColumns = useMemo(() => [...columns].sort(byPosition), [columns]);
   const layoutFromProps = useMemo(() => {
@@ -260,7 +260,7 @@ export function Board({
                   <SortableCard
                     key={id}
                     card={card}
-                    categories={categories}
+                    objectives={objectives}
                     summaryView={summaryView}
                     onOpen={onOpenCard}
                     onSetObjective={onSetObjective}
@@ -276,7 +276,7 @@ export function Board({
         {activeCard ? (
           <CardFace
             card={activeCard}
-            category={categories.find((c) => c.id === activeCard.categoryId)}
+            objective={objectives.find((c) => c.id === activeCard.objectiveId)}
             summaryView={summaryView}
             className="rotate-2 shadow-lg"
           />
@@ -399,18 +399,18 @@ function Column({
 
 function SortableCard({
   card,
-  categories,
+  objectives,
   summaryView,
   onOpen,
   onSetObjective,
   onCreateObjective,
 }: {
   card: BoardCard;
-  categories: CategoryOption[];
+  objectives: ObjectiveOption[];
   summaryView: boolean;
   onOpen: (id: string) => void;
-  onSetObjective: (cardId: string, categoryId: string | null) => void;
-  onCreateObjective?: (name: string) => Promise<CategoryOption | null>;
+  onSetObjective: (cardId: string, objectiveId: string | null) => void;
+  onCreateObjective?: (name: string) => Promise<ObjectiveOption | null>;
 }) {
   const sortable = useSortable({ id: card.id });
   return (
@@ -432,15 +432,15 @@ function SortableCard({
       >
         <CardFace
           card={card}
-          category={categories.find((c) => c.id === card.categoryId)}
+          objective={objectives.find((c) => c.id === card.objectiveId)}
           summaryView={summaryView}
           objectiveSlot
         />
       </button>
       {/* Outside the card's button: a button can't contain another one. */}
       <ObjectivePicker
-        objectives={categories}
-        value={card.categoryId}
+        objectives={objectives}
+        value={card.objectiveId}
         onChange={(id) => onSetObjective(card.id, id)}
         onCreate={onCreateObjective}
         className="absolute top-3 left-5 max-w-[calc(100%-2.5rem)]"
@@ -451,13 +451,13 @@ function SortableCard({
 
 function CardFace({
   card,
-  category,
+  objective,
   summaryView,
   objectiveSlot,
   className,
 }: {
   card: BoardCard;
-  category: CategoryOption | undefined;
+  objective: ObjectiveOption | undefined;
   summaryView: boolean;
   /** Leave room for the objective picker drawn over the card. */
   objectiveSlot?: boolean;
@@ -470,19 +470,19 @@ function CardFace({
         "flex cursor-pointer flex-col gap-2 rounded-md border border-l-4 bg-card py-3 pr-3 pl-4 text-card-foreground shadow-xs hover:border-ring",
         className,
       )}
-      style={category ? { borderLeftColor: category.color } : undefined}
+      style={objective ? { borderLeftColor: objective.color } : undefined}
     >
       {objectiveSlot ? (
         <span className="h-4" />
       ) : (
         <span className="flex items-center gap-1.5 text-xs font-medium">
-          {category ? (
+          {objective ? (
             <span
               className="size-2 rounded-full"
-              style={{ backgroundColor: category.color }}
+              style={{ backgroundColor: objective.color }}
             />
           ) : null}
-          {category?.name ?? "No objective"}
+          {objective?.name ?? "No objective"}
         </span>
       )}
       <p className="font-semibold leading-snug">

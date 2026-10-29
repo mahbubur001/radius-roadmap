@@ -136,16 +136,16 @@ export function PublicBoard({
                   }}
                   className="flex gap-3 overflow-hidden rounded-md border bg-card p-3 text-card-foreground shadow-xs transition-colors hover:border-ring"
                   style={
-                    card.category
-                      ? { borderTop: `3px solid ${card.category.color}` }
+                    card.objective
+                      ? { borderTop: `3px solid ${card.objective.color}` }
                       : undefined
                   }
                 >
                   <VoteButton cardId={card.id} votes={card.votes} />
                   <div className="flex min-w-0 flex-col gap-1">
-                    {card.category ? (
+                    {card.objective ? (
                       <span className="text-xs text-muted-foreground">
-                        {card.category.name}
+                        {card.objective.name}
                       </span>
                     ) : null}
                     <h3

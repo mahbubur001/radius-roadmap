@@ -107,7 +107,7 @@ export function PushToRoadmapDialog({
             <DialogTitle>Push to roadmap</DialogTitle>
             <DialogDescription>
               Creates a card linked to this feedback. The description and
-              category are copied; the feedback moves to “Planned”.
+              objective are copied; the feedback moves to “Planned”.
             </DialogDescription>
           </DialogHeader>
           {targets && !targets.length ? (

@@ -2,21 +2,21 @@ import { and, asc, count, eq, inArray, max, type SQL } from "drizzle-orm";
 import type { AnyPgColumn } from "drizzle-orm/pg-core";
 import type { z } from "zod";
 import {
-  type categorySchema,
   type createColumnSchema,
   type createRoadmapSchema,
   defaultDisplay,
   type moveColumnSchema,
+  type objectiveSchema,
   type tagSchema,
   type UpdateRoadmapInput,
-  type updateCategorySchema,
   type updateColumnSchema,
+  type updateObjectiveSchema,
   updateRoadmapSchema,
 } from "@/lib/schemas/roadmap";
 import { slugify } from "@/lib/schemas/workspace";
 import type { Db, DbOrTx } from "@/server/db/client";
 import {
-  categories,
+  objectives,
   roadmapCards,
   roadmapColumns,
   roadmaps,
@@ -34,7 +34,7 @@ import { byPosition, keyAfter, keyBetween } from "./positions";
 
 // Every query is scoped by ctx.accountId AND ctx.workspaceId. The
 // WorkspaceContext comes from requireWorkspace(), which already checked the
-// user may open this workspace. Settings, columns, categories and deleting
+// user may open this workspace. Settings, columns, objectives and deleting
 // tags need admin+; cards (cards.ts) are open to everyone with access.
 
 type Scoped = { accountId: AnyPgColumn; workspaceId: AnyPgColumn };
@@ -55,7 +55,7 @@ export const DEFAULT_COLUMNS = [
 ];
 
 /** LoopedIn's defaults (doc 16 §3). */
-export const DEFAULT_CATEGORIES = [
+export const DEFAULT_OBJECTIVES = [
   { name: "Onboarding", color: "#7c3aed" },
   { name: "Increase Engagement", color: "#2563eb" },
   { name: "Revenue Growth", color: "#16a34a" },
@@ -111,7 +111,7 @@ async function insertRoadmap(
 }
 
 /**
- * Defaults for a new workspace: LoopedIn's categories, one roadmap, and one
+ * Defaults for a new workspace: LoopedIn's objectives, one roadmap, and one
  * feedback board with the default statuses.
  */
 export async function seedWorkspace(
@@ -120,8 +120,8 @@ export async function seedWorkspace(
   workspaceId: string,
 ) {
   let position: string | null = null;
-  await db.insert(categories).values(
-    DEFAULT_CATEGORIES.map((c) => {
+  await db.insert(objectives).values(
+    DEFAULT_OBJECTIVES.map((c) => {
       position = keyAfter(position);
       return { ...c, accountId, workspaceId, position };
     }),
@@ -311,26 +311,26 @@ export async function deleteColumn(db: Db, ctx: WorkspaceContext, id: string) {
     .where(and(inWorkspace(roadmapColumns, ctx), eq(roadmapColumns.id, id)));
 }
 
-// ── Categories and tags ─────────────────────────────────────────────────
+// ── Objectives and tags ─────────────────────────────────────────────────
 
-export async function listCategories(db: DbOrTx, ctx: WorkspaceContext) {
+export async function listObjectives(db: DbOrTx, ctx: WorkspaceContext) {
   return db
     .select()
-    .from(categories)
-    .where(inWorkspace(categories, ctx))
-    .orderBy(byPosition(categories.position));
+    .from(objectives)
+    .where(inWorkspace(objectives, ctx))
+    .orderBy(byPosition(objectives.position));
 }
 
-export async function createCategory(
+export async function createObjective(
   db: Db,
   ctx: WorkspaceContext,
-  input: z.output<typeof categorySchema>,
+  input: z.output<typeof objectiveSchema>,
 ) {
   assertRole(ctx, "admin");
-  const existing = await listCategories(db, ctx);
+  const existing = await listObjectives(db, ctx);
   try {
     const [row] = await db
-      .insert(categories)
+      .insert(objectives)
       .values({
         accountId: ctx.accountId,
         workspaceId: ctx.workspaceId,
@@ -342,45 +342,45 @@ export async function createCategory(
     return row;
   } catch (error) {
     if (isUniqueViolation(error)) {
-      throw new ConflictError("That category already exists.");
+      throw new ConflictError("That objective already exists.");
     }
     throw error;
   }
 }
 
-export async function updateCategory(
+export async function updateObjective(
   db: Db,
   ctx: WorkspaceContext,
-  input: z.output<typeof updateCategorySchema>,
+  input: z.output<typeof updateObjectiveSchema>,
 ) {
   assertRole(ctx, "admin");
   const { id, ...data } = input;
   try {
     const [row] = await db
-      .update(categories)
+      .update(objectives)
       .set(data)
-      .where(and(inWorkspace(categories, ctx), eq(categories.id, id)))
+      .where(and(inWorkspace(objectives, ctx), eq(objectives.id, id)))
       .returning();
-    if (!row) throw new NotFoundError("Category not found.");
+    if (!row) throw new NotFoundError("Objective not found.");
     return row;
   } catch (error) {
     if (isUniqueViolation(error)) {
-      throw new ConflictError("That category already exists.");
+      throw new ConflictError("That objective already exists.");
     }
     throw error;
   }
 }
 
-/** Cards in the category keep existing, uncategorised (FK set null). */
-export async function deleteCategory(
+/** Cards in the objective keep existing, without an objective (FK set null). */
+export async function deleteObjective(
   db: Db,
   ctx: WorkspaceContext,
   id: string,
 ) {
   assertRole(ctx, "admin");
   await db
-    .delete(categories)
-    .where(and(inWorkspace(categories, ctx), eq(categories.id, id)));
+    .delete(objectives)
+    .where(and(inWorkspace(objectives, ctx), eq(objectives.id, id)));
 }
 
 export async function listTags(db: DbOrTx, ctx: WorkspaceContext) {

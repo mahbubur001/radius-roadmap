@@ -29,7 +29,7 @@ const tsvector = customType<{ data: string }>({
 /** Public display toggles of a roadmap. Missing keys use `defaultDisplay`. */
 export type RoadmapDisplay = {
   showVotes?: boolean;
-  showCategories?: boolean;
+  showObjectives?: boolean;
   showTags?: boolean;
   showDates?: boolean;
   showDescriptions?: boolean;
@@ -92,8 +92,8 @@ export const roadmapColumns = pgTable(
   (t) => [index("roadmap_columns_roadmap_idx").on(t.roadmapId)],
 );
 
-export const categories = pgTable(
-  "categories",
+export const objectives = pgTable(
+  "objectives",
   {
     id: uuid().primaryKey().defaultRandom(),
     accountId: accountId(),
@@ -104,7 +104,7 @@ export const categories = pgTable(
     createdAt: timestamp({ withTimezone: true }).notNull().defaultNow(),
   },
   (t) => [
-    uniqueIndex("categories_workspace_name_uq").on(t.workspaceId, t.name),
+    uniqueIndex("objectives_workspace_name_uq").on(t.workspaceId, t.name),
   ],
 );
 
@@ -143,7 +143,7 @@ export const roadmapCards = pgTable(
     summaryJson: jsonb().$type<Record<string, unknown>>(),
     /** Plain text of the summary, for previews and search. */
     summaryText: text().notNull().default(""),
-    categoryId: uuid().references(() => categories.id, {
+    objectiveId: uuid().references(() => objectives.id, {
       onDelete: "set null",
     }),
     plannedFor: date({ mode: "string" }),
@@ -267,9 +267,9 @@ export const roadmapCardsRelations = relations(
       fields: [roadmapCards.columnId],
       references: [roadmapColumns.id],
     }),
-    category: one(categories, {
-      fields: [roadmapCards.categoryId],
-      references: [categories.id],
+    objective: one(objectives, {
+      fields: [roadmapCards.objectiveId],
+      references: [objectives.id],
     }),
     features: many(cardFeatures),
     tags: many(cardTags),
@@ -302,6 +302,6 @@ export type Roadmap = typeof roadmaps.$inferSelect;
 export type RoadmapColumn = typeof roadmapColumns.$inferSelect;
 export type RoadmapCard = typeof roadmapCards.$inferSelect;
 export type CardAttachment = typeof cardAttachments.$inferSelect;
-export type Category = typeof categories.$inferSelect;
+export type Objective = typeof objectives.$inferSelect;
 export type Tag = typeof tags.$inferSelect;
 export type CardFeature = typeof cardFeatures.$inferSelect;

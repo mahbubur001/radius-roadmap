@@ -70,7 +70,7 @@ function publicCard(page: Page, title: string) {
   return page.locator("a", { hasText: title });
 }
 
-test("admin builds a roadmap: add, drag, categorise, autosave", async ({
+test("admin builds a roadmap: add, drag, set objective, autosave", async ({
   page,
 }) => {
   const id = randomUUID().slice(0, 8);
@@ -97,7 +97,7 @@ test("admin builds a roadmap: add, drag, categorise, autosave", async ({
       .getByRole("button", { name: "Bulk export", exact: true }),
   ).toBeVisible();
 
-  // Category + description autosave.
+  // Objective + description autosave.
   const drawer = await openCard(page, "Dark mode");
   await drawer.locator("#card-objective").click();
   await page

@@ -13,7 +13,7 @@ import {
   listFeedback,
   listStatuses,
 } from "@/server/services/feedback";
-import { listCategories, listTags } from "@/server/services/roadmaps";
+import { listObjectives, listTags } from "@/server/services/roadmaps";
 import { requireWorkspace } from "@/server/session";
 import { FeedbackView } from "./feedback-view";
 import type { FeedbackMode } from "./types";
@@ -52,12 +52,12 @@ async function Feedback({
   const ctx = await requireWorkspace(await slug);
   const q = await query;
 
-  const [boards, counts, statuses, categories, tags, pending] =
+  const [boards, counts, statuses, objectives, tags, pending] =
     await Promise.all([
       listBoards(db, ctx),
       boardCounts(db, ctx),
       listStatuses(db, ctx),
-      listCategories(db, ctx),
+      listObjectives(db, ctx),
       listTags(db, ctx),
       inboxCount(db, ctx),
     ]);
@@ -72,7 +72,7 @@ async function Feedback({
     sort: (one(q.sort) ??
       (inbox ? "oldest" : undefined)) as FeedbackFilter["sort"],
     statusId: one(q.status),
-    categoryId: one(q.category),
+    objectiveId: one(q.objective),
     tagId: one(q.tag),
     visibility: one(q.vis) as FeedbackFilter["visibility"],
     linked: one(q.linked) as FeedbackFilter["linked"],
@@ -118,7 +118,7 @@ async function Feedback({
           color: s.color,
           kind: s.kind,
         })),
-        categories: categories.map((c) => ({
+        objectives: objectives.map((c) => ({
           id: c.id,
           name: c.name,
           color: c.color,

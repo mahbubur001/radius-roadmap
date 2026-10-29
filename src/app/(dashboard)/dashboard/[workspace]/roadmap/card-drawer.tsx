@@ -89,7 +89,7 @@ import { ago } from "@/lib/time";
 import { cn } from "@/lib/utils";
 import { Attachments, Comments } from "./card-activity-tabs";
 import { ObjectivePicker } from "./objective-picker";
-import type { BoardCard, CategoryOption, TagOption } from "./types";
+import type { BoardCard, ObjectiveOption, TagOption } from "./types";
 
 type Detail = Extract<
   Awaited<ReturnType<typeof getCardAction>>,
@@ -102,7 +102,7 @@ export function CardDrawer({
   workspaceId,
   cardId,
   publicUrl,
-  categories,
+  objectives,
   tags,
   onClose,
   onOpenCard,
@@ -115,14 +115,14 @@ export function CardDrawer({
   workspaceId: string;
   cardId: string | null;
   publicUrl: string;
-  categories: CategoryOption[];
+  objectives: ObjectiveOption[];
   tags: TagOption[];
   onClose: () => void;
   onOpenCard: (id: string) => void;
   onChanged: (id: string, change: Partial<BoardCard>) => void;
   onRemoved: (id: string) => void;
   onTagCreated: (tag: TagOption) => void;
-  onCreateObjective?: (name: string) => Promise<CategoryOption | null>;
+  onCreateObjective?: (name: string) => Promise<ObjectiveOption | null>;
 }) {
   const [detail, setDetail] = useState<Detail | null>(null);
 
@@ -153,7 +153,7 @@ export function CardDrawer({
             workspace={workspace}
             workspaceId={workspaceId}
             publicUrl={publicUrl}
-            categories={categories}
+            objectives={objectives}
             tags={tags}
             onClose={onClose}
             onOpenCard={onOpenCard}
@@ -182,7 +182,7 @@ function CardEditor({
   workspace,
   workspaceId,
   publicUrl,
-  categories,
+  objectives,
   tags,
   onClose,
   onOpenCard,
@@ -195,20 +195,20 @@ function CardEditor({
   workspace: string;
   workspaceId: string;
   publicUrl: string;
-  categories: CategoryOption[];
+  objectives: ObjectiveOption[];
   tags: TagOption[];
   onClose: () => void;
   onOpenCard: (id: string) => void;
   onChanged: (id: string, change: Partial<BoardCard>) => void;
   onRemoved: (id: string) => void;
   onTagCreated: (tag: TagOption) => void;
-  onCreateObjective?: (name: string) => Promise<CategoryOption | null>;
+  onCreateObjective?: (name: string) => Promise<ObjectiveOption | null>;
 }) {
   const router = useRouter();
   const { card } = detail;
   const [title, setTitle] = useState(card.title);
   const [publicTitle, setPublicTitle] = useState(card.publicTitle ?? "");
-  const [categoryId, setCategoryId] = useState(card.categoryId);
+  const [objectiveId, setObjectiveId] = useState(card.objectiveId);
   const [plannedFor, setPlannedFor] = useState(card.plannedFor);
   const [isPublic, setIsPublic] = useState(card.isPublic);
   const [tagIds, setTagIds] = useState(card.tagIds);
@@ -281,11 +281,11 @@ function CardEditor({
               Changes save automatically.
             </SheetDescription>
             <ObjectivePicker
-              objectives={categories}
-              value={categoryId}
+              objectives={objectives}
+              value={objectiveId}
               onChange={(next) => {
-                setCategoryId(next);
-                change({ categoryId: next }, { categoryId: next });
+                setObjectiveId(next);
+                change({ objectiveId: next }, { objectiveId: next });
               }}
               onCreate={onCreateObjective}
               className="self-start"
@@ -407,11 +407,11 @@ function CardEditor({
                 <ObjectivePicker
                   id="card-objective"
                   variant="field"
-                  objectives={categories}
-                  value={categoryId}
+                  objectives={objectives}
+                  value={objectiveId}
                   onChange={(next) => {
-                    setCategoryId(next);
-                    change({ categoryId: next }, { categoryId: next });
+                    setObjectiveId(next);
+                    change({ objectiveId: next }, { objectiveId: next });
                   }}
                   onCreate={onCreateObjective}
                 />

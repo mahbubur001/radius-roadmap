@@ -8,8 +8,8 @@ import { getAccount } from "@/server/services/accounts";
 import { listBoardCards } from "@/server/services/cards";
 import { seesAllWorkspaces } from "@/server/services/context";
 import {
-  listCategories,
   listColumns,
+  listObjectives,
   listRoadmaps,
   listTags,
 } from "@/server/services/roadmaps";
@@ -53,10 +53,10 @@ async function Roadmap({
     return <NoRoadmap workspace={ctx.workspaceSlug} canManage={canManage} />;
   }
 
-  const [columns, cards, categories, tags, account] = await Promise.all([
+  const [columns, cards, objectives, tags, account] = await Promise.all([
     listColumns(db, ctx, roadmap.id),
     listBoardCards(db, ctx, roadmap.id),
-    listCategories(db, ctx),
+    listObjectives(db, ctx),
     listTags(db, ctx),
     getAccount(db, ctx),
   ]);
@@ -94,7 +94,7 @@ async function Roadmap({
           isDone: c.isDone,
         })),
         cards,
-        categories: categories.map((c) => ({
+        objectives: objectives.map((c) => ({
           id: c.id,
           name: c.name,
           color: c.color,

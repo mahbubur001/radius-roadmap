@@ -1,7 +1,7 @@
 import { and, eq, inArray, isNull } from "drizzle-orm";
 import Papa from "papaparse";
 import type { Db } from "@/server/db/client";
-import { cardTags, categories, roadmapCards, tags } from "@/server/db/schema";
+import { cardTags, objectives, roadmapCards, tags } from "@/server/db/schema";
 import type { WorkspaceContext } from "./context";
 import { byPosition } from "./positions";
 import { getRoadmap, inWorkspace, listColumns } from "./roadmaps";
@@ -45,7 +45,7 @@ export async function exportRoadmapCsv(
         title: roadmapCards.title,
         publicTitle: roadmapCards.publicTitle,
         summaryText: roadmapCards.summaryText,
-        objective: categories.name,
+        objective: objectives.name,
         voteCount: roadmapCards.voteCount,
         importedVotes: roadmapCards.importedVotes,
         plannedFor: roadmapCards.plannedFor,
@@ -54,7 +54,7 @@ export async function exportRoadmapCsv(
         createdAt: roadmapCards.createdAt,
       })
       .from(roadmapCards)
-      .leftJoin(categories, eq(categories.id, roadmapCards.categoryId))
+      .leftJoin(objectives, eq(objectives.id, roadmapCards.objectiveId))
       .where(
         and(
           inWorkspace(roadmapCards, ctx),

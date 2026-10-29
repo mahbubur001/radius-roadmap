@@ -23,13 +23,13 @@ export function CardDetail({
           </h1>
           <div className="flex flex-wrap items-center gap-2 text-sm text-muted-foreground">
             <Badge variant="secondary">{columnName}</Badge>
-            {card.category ? (
+            {card.objective ? (
               <span className="flex items-center gap-1.5">
                 <span
                   className="size-2.5 rounded-full"
-                  style={{ backgroundColor: card.category.color }}
+                  style={{ backgroundColor: card.objective.color }}
                 />
-                {card.category.name}
+                {card.objective.name}
               </span>
             ) : null}
             {card.plannedFor ? (

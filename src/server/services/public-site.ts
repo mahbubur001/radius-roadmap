@@ -9,8 +9,8 @@ import {
   cardFeatures,
   cardFeedbackLinks,
   cardTags,
-  categories,
   feedbackItems,
+  objectives,
   organization,
   roadmapCards,
   roadmapColumns,
@@ -137,7 +137,7 @@ export type PublicCard = {
   preview: string | null;
   /** Sanitized HTML (card page/drawer only). */
   html: string | null;
-  category: { name: string; color: string } | null;
+  objective: { name: string; color: string } | null;
   tags: string[];
   plannedFor: string | null;
   features: { title: string; done: boolean }[] | null;
@@ -187,13 +187,13 @@ async function publicCards(
       summaryText: roadmapCards.summaryText,
       summaryJson: roadmapCards.summaryJson,
       plannedFor: roadmapCards.plannedFor,
-      categoryName: categories.name,
-      categoryColor: categories.color,
+      objectiveName: objectives.name,
+      objectiveColor: objectives.color,
       ideas: sql<number>`(select count(*)::int from ${cardFeedbackLinks} inner join ${feedbackItems} on ${feedbackItems.id} = ${cardFeedbackLinks.feedbackId} where ${cardFeedbackLinks.cardId} = ${roadmapCards.id} and ${feedbackItems.isPublic} and ${feedbackItems.review} = 'approved' and ${feedbackItems.archivedAt} is null)`,
     })
     .from(roadmapCards)
     .innerJoin(roadmapColumns, eq(roadmapColumns.id, roadmapCards.columnId))
-    .leftJoin(categories, eq(categories.id, roadmapCards.categoryId))
+    .leftJoin(objectives, eq(objectives.id, roadmapCards.objectiveId))
     .where(and(...where))
     .orderBy(byPosition(roadmapCards.position));
 
@@ -235,9 +235,9 @@ async function publicCards(
       withHtml && display.showDescriptions
         ? renderRichText(r.summaryJson) || null
         : null,
-    category:
-      display.showCategories && r.categoryName && r.categoryColor
-        ? { name: r.categoryName, color: r.categoryColor }
+    objective:
+      display.showObjectives && r.objectiveName && r.objectiveColor
+        ? { name: r.objectiveName, color: r.objectiveColor }
         : null,
     tags: tagRows.filter((t) => t.cardId === r.id).map((t) => t.name),
     plannedFor: display.showDates ? r.plannedFor : null,

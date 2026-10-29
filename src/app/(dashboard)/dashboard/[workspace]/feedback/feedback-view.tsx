@@ -74,7 +74,7 @@ const PARAMS = {
   q: "q",
   sort: "sort",
   statusId: "status",
-  categoryId: "category",
+  objectiveId: "objective",
   tagId: "tag",
   visibility: "vis",
   linked: "linked",
@@ -256,7 +256,7 @@ export function FeedbackView({
 
   async function bulk(change: {
     statusId?: string;
-    categoryId?: string | null;
+    objectiveId?: string | null;
   }) {
     const ids = selectedIds;
     if (!ids.length) return;
@@ -328,14 +328,14 @@ export function FeedbackView({
     () => new Map(statuses.map((s) => [s.id, s])),
     [statuses],
   );
-  const categoryById = new Map(data.categories.map((c) => [c.id, c]));
+  const objectiveById = new Map(data.objectives.map((c) => [c.id, c]));
   const boardById = new Map(data.boards.map((b) => [b.id, b]));
   const board = data.boards.find((b) => b.id === data.boardId);
 
   const filterCount = [
     filter.sort && filter.sort !== defaults.sort ? filter.sort : null,
     filter.statusId,
-    filter.categoryId,
+    filter.objectiveId,
     filter.tagId,
     filter.visibility !== ALL ? filter.visibility : null,
     filter.linked !== ALL ? filter.linked : null,
@@ -518,12 +518,12 @@ export function FeedbackView({
             ]}
           />
           <FilterSelect
-            label="Category"
-            value={filter.categoryId ?? ALL}
-            onChange={(category) => setParams({ category })}
+            label="Objective"
+            value={filter.objectiveId ?? ALL}
+            onChange={(objective) => setParams({ objective })}
             options={[
-              [ALL, "All categories"],
-              ...data.categories.map((c) => [c.id, c.name] as const),
+              [ALL, "All objectives"],
+              ...data.objectives.map((c) => [c.id, c.name] as const),
             ]}
           />
           {tags.length ? (
@@ -595,11 +595,11 @@ export function FeedbackView({
           count={selectedIds.length}
           inbox={inbox}
           statuses={statuses}
-          categories={data.categories}
+          objectives={data.objectives}
           busy={busy}
           onReview={(action) => review(selectedIds, action)}
           onStatus={(statusId) => bulk({ statusId })}
-          onCategory={(categoryId) => bulk({ categoryId })}
+          onObjective={(objectiveId) => bulk({ objectiveId })}
           onClear={() => setSelected(new Set())}
         />
       ) : inbox && items.length ? (
@@ -651,8 +651,8 @@ export function FeedbackView({
               key={item.id}
               item={item}
               status={statusById.get(item.statusId)}
-              category={
-                item.categoryId ? categoryById.get(item.categoryId) : null
+              objective={
+                item.objectiveId ? objectiveById.get(item.objectiveId) : null
               }
               board={inbox ? boardById.get(item.boardId) : undefined}
               selected={selected.has(item.id)}
@@ -691,7 +691,7 @@ export function FeedbackView({
         feedbackId={openId}
         boards={data.boards}
         statuses={statuses}
-        categories={data.categories}
+        objectives={data.objectives}
         tags={tags}
         onClose={closeItem}
         onChanged={patchItem}

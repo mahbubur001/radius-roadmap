@@ -87,8 +87,8 @@ import {
 } from "./feedback-link-dialogs";
 import type {
   BoardOption,
-  CategoryOption,
   FeedbackRow,
+  ObjectiveOption,
   StatusOption,
   TagOption,
 } from "./types";
@@ -106,7 +106,7 @@ type Shared = {
   workspaceId: string;
   boards: BoardOption[];
   statuses: StatusOption[];
-  categories: CategoryOption[];
+  objectives: ObjectiveOption[];
   tags: TagOption[];
   onClose: () => void;
   onChanged: (id: string, change: Partial<FeedbackRow>) => void;
@@ -166,7 +166,7 @@ function FeedbackEditor({
   workspaceId,
   boards,
   statuses,
-  categories,
+  objectives,
   tags,
   onClose,
   onChanged,
@@ -180,7 +180,7 @@ function FeedbackEditor({
   const [title, setTitle] = useState(item.title);
   const [boardId, setBoardId] = useState(item.boardId);
   const [statusId, setStatusId] = useState(item.statusId);
-  const [categoryId, setCategoryId] = useState(item.categoryId);
+  const [objectiveId, setObjectiveId] = useState(item.objectiveId);
   const [isPublic, setIsPublic] = useState(item.isPublic);
   const [tagIds, setTagIds] = useState(item.tagIds);
   const [impact, setImpact] = useState(item.impact);
@@ -443,21 +443,21 @@ function FeedbackEditor({
               </div>
 
               <div className="flex flex-col gap-2">
-                <Label htmlFor="feedback-category">Category</Label>
+                <Label htmlFor="feedback-objective">Objective</Label>
                 <Select
-                  value={categoryId ?? NONE}
+                  value={objectiveId ?? NONE}
                   onValueChange={(v) => {
                     const next = v === NONE ? null : v;
-                    setCategoryId(next);
-                    change({ categoryId: next }, { categoryId: next });
+                    setObjectiveId(next);
+                    change({ objectiveId: next }, { objectiveId: next });
                   }}
                 >
-                  <SelectTrigger id="feedback-category" className="w-full">
+                  <SelectTrigger id="feedback-objective" className="w-full">
                     <SelectValue />
                   </SelectTrigger>
                   <SelectContent>
-                    <SelectItem value={NONE}>No category</SelectItem>
-                    {categories.map((c) => (
+                    <SelectItem value={NONE}>No objective</SelectItem>
+                    {objectives.map((c) => (
                       <SelectItem key={c.id} value={c.id}>
                         <span
                           className="size-2.5 rounded-full"

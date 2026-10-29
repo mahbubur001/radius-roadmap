@@ -10,10 +10,10 @@ import {
   PopoverTrigger,
 } from "@/components/ui/popover";
 import { cn } from "@/lib/utils";
-import type { CategoryOption } from "./types";
+import type { ObjectiveOption } from "./types";
 
 /**
- * Objective (category) picker with search and inline "Add new". Used on board
+ * Objective (objective) picker with search and inline "Add new". Used on board
  * cards and in the card drawer. `onCreate` is only passed to admins.
  */
 export function ObjectivePicker({
@@ -25,10 +25,10 @@ export function ObjectivePicker({
   id,
   className,
 }: {
-  objectives: CategoryOption[];
+  objectives: ObjectiveOption[];
   value: string | null;
   onChange: (id: string | null) => void;
-  onCreate?: (name: string) => Promise<CategoryOption | null>;
+  onCreate?: (name: string) => Promise<ObjectiveOption | null>;
   /** `inline`: small text trigger on a card; `field`: full-width form field. */
   variant?: "inline" | "field";
   id?: string;

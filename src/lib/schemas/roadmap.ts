@@ -17,7 +17,7 @@ const optionalText = (max: number) =>
 
 export const roadmapDisplaySchema = z.object({
   showVotes: z.boolean(),
-  showCategories: z.boolean(),
+  showObjectives: z.boolean(),
   showTags: z.boolean(),
   showDates: z.boolean(),
   showDescriptions: z.boolean(),
@@ -29,7 +29,7 @@ export type RoadmapDisplaySettings = z.infer<typeof roadmapDisplaySchema>;
 
 export const defaultDisplay: RoadmapDisplaySettings = {
   showVotes: true,
-  showCategories: true,
+  showObjectives: true,
   showTags: true,
   showDates: false,
   showDescriptions: true,
@@ -90,7 +90,7 @@ export const updateCardSchema = z.object({
   title: z.string().trim().min(1, "Enter a title").max(200).optional(),
   publicTitle: optionalText(200).optional(),
   summaryJson: richText.nullable().optional(),
-  categoryId: id.nullable().optional(),
+  objectiveId: id.nullable().optional(),
   plannedFor: z.iso.date().nullable().optional(),
   isPublic: z.boolean().optional(),
   tagIds: z.array(id).max(20).optional(),
@@ -126,12 +126,12 @@ export const updateFeatureSchema = z.object({
   done: z.boolean().optional(),
 });
 
-export const categorySchema = z.object({
+export const objectiveSchema = z.object({
   name: z.string().trim().min(1, "Enter a name").max(40),
   color: z.string().regex(/^#[0-9a-f]{6}$/i, "Pick a colour"),
 });
 
-export const updateCategorySchema = categorySchema.extend({ id });
+export const updateObjectiveSchema = objectiveSchema.extend({ id });
 
 export const tagSchema = z.object({
   name: z.string().trim().min(1, "Enter a name").max(40),
@@ -139,7 +139,7 @@ export const tagSchema = z.object({
 
 export const boardFilterSchema = z.object({
   q: z.string().trim().max(100).optional(),
-  categoryId: id.optional(),
+  objectiveId: id.optional(),
   tagId: id.optional(),
   visibility: z.enum(["all", "public", "private"]).default("all"),
   showCompleted: z.boolean().default(true),

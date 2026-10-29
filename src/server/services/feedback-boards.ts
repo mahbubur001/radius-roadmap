@@ -27,7 +27,7 @@ import { inWorkspace } from "./roadmaps";
 
 // Feedback boards and statuses (doc 20 §3.1–3.2). Settings need admin+.
 
-/** Doc 16 §8 #3: status is separate from category. */
+/** Doc 16 §8 #3: status is separate from objective. */
 export const DEFAULT_STATUSES: {
   name: string;
   color: string;

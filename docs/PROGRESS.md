@@ -25,6 +25,7 @@
 - Phase 2 plan (approved, being built; see its "As built" section): `docs/19-phase-2-plan.md`
 - Phase 3 plan (approved 2026-10-28, being built): `docs/20-phase-3-plan.md`
 - Roadmap admin redesign (LoopedIn layout, attachments, comments, follow, export; approved + built 2026-10-29): `docs/21-roadmap-admin-redesign.md`
+- Public site redesign + "Objective" naming (approved 2026-10-29, step 1 built): `docs/22-public-site-redesign.md`
 - Stack versions as built: `docs/14-dev-tools.md` → "Versions as built"
 
 ## Current status
@@ -56,7 +57,8 @@
 
 ## Next step
 Resume here. On a new session say: *"Read docs/PROGRESS.md and continue from Next step."*
-1. **Phase 3 step 5** (doc 20 §7): public Feedback tab at `/<account>/<workspace>/feedback` (board switcher, search, sort trending/top/new, status filter), item page `/<account>/<workspace>/feedback/<item-slug>` (drawer on soft navigation, full page on direct load), only approved + public + unarchived items on public boards; add the routes to `publicPathStatus` (308 from a merged item to its target) and the sitemap.
+0. **Doc 22 steps 2–4** (approved 2026-10-29): public shell with module tabs + one Log in button (step 2), public roadmap restyle with Details/Comments drawer and vote toast (step 3), Ideas page = doc 20 steps 5–6 with LoopedIn's side "Add new" form (step 4). Step 1 (categories → objectives, migration `0006`) is done. **Naming rule:** roadmap cards and ideas use **objectives**; Updates and Articles get their own `update_categories` / `article_categories` tables (labelled "Category").
+1. **Phase 3 step 5** (doc 20 §7, built as doc 22 step 4): public Feedback tab at `/<account>/<workspace>/feedback` (board switcher, search, sort trending/top/new, status filter), item page `/<account>/<workspace>/feedback/<item-slug>` (drawer on soft navigation, full page on direct load), only approved + public + unarchived items on public boards; add the routes to `publicPathStatus` (308 from a merged item to its target) and the sitemap.
 2. Then Phase 3 steps 6–8: public submission + voting on feedback, comments and follows (behind the workspace settings), notification preferences + email jobs.
 3. **Owner (blocking for the imports):** export from LoopedIn and put both files in `docs/samples/`: the roadmap (Roadmap → More → Export) and the feedback (Boards → More → Export).
 4. With the exports: Phase 2 step 10 (LoopedIn roadmap import at `/dashboard/<workspace>/roadmap/import?r=<roadmap-slug>`: papaparse, preview step, idempotent by `external_ref`, totals into `imported_votes`, Vitest + Playwright flow 6), then Phase 3 step 9 (feedback import + CSV export). Tick doc 19 "Done when" and mark Phase 2 done.
@@ -126,3 +128,4 @@ Resume here. On a new session say: *"Read docs/PROGRESS.md and continue from Nex
 | 2026-10-28 | radiustheme (Mac 2) | Phase 3 steps 1–3 (schema, feedback list + drawer, triage inbox + bulk + boards/statuses); public pages moved to `/<account>/<workspace>`, dashboard to `/dashboard/<workspace>` (owner decision, doc 19 "D1 revised") | Phase 3 step 4 (push to roadmap, merge); LoopedIn exports still needed |
 | 2026-10-28 | radiustheme (Mac 2) | Phase 3 step 4: push to roadmap, links both ways, status sync, merge, duplicate, 💡 counts (120 unit + 14 e2e passing) | Phase 3 step 5 (public feedback pages) |
 | 2026-10-29 | radiustheme (Mac 2) | LoopedIn-style admin UI: sidebar, feedback list, roadmap board + filters, card drawer rail; doc 21 approved and built (attachments, team comments, follow, duplicate/move/copy, CSV export; migration 0005); 133 unit + 17 e2e passing | Push; then Phase 3 step 5 (public feedback pages) |
+| 2026-10-29 | radiustheme (Mac 2) | Public site analysis + plan (doc 22) approved; step 1: categories → objectives everywhere (migration 0006, run `pnpm db:migrate`) | Doc 22 step 2 (public shell) |

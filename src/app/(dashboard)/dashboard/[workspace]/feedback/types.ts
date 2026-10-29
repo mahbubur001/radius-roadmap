@@ -24,7 +24,7 @@ export type StatusOption = {
   kind: FeedbackStatusKind;
 };
 
-export type CategoryOption = { id: string; name: string; color: string };
+export type ObjectiveOption = { id: string; name: string; color: string };
 
 /** The full list, or the triage inbox (pending items, every board). */
 export type FeedbackMode = "list" | "inbox";
@@ -38,7 +38,7 @@ export type FeedbackData = {
   /** Items waiting for review (sidebar badge, Inbox tab). */
   inboxCount: number;
   statuses: StatusOption[];
-  categories: CategoryOption[];
+  objectives: ObjectiveOption[];
   tags: TagOption[];
   items: FeedbackRow[];
 };

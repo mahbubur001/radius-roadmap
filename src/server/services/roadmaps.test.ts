@@ -25,14 +25,14 @@ import {
   type WorkspaceContext,
 } from "./context";
 import {
-  createCategory,
   createColumn,
+  createObjective,
   createRoadmap,
   createTag,
   deleteColumn,
   deleteRoadmap,
-  listCategories,
   listColumns,
+  listObjectives,
   listRoadmaps,
   listTags,
   moveColumn,
@@ -81,7 +81,7 @@ async function firstRoadmap(ctx: WorkspaceContext) {
 }
 
 describe("workspace defaults", () => {
-  it("seeds a roadmap with four columns and LoopedIn's categories", async () => {
+  it("seeds a roadmap with four columns and LoopedIn's objectives", async () => {
     const { roadmap, columns } = await firstRoadmap(wsA);
     expect(roadmap.slug).toBe("roadmap");
     expect(columns.map((c) => c.name)).toEqual([
@@ -91,7 +91,7 @@ describe("workspace defaults", () => {
       "Done",
     ]);
     expect(columns.at(-1)?.isDone).toBe(true);
-    const cats = await listCategories(db, wsA);
+    const cats = await listObjectives(db, wsA);
     expect(cats.map((c) => c.name)).toContain("Revenue Growth");
   });
 });
@@ -137,7 +137,7 @@ describe("roadmap tenant isolation", () => {
     ).rejects.toBeInstanceOf(NotFoundError);
   });
 
-  it("ignores tags and categories from another account", async () => {
+  it("ignores tags and objectives from another account", async () => {
     const { roadmap, columns } = await firstRoadmap(wsA);
     const card = await createCard(db, wsA, {
       roadmapId: roadmap.id,
@@ -151,15 +151,15 @@ describe("roadmap tenant isolation", () => {
       tagIds: [foreignTag.id, ownTag.id],
     });
     expect((await getCardDetail(db, wsA, card.id)).tagIds).toEqual([ownTag.id]);
-    const [foreignCat] = await listCategories(db, wsB);
+    const [foreignCat] = await listObjectives(db, wsB);
     await expect(
-      updateCard(db, wsA, { id: card.id, categoryId: foreignCat?.id ?? null }),
+      updateCard(db, wsA, { id: card.id, objectiveId: foreignCat?.id ?? null }),
     ).rejects.toBeInstanceOf(NotFoundError);
   });
 });
 
 describe("roles", () => {
-  it("members edit cards but not roadmap settings, columns or categories", async () => {
+  it("members edit cards but not roadmap settings, columns or objectives", async () => {
     const { roadmap, columns } = await firstRoadmap(wsA);
     const card = await createCard(db, memberA, {
       roadmapId: roadmap.id,
@@ -171,7 +171,7 @@ describe("roles", () => {
       createColumn(db, memberA, { roadmapId: roadmap.id, name: "Nope" }),
     ).rejects.toBeInstanceOf(ForbiddenError);
     await expect(
-      createCategory(db, memberA, { name: "Nope", color: "#000000" }),
+      createObjective(db, memberA, { name: "Nope", color: "#000000" }),
     ).rejects.toBeInstanceOf(ForbiddenError);
     await expect(
       updateRoadmap(db, memberA, {
@@ -183,7 +183,7 @@ describe("roles", () => {
         isPublic: true,
         display: {
           showVotes: true,
-          showCategories: true,
+          showObjectives: true,
           showTags: true,
           showDates: true,
           showDescriptions: true,

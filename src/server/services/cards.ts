@@ -30,8 +30,8 @@ import {
   cardFeedbackLinks,
   cardFollows,
   cardTags,
-  categories,
   comments,
+  objectives,
   type RoadmapCard,
   roadmapCards,
   user,
@@ -150,7 +150,7 @@ export async function updateCard(
   ctx: WorkspaceContext,
   input: UpdateCardInput,
 ) {
-  const { id, tagIds, summaryJson, categoryId, ...rest } =
+  const { id, tagIds, summaryJson, objectiveId, ...rest } =
     updateCardSchema.parse(input);
   await getCard(db, ctx, id);
 
@@ -163,16 +163,18 @@ export async function updateCard(
     set.summaryJson = summaryJson;
     set.summaryText = richTextToPlain(summaryJson);
   }
-  if (categoryId !== undefined) {
-    if (categoryId) {
+  if (objectiveId !== undefined) {
+    if (objectiveId) {
       const [own] = await db
-        .select({ id: categories.id })
-        .from(categories)
-        .where(and(inWorkspace(categories, ctx), eq(categories.id, categoryId)))
+        .select({ id: objectives.id })
+        .from(objectives)
+        .where(
+          and(inWorkspace(objectives, ctx), eq(objectives.id, objectiveId)),
+        )
         .limit(1);
-      if (!own) throw new NotFoundError("Category not found.");
+      if (!own) throw new NotFoundError("Objective not found.");
     }
-    set.categoryId = categoryId;
+    set.objectiveId = objectiveId;
   }
 
   return db.transaction(async (tx) => {
@@ -313,7 +315,7 @@ async function copyCard(
       publicTitle: card.publicTitle,
       summaryJson: card.summaryJson,
       summaryText: card.summaryText,
-      categoryId: card.categoryId,
+      objectiveId: card.objectiveId,
       plannedFor: card.plannedFor,
       isPublic: card.isPublic,
       position: keyAfter(existing.at(-1)?.position),
@@ -392,7 +394,7 @@ export type BoardCard = {
   title: string;
   publicTitle: string | null;
   summaryText: string;
-  categoryId: string | null;
+  objectiveId: string | null;
   plannedFor: string | null;
   isPublic: boolean;
   completed: boolean;
@@ -437,7 +439,7 @@ export async function listBoardCards(
       ) as ReturnType<typeof eq>,
     );
   }
-  if (f.categoryId) where.push(eq(roadmapCards.categoryId, f.categoryId));
+  if (f.objectiveId) where.push(eq(roadmapCards.objectiveId, f.objectiveId));
   if (f.tagId) {
     where.push(
       exists(
@@ -467,7 +469,7 @@ export async function listBoardCards(
       title: roadmapCards.title,
       publicTitle: roadmapCards.publicTitle,
       summaryText: roadmapCards.summaryText,
-      categoryId: roadmapCards.categoryId,
+      objectiveId: roadmapCards.objectiveId,
       plannedFor: roadmapCards.plannedFor,
       isPublic: roadmapCards.isPublic,
       completedAt: roadmapCards.completedAt,

@@ -63,8 +63,8 @@ import {
 } from "./feedback-links";
 import {
   createTag,
-  listCategories,
   listColumns,
+  listObjectives,
   listRoadmaps,
 } from "./roadmaps";
 import { createWorkspace } from "./workspaces";
@@ -280,14 +280,14 @@ describe("feedback service", () => {
     ).rejects.toThrow(NotFoundError);
   });
 
-  it("rejects another workspace's board, status, category and tags", async () => {
+  it("rejects another workspace's board, status, objective and tags", async () => {
     const item = await createFeedback(db, wsA, {
       boardId: boardA,
       title: "Mine",
     });
     const [boardB] = await listBoards(db, wsB);
     const [statusB] = await listStatuses(db, wsB);
-    const [categoryB] = await listCategories(db, wsB);
+    const [objectiveB] = await listObjectives(db, wsB);
     const tagB = await createTag(db, wsB, { name: "b-tag" });
     await expect(
       updateFeedback(db, wsA, { id: item.id, boardId: boardB?.id }),
@@ -296,7 +296,7 @@ describe("feedback service", () => {
       updateFeedback(db, wsA, { id: item.id, statusId: statusB?.id }),
     ).rejects.toThrow(NotFoundError);
     await expect(
-      updateFeedback(db, wsA, { id: item.id, categoryId: categoryB?.id }),
+      updateFeedback(db, wsA, { id: item.id, objectiveId: objectiveB?.id }),
     ).rejects.toThrow(NotFoundError);
     await updateFeedback(db, wsA, { id: item.id, tagIds: [tagB.id] });
     expect((await getFeedbackDetail(db, wsA, item.id)).tagIds).toEqual([]);
@@ -431,7 +431,7 @@ describe("triage, bulk edits, boards and statuses", () => {
     const item = await pending("Not yours");
     expect(await reviewFeedback(db, wsB, [item.id], "approve")).toBe(0);
     expect(
-      await bulkUpdateFeedback(db, wsB, { ids: [item.id], categoryId: null }),
+      await bulkUpdateFeedback(db, wsB, { ids: [item.id], objectiveId: null }),
     ).toBe(0);
     expect((await getFeedback(db, wsA, item.id)).review).toBe("pending");
     expect(await inboxCount(db, wsB)).toBe(0);
@@ -447,22 +447,22 @@ describe("triage, bulk edits, boards and statuses", () => {
     await deleteFeedback(db, wsA, open.id);
   });
 
-  it("bulk sets status and category and adds tags", async () => {
+  it("bulk sets status and objective and adds tags", async () => {
     const [x, y] = [await pending("X"), await pending("Y")];
     const done = await firstStatusOfKind(db, wsA, "done");
-    const [category] = await listCategories(db, wsA);
+    const [objective] = await listObjectives(db, wsA);
     const tag = await createTag(db, wsA, { name: "bulk-tag" });
     const n = await bulkUpdateFeedback(db, wsA, {
       ids: [x.id, y.id],
       statusId: done?.id,
-      categoryId: category?.id,
+      objectiveId: objective?.id,
       addTagIds: [tag.id],
     });
     expect(n).toBe(2);
     const detail = await getFeedbackDetail(db, wsA, x.id);
     expect(detail).toMatchObject({
       statusId: done?.id,
-      categoryId: category?.id,
+      objectiveId: objective?.id,
     });
     expect(detail.completedAt).not.toBeNull();
     expect(detail.tagIds).toContain(tag.id);

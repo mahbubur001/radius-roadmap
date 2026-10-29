@@ -31,7 +31,6 @@ import { slugify } from "@/lib/schemas/workspace";
 import type { Db, DbOrTx } from "@/server/db/client";
 import {
   cardFeedbackLinks,
-  categories,
   comments,
   type FeedbackItem,
   type FeedbackStatusKind,
@@ -40,6 +39,7 @@ import {
   feedbackStatuses,
   feedbackTags,
   follows,
+  objectives,
   trackedUsers,
   user,
   votes,
@@ -199,7 +199,7 @@ export async function updateFeedback(
   ctx: WorkspaceContext,
   input: UpdateFeedbackInput,
 ) {
-  const { id, tagIds, summaryJson, categoryId, boardId, statusId, ...rest } =
+  const { id, tagIds, summaryJson, objectiveId, boardId, statusId, ...rest } =
     updateFeedbackSchema.parse(input);
   await getFeedback(db, ctx, id);
 
@@ -218,16 +218,18 @@ export async function updateFeedback(
     set.statusId = status.id;
     set.completedAt = status.kind === "done" ? new Date() : null;
   }
-  if (categoryId !== undefined) {
-    if (categoryId) {
+  if (objectiveId !== undefined) {
+    if (objectiveId) {
       const [own] = await db
-        .select({ id: categories.id })
-        .from(categories)
-        .where(and(inWorkspace(categories, ctx), eq(categories.id, categoryId)))
+        .select({ id: objectives.id })
+        .from(objectives)
+        .where(
+          and(inWorkspace(objectives, ctx), eq(objectives.id, objectiveId)),
+        )
         .limit(1);
-      if (!own) throw new NotFoundError("Category not found.");
+      if (!own) throw new NotFoundError("Objective not found.");
     }
-    set.categoryId = categoryId;
+    set.objectiveId = objectiveId;
   }
 
   return db.transaction(async (tx) => {
@@ -404,7 +406,7 @@ export async function mergeFeedback(
   });
 }
 
-/** A copy with the same content, status, category and tags; no votes. */
+/** A copy with the same content, status, objective and tags; no votes. */
 export async function duplicateFeedback(
   db: Db,
   ctx: WorkspaceContext,
@@ -417,7 +419,7 @@ export async function duplicateFeedback(
       workspaceId: ctx.workspaceId,
       boardId: item.boardId,
       statusId: item.statusId,
-      categoryId: item.categoryId,
+      objectiveId: item.objectiveId,
       title: `${item.title} (copy)`.slice(0, 200),
       summaryJson: item.summaryJson,
       summaryText: item.summaryText,
@@ -530,7 +532,7 @@ export async function reviewFeedback(
   return rows.length;
 }
 
-/** Bulk status / category / add tags. Returns the number of items changed. */
+/** Bulk status / objective / add tags. Returns the number of items changed. */
 export async function bulkUpdateFeedback(
   db: Db,
   ctx: WorkspaceContext,
@@ -538,7 +540,7 @@ export async function bulkUpdateFeedback(
 ) {
   if (
     input.statusId === undefined &&
-    input.categoryId === undefined &&
+    input.objectiveId === undefined &&
     !input.addTagIds?.length
   ) {
     return 0;
@@ -551,21 +553,21 @@ export async function bulkUpdateFeedback(
     set.statusId = status.id;
     set.completedAt = status.kind === "done" ? new Date() : null;
   }
-  if (input.categoryId !== undefined) {
-    if (input.categoryId) {
+  if (input.objectiveId !== undefined) {
+    if (input.objectiveId) {
       const [own] = await db
-        .select({ id: categories.id })
-        .from(categories)
+        .select({ id: objectives.id })
+        .from(objectives)
         .where(
           and(
-            inWorkspace(categories, ctx),
-            eq(categories.id, input.categoryId),
+            inWorkspace(objectives, ctx),
+            eq(objectives.id, input.objectiveId),
           ),
         )
         .limit(1);
-      if (!own) throw new NotFoundError("Category not found.");
+      if (!own) throw new NotFoundError("Objective not found.");
     }
-    set.categoryId = input.categoryId;
+    set.objectiveId = input.objectiveId;
   }
   return db.transaction(async (tx) => {
     const rows = await tx
@@ -602,7 +604,7 @@ export type FeedbackRow = {
   title: string;
   summaryText: string;
   statusId: string;
-  categoryId: string | null;
+  objectiveId: string | null;
   isPublic: boolean;
   review: FeedbackItem["review"];
   impact: number | null;
@@ -644,7 +646,7 @@ export async function listFeedback(
     );
   }
   if (f.statusId) where.push(eq(feedbackItems.statusId, f.statusId));
-  if (f.categoryId) where.push(eq(feedbackItems.categoryId, f.categoryId));
+  if (f.objectiveId) where.push(eq(feedbackItems.objectiveId, f.objectiveId));
   if (f.tagId) {
     where.push(
       exists(
@@ -712,7 +714,7 @@ export async function listFeedback(
       title: feedbackItems.title,
       summaryText: feedbackItems.summaryText,
       statusId: feedbackItems.statusId,
-      categoryId: feedbackItems.categoryId,
+      objectiveId: feedbackItems.objectiveId,
       isPublic: feedbackItems.isPublic,
       review: feedbackItems.review,
       impact: feedbackItems.impact,

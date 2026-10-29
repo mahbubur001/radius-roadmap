@@ -20,8 +20,8 @@ import { ago } from "@/lib/time";
 import { cn } from "@/lib/utils";
 import type {
   BoardOption,
-  CategoryOption,
   FeedbackRow,
+  ObjectiveOption,
   StatusOption,
 } from "./types";
 
@@ -30,7 +30,7 @@ const NONE = "none";
 export function FeedbackRowItem({
   item,
   status,
-  category,
+  objective,
   board,
   selected,
   focused,
@@ -39,7 +39,7 @@ export function FeedbackRowItem({
 }: {
   item: FeedbackRow;
   status?: StatusOption;
-  category?: CategoryOption | null;
+  objective?: ObjectiveOption | null;
   /** Shown in the inbox, which spans every board. */
   board?: BoardOption;
   selected: boolean;
@@ -96,13 +96,13 @@ export function FeedbackRowItem({
             {board ? (
               <span className="text-muted-foreground">{board.name}</span>
             ) : null}
-            {category ? (
+            {objective ? (
               <span className="flex items-center gap-1 text-muted-foreground">
                 <span
                   className="size-2 rounded-full"
-                  style={{ backgroundColor: category.color }}
+                  style={{ backgroundColor: objective.color }}
                 />
-                {category.name}
+                {objective.name}
               </span>
             ) : null}
           </span>
@@ -148,21 +148,21 @@ export function BulkBar({
   count,
   inbox,
   statuses,
-  categories,
+  objectives,
   busy,
   onReview,
   onStatus,
-  onCategory,
+  onObjective,
   onClear,
 }: {
   count: number;
   inbox: boolean;
   statuses: StatusOption[];
-  categories: CategoryOption[];
+  objectives: ObjectiveOption[];
   busy: boolean;
   onReview: (action: ReviewAction) => void;
   onStatus: (statusId: string) => void;
-  onCategory: (categoryId: string | null) => void;
+  onObjective: (objectiveId: string | null) => void;
   onClear: () => void;
 }) {
   return (
@@ -213,15 +213,15 @@ export function BulkBar({
       </Select>
       <Select
         value=""
-        onValueChange={(v) => onCategory(v === NONE ? null : v)}
+        onValueChange={(v) => onObjective(v === NONE ? null : v)}
         disabled={busy}
       >
-        <SelectTrigger size="sm" aria-label="Set category" className="w-40">
-          <SelectValue placeholder="Set category" />
+        <SelectTrigger size="sm" aria-label="Set objective" className="w-40">
+          <SelectValue placeholder="Set objective" />
         </SelectTrigger>
         <SelectContent>
-          <SelectItem value={NONE}>No category</SelectItem>
-          {categories.map((c) => (
+          <SelectItem value={NONE}>No objective</SelectItem>
+          {objectives.map((c) => (
             <SelectItem key={c.id} value={c.id}>
               {c.name}
             </SelectItem>

@@ -24,7 +24,7 @@ export type BoardRoadmap = {
   display: RoadmapDisplaySettings;
 };
 
-export type CategoryOption = { id: string; name: string; color: string };
+export type ObjectiveOption = { id: string; name: string; color: string };
 export type TagOption = { id: string; name: string };
 
 export type BoardData = {
@@ -36,7 +36,7 @@ export type BoardData = {
   roadmap: BoardRoadmap;
   columns: BoardColumn[];
   cards: BoardCard[];
-  categories: CategoryOption[];
+  objectives: ObjectiveOption[];
   tags: TagOption[];
 };
 

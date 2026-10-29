@@ -31,7 +31,7 @@ import { type BoardColumn, type BoardRoadmap, byPosition } from "./types";
 
 const displayLabels: Record<keyof RoadmapDisplaySettings, string> = {
   showVotes: "Vote counts",
-  showCategories: "Categories",
+  showObjectives: "Objectives",
   showTags: "Tags",
   showDates: "Planned-for dates",
   showDescriptions: "Descriptions",

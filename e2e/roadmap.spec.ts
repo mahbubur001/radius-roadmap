@@ -99,8 +99,11 @@ test("admin builds a roadmap: add, drag, categorise, autosave", async ({
 
   // Category + description autosave.
   const drawer = await openCard(page, "Dark mode");
-  await drawer.getByRole("combobox", { name: "Category" }).click();
-  await page.getByRole("option", { name: "Onboarding" }).click();
+  await drawer.locator("#card-objective").click();
+  await page
+    .getByRole("listbox", { name: "Objectives" })
+    .getByRole("option", { name: "Onboarding" })
+    .click();
   await drawer.locator('[contenteditable="true"]').click();
   await page.keyboard.type("Easier on the eyes at night.");
   await expect(drawer.getByText("Saved")).toBeVisible();
@@ -113,9 +116,9 @@ test("admin builds a roadmap: add, drag, categorise, autosave", async ({
       .getByRole("button", { name: "Bulk export", exact: true }),
   ).toBeVisible();
   const reopened = await openCard(page, "Dark mode");
-  await expect(
-    reopened.getByRole("combobox", { name: "Category" }),
-  ).toContainText("Onboarding");
+  await expect(reopened.locator("#card-objective")).toHaveAccessibleName(
+    "Objective: Onboarding",
+  );
   await expect(reopened.locator('[contenteditable="true"]')).toContainText(
     "Easier on the eyes at night.",
   );
@@ -165,6 +168,66 @@ test("objective quick-picker on cards; filters panel narrows the board", async (
   await expect(cardButton(page, "Dark mode")).toBeVisible();
 });
 
+test("card drawer rail: duplicate, copy to and move to another column", async ({
+  page,
+}) => {
+  const id = randomUUID().slice(0, 8);
+  const { slug } = await signUpOwner(page, id);
+  await openRoadmap(page, slug);
+  await addCard(page, "Up next", "Dark mode");
+
+  const drawer = await openCard(page, "Dark mode");
+  const rail = drawer.getByRole("complementary", { name: "More options" });
+  await expect(rail.getByText("Submitted by")).toBeVisible();
+
+  // Duplicate opens the copy.
+  await rail.getByRole("button", { name: "Duplicate card" }).click();
+  await expect(
+    drawer.getByRole("textbox", { name: "Title", exact: true }),
+  ).toHaveValue("Dark mode (copy)");
+
+  // Copy to Future: same title, original stays.
+  await rail.getByRole("button", { name: "Copy to…" }).click();
+  const dialog = page.getByRole("dialog", { name: "Copy card" });
+  await dialog.getByRole("combobox", { name: "Column" }).click();
+  await page.getByRole("option", { name: "Future" }).click();
+  await dialog.getByRole("button", { name: "Copy card" }).click();
+  await expect(page.getByText("Card copied.")).toBeVisible();
+  await expect(page.getByRole("dialog")).toHaveCount(1);
+  await closeDrawer(page);
+  // The board sits behind the open drawer (aria-hidden) until it closes.
+  await expect(
+    page.getByRole("region", { name: "Up next" }).getByRole("button", {
+      name: "Dark mode (copy)",
+      exact: true,
+    }),
+  ).toBeVisible();
+  await expect(
+    page
+      .getByRole("region", { name: "Future" })
+      .getByRole("button", { name: "Dark mode (copy)", exact: true }),
+  ).toBeVisible();
+
+  // Move the original to Done: it completes.
+  const original = await openCard(page, "Dark mode");
+  await original
+    .getByRole("complementary", { name: "More options" })
+    .getByRole("button", { name: "Move to…" })
+    .click();
+  const move = page.getByRole("dialog", { name: "Move card" });
+  await move.getByRole("combobox", { name: "Column" }).click();
+  await page.getByRole("option", { name: "Done" }).click();
+  await move.getByRole("button", { name: "Move card" }).click();
+  await expect(page.getByText("Card moved.")).toBeVisible();
+  await expect(page.getByRole("dialog")).toHaveCount(1);
+  await closeDrawer(page);
+  await expect(
+    page
+      .getByRole("region", { name: "Done" })
+      .getByRole("button", { name: "Dark mode", exact: true }),
+  ).toBeVisible();
+});
+
 test("public site shows only public cards; drawer, card page and search work", async ({
   page,
   browser,
@@ -176,9 +239,8 @@ test("public site shows only public cards; drawer, card page and search work", a
   await addCard(page, "Up next", "Secret idea");
 
   const drawer = await openCard(page, "Secret idea");
-  await drawer
-    .getByRole("switch", { name: "Show on the public roadmap" })
-    .click();
+  await drawer.getByRole("combobox", { name: "Public visibility" }).click();
+  await page.getByRole("option", { name: "Private (team only)" }).click();
   await expect(drawer.getByText("Saved")).toBeVisible();
   await closeDrawer(page);
   const url = await publicUrl(page);

@@ -17,6 +17,7 @@ import {
   type createCardSchema,
   type createFeatureSchema,
   type moveCardSchema,
+  type transferCardSchema,
   type UpdateCardInput,
   updateCardSchema,
   type updateFeatureSchema,
@@ -30,6 +31,7 @@ import {
   categories,
   type RoadmapCard,
   roadmapCards,
+  user,
 } from "@/server/db/schema";
 import {
   isUniqueViolation,
@@ -277,6 +279,97 @@ export async function deleteCard(db: Db, ctx: WorkspaceContext, id: string) {
   if (!row) throw new NotFoundError("Card not found.");
 }
 
+/**
+ * Copies a card's content, objective, tags and features (not votes, links or
+ * history) to the end of `column`.
+ */
+async function copyCard(
+  db: Db,
+  ctx: WorkspaceContext,
+  card: RoadmapCard,
+  column: Awaited<ReturnType<typeof getColumn>>,
+  title: string,
+) {
+  const existing = await columnCards(db, ctx, column.id);
+  return db.transaction(async (tx) => {
+    const copy = await insertCard(tx, {
+      accountId: ctx.accountId,
+      workspaceId: ctx.workspaceId,
+      roadmapId: column.roadmapId,
+      columnId: column.id,
+      title,
+      publicTitle: card.publicTitle,
+      summaryJson: card.summaryJson,
+      summaryText: card.summaryText,
+      categoryId: card.categoryId,
+      plannedFor: card.plannedFor,
+      isPublic: card.isPublic,
+      position: keyAfter(existing.at(-1)?.position),
+      completedAt: column.isDone ? new Date() : null,
+      createdBy: ctx.userId,
+    });
+    await tx.execute(sql`
+      insert into ${cardTags} (card_id, tag_id)
+      select ${copy.id}, tag_id from ${cardTags} where card_id = ${card.id}`);
+    await tx.execute(sql`
+      insert into ${cardFeatures} (account_id, card_id, title, done, position)
+      select account_id, ${copy.id}, title, done, position
+      from ${cardFeatures} where card_id = ${card.id}`);
+    return copy;
+  });
+}
+
+/** "Duplicate card": a copy at the end of the same column. */
+export async function duplicateCard(db: Db, ctx: WorkspaceContext, id: string) {
+  const card = await getCard(db, ctx, id);
+  const column = await getColumn(db, ctx, card.columnId);
+  return copyCard(db, ctx, card, column, `${card.title} (copy)`.slice(0, 200));
+}
+
+/**
+ * "Move to…" / "Copy to…": to the end of a column on any roadmap of this
+ * workspace. A move keeps votes, links and history; crossing into or out of a
+ * done column completes or reopens the card (and its linked feedback).
+ */
+export async function transferCard(
+  db: Db,
+  ctx: WorkspaceContext,
+  input: z.output<typeof transferCardSchema>,
+) {
+  const card = await getCard(db, ctx, input.id);
+  const [from, to] = await Promise.all([
+    getColumn(db, ctx, card.columnId),
+    getColumn(db, ctx, input.columnId),
+  ]);
+  if (input.mode === "copy") return copyCard(db, ctx, card, to, card.title);
+  if (to.id === from.id) return card;
+
+  const existing = await columnCards(db, ctx, to.id);
+  let completedAt = card.completedAt;
+  if (to.isDone && !from.isDone) completedAt ??= new Date();
+  if (!to.isDone && from.isDone) completedAt = null;
+  const [row] = await db
+    .update(roadmapCards)
+    .set({
+      roadmapId: to.roadmapId,
+      columnId: to.id,
+      position: keyAfter(existing.at(-1)?.position),
+      completedAt,
+    })
+    .where(and(inWorkspace(roadmapCards, ctx), eq(roadmapCards.id, card.id)))
+    .returning();
+  if (!row) throw new NotFoundError("Card not found.");
+  if (to.isDone !== from.isDone) {
+    await syncCardFeedback(
+      db,
+      ctx,
+      card.id,
+      to.isDone ? "completed" : "reopened",
+    );
+  }
+  return row;
+}
+
 // ── Board ───────────────────────────────────────────────────────────────
 
 export type BoardCard = {
@@ -396,15 +489,27 @@ export async function listBoardCards(
 /** Everything the card drawer needs. */
 export async function getCardDetail(db: Db, ctx: WorkspaceContext, id: string) {
   const card = await getCard(db, ctx, id);
-  const [tagRows, features] = await Promise.all([
+  const [tagRows, features, [creator]] = await Promise.all([
     db
       .select({ tagId: cardTags.tagId })
       .from(cardTags)
       .where(eq(cardTags.cardId, id)),
     listFeatures(db, ctx, id),
+    card.createdBy
+      ? db
+          .select({ name: user.name })
+          .from(user)
+          .where(eq(user.id, card.createdBy))
+          .limit(1)
+      : [],
   ]);
   const { search: _search, ...rest } = card;
-  return { ...rest, tagIds: tagRows.map((t) => t.tagId), features };
+  return {
+    ...rest,
+    tagIds: tagRows.map((t) => t.tagId),
+    features,
+    createdByName: creator?.name ?? null,
+  };
 }
 
 // ── Features ────────────────────────────────────────────────────────────

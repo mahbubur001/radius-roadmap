@@ -1,3 +1,4 @@
+import { ago } from "@/lib/time";
 import type { listVoters } from "@/server/services/votes";
 
 export type Voters = Awaited<ReturnType<typeof listVoters>>;
@@ -18,6 +19,12 @@ export function VotersList({ voters }: { voters: Voters }) {
               <p className="truncate text-xs text-muted-foreground">
                 {v.email}
                 {v.kind === "guest" ? " · guest (unverified)" : ""}
+              </p>
+              <p
+                className="text-xs text-muted-foreground"
+                suppressHydrationWarning
+              >
+                {ago(new Date(v.createdAt))}
               </p>
             </div>
             <span className="text-xs text-muted-foreground">

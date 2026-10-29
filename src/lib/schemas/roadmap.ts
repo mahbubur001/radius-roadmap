@@ -100,6 +100,13 @@ export const moveCardSchema = z.object({
   nextId: neighbour,
 });
 
+/** Move a card to (or copy it into) a column, possibly on another roadmap. */
+export const transferCardSchema = z.object({
+  id,
+  columnId: id,
+  mode: z.enum(["move", "copy"]),
+});
+
 export const cardIdSchema = z.object({ id });
 export const cardFlagSchema = z.object({ id, value: z.boolean() });
 

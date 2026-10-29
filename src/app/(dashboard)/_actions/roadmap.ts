@@ -12,6 +12,7 @@ import {
   moveColumnSchema,
   roadmapIdSchema,
   tagSchema,
+  transferCardSchema,
   updateCardSchema,
   updateCategorySchema,
   updateColumnSchema,
@@ -26,10 +27,13 @@ import {
   createCard,
   deleteCard,
   deleteFeature,
+  duplicateCard,
+  getCard,
   getCardDetail,
   moveCard,
   setCardArchived,
   setCardCompleted,
+  transferCard,
   updateCard,
   updateFeature,
 } from "@/server/services/cards";
@@ -44,6 +48,8 @@ import {
   deleteColumn,
   deleteRoadmap,
   deleteTag,
+  listColumns,
+  listRoadmaps,
   moveColumn,
   updateCategory,
   updateColumn,
@@ -175,6 +181,43 @@ export const setCardArchivedAction = workspaceAction(
 export const deleteCardAction = workspaceAction(
   cardIdSchema,
   async (ctx, { id }) => mutate(ctx, () => deleteCard(db, ctx, id)),
+);
+
+export const duplicateCardAction = workspaceAction(
+  cardIdSchema,
+  async (ctx, { id }) =>
+    mutate(ctx, async () => {
+      const card = await duplicateCard(db, ctx, id);
+      return { id: card.id, slug: card.slug, position: card.position };
+    }),
+);
+
+export const transferCardAction = workspaceAction(
+  transferCardSchema,
+  async (ctx, input) =>
+    mutate(ctx, async () => {
+      const card = await transferCard(db, ctx, input);
+      return { id: card.id, roadmapId: card.roadmapId };
+    }),
+);
+
+/** Roadmaps and their columns, for the drawer's "Move to…" / "Copy to…". */
+export const cardTargetsAction = workspaceAction(
+  cardIdSchema,
+  async (ctx, { id }) => {
+    await getCard(db, ctx, id);
+    const roadmaps = await listRoadmaps(db, ctx);
+    return Promise.all(
+      roadmaps.map(async (r) => ({
+        id: r.id,
+        title: r.internalTitle,
+        columns: (await listColumns(db, ctx, r.id)).map((c) => ({
+          id: c.id,
+          name: c.name,
+        })),
+      })),
+    );
+  },
 );
 
 export const addFeatureAction = workspaceAction(

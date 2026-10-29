@@ -156,8 +156,7 @@ test("push to roadmap, 💡 on the card, card completion syncs, merge", async ({
   ).toBeVisible();
 
   // Completing the card completes the linked feedback (doc 20 D5).
-  await cardDrawer.getByRole("button", { name: "Card actions" }).click();
-  await page.getByRole("menuitem", { name: "Mark complete" }).click();
+  await cardDrawer.getByRole("button", { name: "Mark as complete" }).click();
   await expect(cardDrawer.getByText("Completed")).toBeVisible();
   await page.goto(`/dashboard/${slug}/feedback?state=completed`);
   await expect(page.getByRole("button", { name: "Webhooks" })).toBeVisible();

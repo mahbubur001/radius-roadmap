@@ -10,9 +10,12 @@ import {
   addFeature,
   createCard,
   deleteCard,
+  duplicateCard,
   getCardDetail,
   listBoardCards,
+  listFeatures,
   moveCard,
+  transferCard,
   updateCard,
 } from "./cards";
 import {
@@ -24,6 +27,7 @@ import {
 import {
   createCategory,
   createColumn,
+  createRoadmap,
   createTag,
   deleteColumn,
   deleteRoadmap,
@@ -336,5 +340,92 @@ describe("cards", () => {
     });
     await deleteRoadmap(db, wsB, roadmap.id);
     expect(await listRoadmaps(db, wsB)).toEqual([]);
+  });
+});
+
+describe("duplicate, move to and copy to", () => {
+  it("duplicates content, tags and features but not votes", async () => {
+    const { roadmap, columns } = await firstRoadmap(wsA);
+    const card = await createCard(db, wsA, {
+      roadmapId: roadmap.id,
+      columnId: columns[0]?.id ?? "",
+      title: "Original",
+    });
+    const tag = await createTag(db, wsA, { name: "dup-tag" });
+    await updateCard(db, wsA, { id: card.id, tagIds: [tag.id] });
+    await addFeature(db, wsA, { cardId: card.id, title: "Part one" });
+
+    const copy = await duplicateCard(db, wsA, card.id);
+    expect(copy.title).toBe("Original (copy)");
+    expect(copy.columnId).toBe(card.columnId);
+    expect(copy.slug).not.toBe(card.slug);
+    expect(copy.voteCount).toBe(0);
+    const detail = await getCardDetail(db, wsA, copy.id);
+    expect(detail.tagIds).toEqual([tag.id]);
+    expect((await listFeatures(db, wsA, copy.id)).map((f) => f.title)).toEqual([
+      "Part one",
+    ]);
+  });
+
+  it("moves a card to another roadmap and copies it into a done column", async () => {
+    const { roadmap, columns } = await firstRoadmap(wsA);
+    const other = await createRoadmap(db, wsA, { title: "Second" });
+    const target = await listColumns(db, wsA, other.id);
+    const done = target.find((c) => c.isDone);
+    const card = await createCard(db, wsA, {
+      roadmapId: roadmap.id,
+      columnId: columns[0]?.id ?? "",
+      title: "Travels",
+    });
+
+    const moved = await transferCard(db, wsA, {
+      id: card.id,
+      columnId: target[0]?.id ?? "",
+      mode: "move",
+    });
+    expect(moved.id).toBe(card.id);
+    expect(moved.roadmapId).toBe(other.id);
+    expect(
+      (await listBoardCards(db, wsA, roadmap.id)).map((c) => c.id),
+    ).not.toContain(card.id);
+
+    const copied = await transferCard(db, wsA, {
+      id: card.id,
+      columnId: done?.id ?? "",
+      mode: "copy",
+    });
+    expect(copied.id).not.toBe(card.id);
+    expect(copied.title).toBe("Travels");
+    expect(copied.completedAt).not.toBeNull();
+  });
+
+  it("another account can't duplicate, move into or copy into its columns", async () => {
+    const { roadmap, columns } = await firstRoadmap(wsA);
+    const card = await createCard(db, wsA, {
+      roadmapId: roadmap.id,
+      columnId: columns[0]?.id ?? "",
+      title: "Mine",
+    });
+    const foreign = await createRoadmap(db, wsB, { title: "Foreign" });
+    const [foreignColumn] = await listColumns(db, wsB, foreign.id);
+    await expect(duplicateCard(db, wsB, card.id)).rejects.toBeInstanceOf(
+      NotFoundError,
+    );
+    for (const mode of ["move", "copy"] as const) {
+      await expect(
+        transferCard(db, wsA, {
+          id: card.id,
+          columnId: foreignColumn?.id ?? "",
+          mode,
+        }),
+      ).rejects.toBeInstanceOf(NotFoundError);
+      await expect(
+        transferCard(db, wsB, {
+          id: card.id,
+          columnId: foreignColumn?.id ?? "",
+          mode,
+        }),
+      ).rejects.toBeInstanceOf(NotFoundError);
+    }
   });
 });

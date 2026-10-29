@@ -465,6 +465,7 @@ export function RoadmapView({
         categories={categories}
         tags={tags}
         onClose={closeCard}
+        onOpenCard={openCard}
         onChanged={patchCard}
         onRemoved={removeCard}
         onTagCreated={(tag) =>
@@ -474,6 +475,7 @@ export function RoadmapView({
               : [...all, tag].sort((a, b) => a.name.localeCompare(b.name)),
           )
         }
+        onCreateObjective={data.canManage ? createObjective : undefined}
       />
 
       {data.canManage ? (

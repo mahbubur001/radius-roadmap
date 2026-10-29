@@ -4,21 +4,28 @@ import {
   Archive,
   ArchiveRestore,
   CheckCircle2,
+  ChevronUp,
   Circle,
-  Link as LinkIcon,
-  MoreHorizontal,
+  Copy,
+  CopyPlus,
+  ExternalLink,
+  MoveRight,
   Trash2,
 } from "lucide-react";
 import Link from "next/link";
+import { useRouter } from "next/navigation";
 import { useCallback, useEffect, useState } from "react";
 import { toast } from "sonner";
 import {
   addFeatureAction,
+  cardTargetsAction,
   deleteCardAction,
   deleteFeatureAction,
+  duplicateCardAction,
   getCardAction,
   setCardArchivedAction,
   setCardCompletedAction,
+  transferCardAction,
   updateCardAction,
   updateFeatureAction,
 } from "@/app/(dashboard)/_actions/roadmap";
@@ -47,12 +54,13 @@ import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Checkbox } from "@/components/ui/checkbox";
 import {
-  DropdownMenu,
-  DropdownMenuContent,
-  DropdownMenuItem,
-  DropdownMenuSeparator,
-  DropdownMenuTrigger,
-} from "@/components/ui/dropdown-menu";
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Progress } from "@/components/ui/progress";
@@ -63,6 +71,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
+import { Separator } from "@/components/ui/separator";
 import {
   Sheet,
   SheetContent,
@@ -71,9 +80,11 @@ import {
   SheetTitle,
 } from "@/components/ui/sheet";
 import { Skeleton } from "@/components/ui/skeleton";
-import { Switch } from "@/components/ui/switch";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import type { UpdateCardInput } from "@/lib/schemas/roadmap";
+import { ago } from "@/lib/time";
+import { cn } from "@/lib/utils";
+import { ObjectivePicker } from "./objective-picker";
 import type { BoardCard, CategoryOption, TagOption } from "./types";
 
 type Detail = Extract<
@@ -81,8 +92,6 @@ type Detail = Extract<
   { ok: true }
 >["data"];
 type Patch = Omit<UpdateCardInput, "id">;
-
-const NO_CATEGORY = "none";
 
 export function CardDrawer({
   workspace,
@@ -92,9 +101,11 @@ export function CardDrawer({
   categories,
   tags,
   onClose,
+  onOpenCard,
   onChanged,
   onRemoved,
   onTagCreated,
+  onCreateObjective,
 }: {
   workspace: string;
   workspaceId: string;
@@ -103,9 +114,11 @@ export function CardDrawer({
   categories: CategoryOption[];
   tags: TagOption[];
   onClose: () => void;
+  onOpenCard: (id: string) => void;
   onChanged: (id: string, change: Partial<BoardCard>) => void;
   onRemoved: (id: string) => void;
   onTagCreated: (tag: TagOption) => void;
+  onCreateObjective?: (name: string) => Promise<CategoryOption | null>;
 }) {
   const [detail, setDetail] = useState<Detail | null>(null);
 
@@ -128,7 +141,7 @@ export function CardDrawer({
 
   return (
     <Sheet open={!!cardId} onOpenChange={(open) => !open && onClose()}>
-      <SheetContent className="gap-0 overflow-y-auto data-[side=right]:w-full data-[side=right]:sm:max-w-2xl">
+      <SheetContent className="gap-0 p-0 data-[side=right]:w-full data-[side=right]:sm:max-w-5xl">
         {detail ? (
           <CardEditor
             key={detail.card.id}
@@ -139,17 +152,19 @@ export function CardDrawer({
             categories={categories}
             tags={tags}
             onClose={onClose}
+            onOpenCard={onOpenCard}
             onChanged={onChanged}
             onRemoved={onRemoved}
             onTagCreated={onTagCreated}
+            onCreateObjective={onCreateObjective}
           />
         ) : (
-          <div className="flex flex-col gap-4 p-6">
+          <div className="flex flex-col gap-4 p-8">
             <SheetHeader className="p-0">
               <SheetTitle>Loading card…</SheetTitle>
               <SheetDescription className="sr-only">Loading</SheetDescription>
             </SheetHeader>
-            <Skeleton className="h-9 w-full" />
+            <Skeleton className="h-10 w-2/3" />
             <Skeleton className="h-40 w-full" />
           </div>
         )}
@@ -166,9 +181,11 @@ function CardEditor({
   categories,
   tags,
   onClose,
+  onOpenCard,
   onChanged,
   onRemoved,
   onTagCreated,
+  onCreateObjective,
 }: {
   detail: Detail;
   workspace: string;
@@ -177,10 +194,13 @@ function CardEditor({
   categories: CategoryOption[];
   tags: TagOption[];
   onClose: () => void;
+  onOpenCard: (id: string) => void;
   onChanged: (id: string, change: Partial<BoardCard>) => void;
   onRemoved: (id: string) => void;
   onTagCreated: (tag: TagOption) => void;
+  onCreateObjective?: (name: string) => Promise<CategoryOption | null>;
 }) {
+  const router = useRouter();
   const { card } = detail;
   const [title, setTitle] = useState(card.title);
   const [publicTitle, setPublicTitle] = useState(card.publicTitle ?? "");
@@ -191,7 +211,10 @@ function CardEditor({
   const [completed, setCompleted] = useState(!!card.completedAt);
   const [archived, setArchived] = useState(!!card.archivedAt);
   const [features, setFeatures] = useState(card.features);
+  const [updatedAt, setUpdatedAt] = useState(new Date(card.updatedAt));
   const [confirmDelete, setConfirmDelete] = useState(false);
+  const [transfer, setTransfer] = useState<"move" | "copy" | null>(null);
+  const [busy, setBusy] = useState(false);
 
   const save = useCallback(
     async (patch: Patch) => {
@@ -201,6 +224,7 @@ function CardEditor({
         ...patch,
       });
       if (!result.ok) toast.error(result.error);
+      else setUpdatedAt(new Date(result.data.updatedAt));
       return result.ok;
     },
     [workspace, card.id],
@@ -216,6 +240,7 @@ function CardEditor({
   }
 
   const doneCount = features.filter((f) => f.done).length;
+  const votes = card.voteCount + card.importedVotes;
   const cardUrl = `${publicUrl}/${card.slug}`;
 
   async function flag(
@@ -228,230 +253,328 @@ function CardEditor({
     apply();
   }
 
+  async function duplicate() {
+    setBusy(true);
+    await flush();
+    const result = await duplicateCardAction({ workspace, id: card.id });
+    setBusy(false);
+    if (!result.ok) return toast.error(result.error);
+    toast.success("Card duplicated.");
+    router.refresh();
+    onOpenCard(result.data.id);
+  }
+
   return (
-    <div className="flex flex-col">
-      <SheetHeader className="flex-row items-center gap-2 border-b pr-12">
-        <SheetTitle className="sr-only">Edit card</SheetTitle>
-        <SheetDescription className="sr-only">
-          Changes save automatically.
-        </SheetDescription>
-        <span className="text-xs text-muted-foreground" aria-live="polite">
-          {autosaveLabel(status)}
-        </span>
-        {completed ? <Badge variant="secondary">Completed</Badge> : null}
-        {archived ? <Badge variant="outline">Archived</Badge> : null}
-        <DropdownMenu>
-          <DropdownMenuTrigger asChild>
-            <Button
-              variant="ghost"
-              size="icon"
-              className="ml-auto"
-              aria-label="Card actions"
-            >
-              <MoreHorizontal />
-            </Button>
-          </DropdownMenuTrigger>
-          <DropdownMenuContent align="end">
-            <DropdownMenuItem
-              onSelect={() =>
-                flag(setCardCompletedAction, !completed, () => {
-                  setCompleted(!completed);
-                  onChanged(card.id, { completed: !completed });
-                })
-              }
-            >
-              {completed ? <Circle /> : <CheckCircle2 />}
-              {completed ? "Reopen" : "Mark complete"}
-            </DropdownMenuItem>
-            <DropdownMenuItem
-              onSelect={() =>
-                flag(setCardArchivedAction, !archived, () => {
-                  setArchived(!archived);
-                  if (!archived) {
-                    onRemoved(card.id);
-                    toast.success("Card archived.");
-                    onClose();
-                  }
-                })
-              }
-            >
-              {archived ? <ArchiveRestore /> : <Archive />}
-              {archived ? "Restore" : "Archive"}
-            </DropdownMenuItem>
-            <DropdownMenuItem
-              onSelect={() => {
-                void navigator.clipboard.writeText(cardUrl);
-                toast.success("Public link copied.");
+    <div className="flex h-full min-h-0 flex-col sm:flex-row">
+      <div className="flex min-h-0 min-w-0 flex-1 flex-col">
+        <div className="flex-1 overflow-y-auto">
+          <SheetHeader className="gap-3 px-8 pt-6 pb-2">
+            <SheetTitle className="sr-only">Edit card</SheetTitle>
+            <SheetDescription className="sr-only">
+              Changes save automatically.
+            </SheetDescription>
+            <ObjectivePicker
+              objectives={categories}
+              value={categoryId}
+              onChange={(next) => {
+                setCategoryId(next);
+                change({ categoryId: next }, { categoryId: next });
               }}
-            >
-              <LinkIcon />
-              Copy public link
-            </DropdownMenuItem>
-            <DropdownMenuSeparator />
-            <DropdownMenuItem
-              variant="destructive"
-              onSelect={() => setConfirmDelete(true)}
-            >
-              <Trash2 />
-              Delete
-            </DropdownMenuItem>
-          </DropdownMenuContent>
-        </DropdownMenu>
-      </SheetHeader>
-
-      <div className="flex flex-col gap-4 p-4">
-        <Input
-          aria-label="Title"
-          className="h-auto border-none px-0 text-lg font-semibold shadow-none focus-visible:ring-0"
-          value={title}
-          onChange={(e) => {
-            setTitle(e.target.value);
-            if (e.target.value.trim()) {
-              change({ title: e.target.value }, { title: e.target.value });
-            }
-          }}
-        />
-
-        <Tabs defaultValue="general">
-          <TabsList>
-            <TabsTrigger value="general">General</TabsTrigger>
-            <TabsTrigger value="features">
-              Features{" "}
-              {features.length ? `(${doneCount}/${features.length})` : ""}
-            </TabsTrigger>
-            <TabsTrigger value="votes">
-              Votes ({card.voteCount + card.importedVotes})
-            </TabsTrigger>
-            <TabsTrigger value="feedback">
-              Linked feedback ({detail.feedback.length})
-            </TabsTrigger>
-          </TabsList>
-
-          <TabsContent value="general" className="flex flex-col gap-4 pt-2">
-            <div className="flex flex-col gap-2">
-              <Label htmlFor="card-public-title">Public title</Label>
+              onCreate={onCreateObjective}
+              className="self-start"
+            />
+            <div className="flex items-center gap-4">
+              <span
+                className="flex size-14 shrink-0 flex-col items-center justify-center rounded-md border text-lg font-semibold"
+                title="Votes"
+              >
+                <ChevronUp className="size-4 text-muted-foreground" />
+                {votes}
+              </span>
               <Input
-                id="card-public-title"
-                placeholder="Same as the title"
-                value={publicTitle}
+                aria-label="Title"
+                className="h-auto border-none px-0 text-2xl font-semibold shadow-none focus-visible:ring-0 md:text-2xl"
+                value={title}
                 onChange={(e) => {
-                  setPublicTitle(e.target.value);
-                  change(
-                    { publicTitle: e.target.value },
-                    { publicTitle: e.target.value.trim() || null },
-                  );
+                  setTitle(e.target.value);
+                  if (e.target.value.trim()) {
+                    change(
+                      { title: e.target.value },
+                      { title: e.target.value },
+                    );
+                  }
                 }}
               />
             </div>
+            {completed || archived ? (
+              <div className="flex gap-2">
+                {completed ? (
+                  <Badge variant="secondary">Completed</Badge>
+                ) : null}
+                {archived ? <Badge variant="outline">Archived</Badge> : null}
+              </div>
+            ) : null}
+          </SheetHeader>
 
-            <div className="flex flex-col gap-2">
-              <Label>Description</Label>
-              <RichTextEditor
-                label="Description"
-                workspaceId={workspaceId}
-                value={card.summaryJson as RichTextValue}
-                onChange={(summaryJson) => change({ summaryJson })}
-              />
-            </div>
+          <Tabs defaultValue="general" className="gap-0">
+            <TabsList
+              variant="line"
+              className="h-auto w-full justify-start gap-4 rounded-none border-b px-8"
+            >
+              <TabsTrigger value="general" className={TAB}>
+                General
+              </TabsTrigger>
+              <TabsTrigger value="features" className={TAB}>
+                Features (
+                {features.length
+                  ? `${doneCount}/${features.length}`
+                  : features.length}
+                )
+              </TabsTrigger>
+              <TabsTrigger value="feedback" className={TAB}>
+                Linked feedback ({detail.feedback.length})
+              </TabsTrigger>
+              <TabsTrigger value="votes" className={TAB}>
+                Votes ({votes})
+              </TabsTrigger>
+            </TabsList>
 
-            <div className="grid gap-4 sm:grid-cols-2">
+            <TabsContent
+              value="general"
+              className="flex flex-col gap-5 px-8 py-6"
+            >
               <div className="flex flex-col gap-2">
-                <Label htmlFor="card-category">Category</Label>
+                <Label>Summary</Label>
+                <RichTextEditor
+                  label="Summary"
+                  workspaceId={workspaceId}
+                  value={card.summaryJson as RichTextValue}
+                  onChange={(summaryJson) => change({ summaryJson })}
+                />
+              </div>
+
+              <div className="flex flex-col gap-2">
+                <Label htmlFor="card-public-title">Public title</Label>
+                <Input
+                  id="card-public-title"
+                  placeholder="Same as the title"
+                  value={publicTitle}
+                  onChange={(e) => {
+                    setPublicTitle(e.target.value);
+                    change(
+                      { publicTitle: e.target.value },
+                      { publicTitle: e.target.value.trim() || null },
+                    );
+                  }}
+                />
+              </div>
+
+              <div className="flex flex-col gap-2">
+                <Label htmlFor="card-visibility">Public visibility</Label>
                 <Select
-                  value={categoryId ?? NO_CATEGORY}
+                  value={isPublic ? "public" : "private"}
                   onValueChange={(v) => {
-                    const next = v === NO_CATEGORY ? null : v;
-                    setCategoryId(next);
-                    change({ categoryId: next }, { categoryId: next });
+                    const next = v === "public";
+                    setIsPublic(next);
+                    change({ isPublic: next }, { isPublic: next });
                   }}
                 >
-                  <SelectTrigger id="card-category" className="w-full">
+                  <SelectTrigger id="card-visibility" className="w-full">
                     <SelectValue />
                   </SelectTrigger>
                   <SelectContent>
-                    <SelectItem value={NO_CATEGORY}>No category</SelectItem>
-                    {categories.map((c) => (
-                      <SelectItem key={c.id} value={c.id}>
-                        <span
-                          className="size-2.5 rounded-full"
-                          style={{ backgroundColor: c.color }}
-                        />
-                        {c.name}
-                      </SelectItem>
-                    ))}
+                    <SelectItem value="public">Public</SelectItem>
+                    <SelectItem value="private">Private (team only)</SelectItem>
                   </SelectContent>
                 </Select>
               </div>
+
+              <div className="flex flex-col gap-2">
+                <Label htmlFor="card-objective">Objective</Label>
+                <ObjectivePicker
+                  id="card-objective"
+                  variant="field"
+                  objectives={categories}
+                  value={categoryId}
+                  onChange={(next) => {
+                    setCategoryId(next);
+                    change({ categoryId: next }, { categoryId: next });
+                  }}
+                  onCreate={onCreateObjective}
+                />
+              </div>
+
+              <TagPicker
+                workspace={workspace}
+                tags={tags}
+                selected={tagIds}
+                onChange={(next) => {
+                  setTagIds(next);
+                  change({ tagIds: next }, { tagIds: next });
+                }}
+                onCreated={onTagCreated}
+              />
 
               <div className="flex flex-col gap-2">
                 <Label htmlFor="card-planned">Planned for</Label>
                 <DatePicker
                   id="card-planned"
                   value={plannedFor}
-                  placeholder="No date"
+                  placeholder="Planned for"
                   onChange={(next) => {
                     setPlannedFor(next);
                     change({ plannedFor: next }, { plannedFor: next });
                   }}
                 />
               </div>
-            </div>
+            </TabsContent>
 
-            <TagPicker
-              workspace={workspace}
-              tags={tags}
-              selected={tagIds}
-              onChange={(next) => {
-                setTagIds(next);
-                change({ tagIds: next }, { tagIds: next });
-              }}
-              onCreated={onTagCreated}
-            />
-
-            <div className="flex items-center justify-between rounded-md border p-3">
-              <div>
-                <Label htmlFor="card-public">Show on the public roadmap</Label>
-                <p className="text-xs text-muted-foreground">
-                  Private cards are visible to your team only.
-                </p>
-              </div>
-              <Switch
-                id="card-public"
-                checked={isPublic}
-                onCheckedChange={(v) => {
-                  setIsPublic(v);
-                  change({ isPublic: v }, { isPublic: v });
+            <TabsContent value="features" className="px-8 py-6">
+              <Features
+                workspace={workspace}
+                cardId={card.id}
+                features={features}
+                onChange={(next) => {
+                  setFeatures(next);
+                  onChanged(card.id, {
+                    features: {
+                      done: next.filter((f) => f.done).length,
+                      total: next.length,
+                    },
+                  });
                 }}
               />
-            </div>
-          </TabsContent>
+            </TabsContent>
 
-          <TabsContent value="features" className="pt-2">
-            <Features
-              workspace={workspace}
-              cardId={card.id}
-              features={features}
-              onChange={(next) => {
-                setFeatures(next);
-                onChanged(card.id, {
-                  features: {
-                    done: next.filter((f) => f.done).length,
-                    total: next.length,
-                  },
-                });
-              }}
-            />
-          </TabsContent>
+            <TabsContent value="feedback" className="px-8 py-6">
+              <LinkedFeedback workspace={workspace} items={detail.feedback} />
+            </TabsContent>
 
-          <TabsContent value="votes" className="pt-2">
-            <VotersList voters={detail.voters} />
-          </TabsContent>
+            <TabsContent value="votes" className="px-8 py-6">
+              <VotersList voters={detail.voters} />
+            </TabsContent>
+          </Tabs>
+        </div>
 
-          <TabsContent value="feedback" className="pt-2">
-            <LinkedFeedback workspace={workspace} items={detail.feedback} />
-          </TabsContent>
-        </Tabs>
+        <footer
+          className="flex items-center gap-2 border-t bg-muted/40 px-8 py-2.5 text-xs text-muted-foreground"
+          aria-live="polite"
+        >
+          <span
+            className={cn(
+              "size-2 rounded-full",
+              status === "error" ? "bg-destructive" : "bg-emerald-500",
+            )}
+          />
+          {autosaveLabel(status) || "All changes saved"}
+          <span suppressHydrationWarning>· Last updated {ago(updatedAt)}</span>
+        </footer>
       </div>
+
+      <aside
+        aria-label="More options"
+        className="flex w-full shrink-0 flex-col gap-2 border-t bg-muted/40 p-5 sm:w-64 sm:border-t-0 sm:border-l"
+      >
+        <h2 className="pr-8 pb-1 text-xs font-semibold tracking-wider text-muted-foreground uppercase">
+          More options
+        </h2>
+        <RailButton
+          onClick={() =>
+            flag(setCardCompletedAction, !completed, () => {
+              setCompleted(!completed);
+              onChanged(card.id, { completed: !completed });
+            })
+          }
+        >
+          {completed ? <Circle /> : <CheckCircle2 />}
+          {completed ? "Reopen" : "Mark as complete"}
+        </RailButton>
+        <RailButton onClick={() => setTransfer("move")}>
+          <MoveRight />
+          Move to…
+        </RailButton>
+        <RailButton onClick={() => setTransfer("copy")}>
+          <Copy />
+          Copy to…
+        </RailButton>
+        <RailButton disabled={busy} onClick={duplicate}>
+          <CopyPlus />
+          Duplicate card
+        </RailButton>
+        <Separator className="my-1" />
+        <Button variant="secondary" className="w-full" asChild>
+          <a href={cardUrl} target="_blank" rel="noreferrer">
+            <ExternalLink />
+            View public card
+          </a>
+        </Button>
+        <RailButton
+          onClick={() =>
+            flag(setCardArchivedAction, !archived, () => {
+              setArchived(!archived);
+              if (!archived) {
+                onRemoved(card.id);
+                toast.success("Card archived.");
+                onClose();
+              }
+            })
+          }
+        >
+          {archived ? <ArchiveRestore /> : <Archive />}
+          {archived ? "Restore" : "Archive"}
+        </RailButton>
+        <RailButton onClick={() => setConfirmDelete(true)}>
+          <Trash2 />
+          Delete card
+        </RailButton>
+
+        <dl className="mt-auto flex flex-col gap-3 pt-6 text-sm">
+          <div>
+            <dt className="text-xs font-semibold tracking-wider text-muted-foreground uppercase">
+              Submitted by
+            </dt>
+            <dd>{card.createdByName ?? "Unknown"}</dd>
+          </div>
+          <div>
+            <dt className="text-xs font-semibold tracking-wider text-muted-foreground uppercase">
+              Created
+            </dt>
+            <dd suppressHydrationWarning>{ago(new Date(card.createdAt))}</dd>
+          </div>
+        </dl>
+      </aside>
+
+      <TransferDialog
+        mode={transfer}
+        workspace={workspace}
+        cardId={card.id}
+        currentColumnId={card.columnId}
+        onClose={() => setTransfer(null)}
+        onDone={async (columnId, mode) => {
+          await flush();
+          const result = await transferCardAction({
+            workspace,
+            id: card.id,
+            columnId,
+            mode,
+          });
+          if (!result.ok) {
+            toast.error(result.error);
+            return false;
+          }
+          router.refresh();
+          if (mode === "copy") {
+            toast.success("Card copied.");
+          } else {
+            toast.success("Card moved.");
+            if (result.data.roadmapId !== card.roadmapId) {
+              onRemoved(card.id);
+              onClose();
+            }
+          }
+          return true;
+        }}
+      />
 
       <AlertDialog open={confirmDelete} onOpenChange={setConfirmDelete}>
         <AlertDialogContent>
@@ -483,6 +606,136 @@ function CardEditor({
         </AlertDialogContent>
       </AlertDialog>
     </div>
+  );
+}
+
+/** Underlined tab in the drawer, like LoopedIn. */
+const TAB =
+  "flex-none rounded-none border-0 border-b-2 border-transparent px-1 pt-2 pb-2.5 data-active:border-foreground";
+
+function RailButton(props: React.ComponentProps<typeof Button>) {
+  return <Button variant="secondary" className="w-full" {...props} />;
+}
+
+type Targets = Extract<
+  Awaited<ReturnType<typeof cardTargetsAction>>,
+  { ok: true }
+>["data"];
+
+/** "Move to…" / "Copy to…": pick a roadmap and a column. */
+function TransferDialog({
+  mode,
+  workspace,
+  cardId,
+  currentColumnId,
+  onClose,
+  onDone,
+}: {
+  mode: "move" | "copy" | null;
+  workspace: string;
+  cardId: string;
+  currentColumnId: string;
+  onClose: () => void;
+  onDone: (columnId: string, mode: "move" | "copy") => Promise<boolean>;
+}) {
+  const [targets, setTargets] = useState<Targets | null>(null);
+  const [roadmapId, setRoadmapId] = useState("");
+  const [columnId, setColumnId] = useState("");
+  const [saving, setSaving] = useState(false);
+
+  useEffect(() => {
+    if (!mode) return;
+    let live = true;
+    cardTargetsAction({ workspace, id: cardId }).then((result) => {
+      if (!live) return;
+      if (!result.ok) return toast.error(result.error);
+      setTargets(result.data);
+      const current = result.data.find((r) =>
+        r.columns.some((c) => c.id === currentColumnId),
+      );
+      setRoadmapId(current?.id ?? result.data[0]?.id ?? "");
+      setColumnId(currentColumnId);
+    });
+    return () => {
+      live = false;
+    };
+  }, [mode, workspace, cardId, currentColumnId]);
+
+  const columns = targets?.find((r) => r.id === roadmapId)?.columns ?? [];
+  const verb = mode === "copy" ? "Copy" : "Move";
+
+  return (
+    <Dialog open={!!mode} onOpenChange={(open) => !open && onClose()}>
+      <DialogContent>
+        <DialogHeader>
+          <DialogTitle>{verb} card</DialogTitle>
+          <DialogDescription>
+            {mode === "copy"
+              ? "A copy with the same content, objective, tags and features. Votes stay on the original."
+              : "The card keeps its votes, features and linked feedback."}
+          </DialogDescription>
+        </DialogHeader>
+        <div className="grid gap-4 sm:grid-cols-2">
+          <div className="flex flex-col gap-2">
+            <Label htmlFor="transfer-roadmap">Roadmap</Label>
+            <Select
+              value={roadmapId}
+              onValueChange={(id) => {
+                setRoadmapId(id);
+                setColumnId(
+                  targets?.find((r) => r.id === id)?.columns[0]?.id ?? "",
+                );
+              }}
+            >
+              <SelectTrigger id="transfer-roadmap" className="w-full">
+                <SelectValue placeholder="Loading…" />
+              </SelectTrigger>
+              <SelectContent>
+                {targets?.map((r) => (
+                  <SelectItem key={r.id} value={r.id}>
+                    {r.title}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+          </div>
+          <div className="flex flex-col gap-2">
+            <Label htmlFor="transfer-column">Column</Label>
+            <Select value={columnId} onValueChange={setColumnId}>
+              <SelectTrigger id="transfer-column" className="w-full">
+                <SelectValue placeholder="Pick a column" />
+              </SelectTrigger>
+              <SelectContent>
+                {columns.map((c) => (
+                  <SelectItem key={c.id} value={c.id}>
+                    {c.name}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+          </div>
+        </div>
+        <DialogFooter>
+          <Button
+            disabled={
+              !mode ||
+              !columnId ||
+              saving ||
+              (mode === "move" && columnId === currentColumnId)
+            }
+            onClick={async () => {
+              if (!mode) return;
+              setSaving(true);
+              const ok = await onDone(columnId, mode);
+              setSaving(false);
+              if (ok) onClose();
+            }}
+          >
+            {verb} card
+          </Button>
+        </DialogFooter>
+      </DialogContent>
+    </Dialog>
   );
 }
 

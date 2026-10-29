@@ -23,6 +23,12 @@ export type WorkspaceSettings = {
   followsEnabled?: boolean;
   /** Hold public comments for approval. */
   approveComments?: boolean;
+  /** Public site modules (doc 22 P2). Missing = shown. */
+  showRoadmap?: boolean;
+  showIdeas?: boolean;
+  /** Linked from the idea form's terms checkbox (shown only when set). */
+  termsUrl?: string | null;
+  privacyUrl?: string | null;
 };
 
 /**

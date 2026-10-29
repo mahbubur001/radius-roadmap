@@ -14,8 +14,8 @@ export function VoterMenu() {
   const { voter, openSignIn, signOut } = useVoter();
   if (!voter) {
     return (
-      <Button variant="outline" size="sm" onClick={openSignIn}>
-        Sign in
+      <Button size="sm" onClick={openSignIn}>
+        Log in
       </Button>
     );
   }

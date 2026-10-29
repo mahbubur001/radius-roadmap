@@ -142,7 +142,7 @@ export function VoterProvider({
         );
         if (res.status === 401 && res.data.signIn) {
           setSignInOpen(true);
-          toast.info("Sign in to vote.");
+          toast.info("Log in to vote.");
           return;
         }
         if (!res.ok) {

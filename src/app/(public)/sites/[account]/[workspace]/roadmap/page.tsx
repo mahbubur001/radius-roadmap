@@ -69,7 +69,12 @@ async function PublicRoadmap(props: Props) {
   const base = `/${site.slug}/${ws.slug}/roadmap`;
 
   return (
-    <SiteShell account={site.slug} workspace={ws} embed={embed}>
+    <SiteShell
+      account={site.slug}
+      workspace={ws}
+      active="roadmap"
+      embed={embed}
+    >
       <PageView />
       <div className="flex flex-col gap-6">
         {embed ? null : (

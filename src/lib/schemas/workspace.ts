@@ -48,6 +48,24 @@ export const workspaceSettingsSchema = z.object({
   indexPublicPages: z.boolean(),
 });
 
+const optionalUrl = z
+  .union([
+    z.literal(""),
+    z.url({ protocol: /^https?$/, message: "Enter a full https:// link" }),
+  ])
+  .transform((v) => v || null)
+  .nullable();
+
+/** Public settings → "Public site" (doc 22 step 2). */
+export const publicSiteSchema = z.object({
+  showRoadmap: z.boolean(),
+  showIdeas: z.boolean(),
+  termsUrl: optionalUrl,
+  privacyUrl: optionalUrl,
+});
+
+export type PublicSiteInput = z.input<typeof publicSiteSchema>;
+
 export const updateWorkspaceSchema = createWorkspaceSchema.extend({
   settings: workspaceSettingsSchema,
 });

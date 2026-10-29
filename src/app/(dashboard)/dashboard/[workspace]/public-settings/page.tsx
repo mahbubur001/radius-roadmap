@@ -4,9 +4,12 @@ import { Skeleton } from "@/components/ui/skeleton";
 import { db } from "@/server/db/client";
 import { appOrigin } from "@/server/public-url";
 import { getAccount } from "@/server/services/accounts";
+import { seesAllWorkspaces } from "@/server/services/context";
 import { listRoadmaps } from "@/server/services/roadmaps";
+import { getWorkspaceBySlug } from "@/server/services/workspaces";
 import { requireWorkspace } from "@/server/session";
 import { EmbedSettings } from "./embed-settings";
+import { PublicSiteForm } from "./public-site-form";
 
 export const metadata: Metadata = { title: "Public settings" };
 
@@ -22,21 +25,35 @@ export default function PublicSettingsPage({
 
 async function PublicSettings({ slug }: { slug: Promise<string> }) {
   const ctx = await requireWorkspace(await slug);
-  const [account, roadmaps] = await Promise.all([
+  const [account, roadmaps, ws] = await Promise.all([
     getAccount(db, ctx),
     listRoadmaps(db, ctx),
+    getWorkspaceBySlug(db, ctx, ctx.workspaceSlug),
   ]);
+  const { settings } = ws;
   return (
-    <EmbedSettings
-      origin={appOrigin()}
-      account={account.slug}
-      workspace={ctx.workspaceSlug}
-      roadmaps={roadmaps
-        .filter((r) => r.isPublic)
-        .map((r) => ({
-          slug: r.slug,
-          title: r.publicTitle ?? r.internalTitle,
-        }))}
-    />
+    <div className="flex max-w-3xl flex-col gap-6">
+      <PublicSiteForm
+        workspace={ctx.workspaceSlug}
+        canManage={seesAllWorkspaces(ctx)}
+        defaults={{
+          showRoadmap: settings.showRoadmap !== false,
+          showIdeas: settings.showIdeas !== false,
+          termsUrl: settings.termsUrl ?? "",
+          privacyUrl: settings.privacyUrl ?? "",
+        }}
+      />
+      <EmbedSettings
+        origin={appOrigin()}
+        account={account.slug}
+        workspace={ctx.workspaceSlug}
+        roadmaps={roadmaps
+          .filter((r) => r.isPublic)
+          .map((r) => ({
+            slug: r.slug,
+            title: r.publicTitle ?? r.internalTitle,
+          }))}
+      />
+    </div>
   );
 }

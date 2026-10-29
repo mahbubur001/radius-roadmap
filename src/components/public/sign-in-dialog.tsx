@@ -91,9 +91,10 @@ export function SignInDialog({
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent className="sm:max-w-sm">
         <DialogHeader>
-          <DialogTitle>Sign in to vote</DialogTitle>
+          <DialogTitle>Log in</DialogTitle>
           <DialogDescription>
-            Your votes are saved to your name so the team can follow up.
+            No password needed. Your votes and ideas are saved to your name so
+            the team can follow up.
           </DialogDescription>
         </DialogHeader>
         <Tabs defaultValue="email">
@@ -124,7 +125,7 @@ export function SignInDialog({
                   onChange={(e) => setCode(e.target.value.replace(/\D/g, ""))}
                 />
                 <Button type="submit" disabled={busy || code.length !== 6}>
-                  {busy ? "Checking…" : "Sign in"}
+                  {busy ? "Checking…" : "Log in"}
                 </Button>
                 <Button
                   type="button"

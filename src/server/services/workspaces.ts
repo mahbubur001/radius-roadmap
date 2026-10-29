@@ -2,6 +2,8 @@ import { and, asc, count, eq, inArray, type SQL } from "drizzle-orm";
 import {
   type CreateWorkspaceInput,
   createWorkspaceSchema,
+  type PublicSiteInput,
+  publicSiteSchema,
   type UpdateWorkspaceInput,
   updateWorkspaceSchema,
 } from "@/lib/schemas/workspace";
@@ -15,6 +17,7 @@ import {
   isUniqueViolation,
   NotFoundError,
   seesAllWorkspaces,
+  type WorkspaceContext,
 } from "./context";
 import { getPlanLimits } from "./plan-limits";
 import { seedWorkspace } from "./roadmaps";
@@ -149,6 +152,29 @@ export async function updateWorkspace(
     }
     throw error;
   }
+}
+
+/** Public settings → "Public site": module switches and legal links. */
+export async function updatePublicSite(
+  db: Db,
+  ctx: WorkspaceContext,
+  input: PublicSiteInput,
+) {
+  assertRole(ctx, "admin");
+  const data = publicSiteSchema.parse(input);
+  const current = await getOwnWorkspace(db, ctx, ctx.workspaceId);
+  const [row] = await db
+    .update(workspaces)
+    .set({ settings: { ...current.settings, ...data } })
+    .where(
+      and(
+        eq(workspaces.accountId, ctx.accountId),
+        eq(workspaces.id, ctx.workspaceId),
+      ),
+    )
+    .returning();
+  if (!row) throw new NotFoundError("Workspace not found.");
+  return row.settings;
 }
 
 /** Store (or clear) the workspace logo's storage key. */

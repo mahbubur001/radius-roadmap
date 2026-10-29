@@ -12,9 +12,17 @@ import { cn } from "@/lib/utils";
  * customer's iframe) the header and footer are dropped and the height is
  * reported to embed.js.
  */
+export type SiteModule = "roadmap" | "ideas";
+
+const MODULES: { key: SiteModule; label: string }[] = [
+  { key: "roadmap", label: "Roadmap" },
+  { key: "ideas", label: "Ideas" },
+];
+
 export function SiteShell({
   account,
   workspace,
+  active,
   embed,
   children,
 }: {
@@ -26,10 +34,15 @@ export function SiteShell({
     slug: string;
     logoUrl: string | null;
     settings: { darkModeDefault?: boolean };
+    /** Modules switched on and with something public (doc 22 P2). */
+    modules: Record<SiteModule, boolean>;
   };
+  /** The module this page belongs to (its tab is highlighted). */
+  active: SiteModule;
   embed: boolean;
   children: ReactNode;
 }) {
+  const home = MODULES.find((m) => workspace.modules[m.key])?.key ?? active;
   return (
     <VoterProvider site={account} workspaceId={workspace.id} embed={embed}>
       <div
@@ -50,9 +63,9 @@ export function SiteShell({
           </>
         ) : (
           <header className="border-b">
-            <div className="mx-auto flex h-14 max-w-7xl items-center gap-4 px-4">
+            <div className="mx-auto flex h-16 max-w-7xl items-center gap-6 px-4">
               <Link
-                href={`/${account}/${workspace.slug}/roadmap`}
+                href={`/${account}/${workspace.slug}/${home}`}
                 className="flex items-center gap-2 font-semibold"
               >
                 <Avatar className="size-7 rounded-md">
@@ -65,13 +78,23 @@ export function SiteShell({
                 </Avatar>
                 {workspace.name}
               </Link>
-              <nav className="flex items-center gap-1 text-sm">
-                <Link
-                  href={`/${account}/${workspace.slug}/roadmap`}
-                  className="rounded-md bg-muted px-3 py-1.5 font-medium"
-                >
-                  Roadmap
-                </Link>
+              <nav
+                aria-label="Site"
+                className="flex items-center gap-1 text-sm font-medium"
+              >
+                {MODULES.filter((m) => workspace.modules[m.key]).map((m) => (
+                  <Link
+                    key={m.key}
+                    href={`/${account}/${workspace.slug}/${m.key}`}
+                    aria-current={m.key === active ? "page" : undefined}
+                    className={cn(
+                      "rounded-md px-3 py-1.5 hover:bg-muted",
+                      m.key === active ? "bg-muted" : "text-muted-foreground",
+                    )}
+                  >
+                    {m.label}
+                  </Link>
+                ))}
               </nav>
               <div className="ml-auto">
                 <VoterMenu />

@@ -304,6 +304,35 @@ test("card attachments, team comments, follow and CSV export", async ({
   expect(await readFile(path, "utf8")).toContain("Dark mode");
 });
 
+test("public site header tabs follow the Public site switches", async ({
+  page,
+}) => {
+  const id = randomUUID().slice(0, 8);
+  const { slug } = await signUpOwner(page, id);
+  await openRoadmap(page, slug);
+  const href = await publicUrl(page);
+
+  await page.goto(href);
+  const site = page.getByRole("navigation", { name: "Site" });
+  await expect(site.getByRole("link", { name: "Roadmap" })).toHaveAttribute(
+    "aria-current",
+    "page",
+  );
+  await expect(page.getByRole("button", { name: "Log in" })).toBeVisible();
+
+  // Switching the Roadmap off makes the public page a real 404.
+  await page.goto(`/dashboard/${slug}/public-settings`);
+  await page.getByRole("switch", { name: "Roadmap" }).click();
+  const save = page.getByRole("button", { name: "Save changes" });
+  const status = () => page.request.get(href).then((r) => r.status());
+  await save.click();
+  await expect.poll(status).toBe(404);
+
+  await page.getByRole("switch", { name: "Roadmap" }).click();
+  await save.click();
+  await expect.poll(status).toBe(200);
+});
+
 test("public site shows only public cards; drawer, card page and search work", async ({
   page,
   browser,
@@ -418,7 +447,7 @@ test("require sign-in: voter signs in with an email code and is listed by name",
   const card = publicCard(voter, "Members only");
   await card.getByRole("button", { name: "Vote for this" }).click();
 
-  const dialog = voter.getByRole("dialog", { name: "Sign in to vote" });
+  const dialog = voter.getByRole("dialog", { name: "Log in" });
   await expect(dialog).toBeVisible();
   const email = `voter-${id}@example.test`;
   await dialog.getByRole("textbox", { name: "Email" }).fill(email);
@@ -427,7 +456,7 @@ test("require sign-in: voter signs in with an email code and is listed by name",
   const code = mail.subject.match(/\d{6}/)?.[0];
   if (!code) throw new Error("No code in email");
   await dialog.getByRole("textbox", { name: "Code" }).fill(code);
-  await dialog.getByRole("button", { name: "Sign in" }).click();
+  await dialog.getByRole("button", { name: "Log in" }).click();
   await expect(dialog).toHaveCount(0);
 
   await card.getByRole("button", { name: "Vote for this" }).click();

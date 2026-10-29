@@ -58,7 +58,12 @@ async function PublicCard(props: Props) {
   if (!data) notFound();
   const { site, ws, card, columnName, embed } = data;
   return (
-    <SiteShell account={site.slug} workspace={ws} embed={embed}>
+    <SiteShell
+      account={site.slug}
+      workspace={ws}
+      active="roadmap"
+      embed={embed}
+    >
       <PageView cardId={card.id} />
       <div className="mx-auto flex max-w-2xl flex-col gap-6">
         <Link

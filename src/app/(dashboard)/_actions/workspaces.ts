@@ -7,17 +7,19 @@ import {
 } from "@/lib/schemas/account";
 import {
   createWorkspaceSchema,
+  publicSiteSchema,
   updateWorkspaceSchema,
   workspaceIdSchema,
 } from "@/lib/schemas/workspace";
-import { action } from "@/server/action";
+import { action, workspaceAction } from "@/server/action";
 import { auth } from "@/server/auth";
 import { db } from "@/server/db/client";
-import { invalidateSite } from "@/server/public-cache";
+import { invalidatePublic, invalidateSite } from "@/server/public-cache";
 import { updateAccount } from "@/server/services/accounts";
 import {
   createWorkspace,
   deleteWorkspace,
+  updatePublicSite,
   updateWorkspace,
 } from "@/server/services/workspaces";
 import { requireAccount } from "@/server/session";
@@ -68,5 +70,14 @@ export const switchAccountAction = action(
       headers: await headers(),
       body: { organizationId: accountId },
     });
+  },
+);
+
+export const updatePublicSiteAction = workspaceAction(
+  publicSiteSchema,
+  async (ctx, input) => {
+    await updatePublicSite(db, ctx, input);
+    invalidatePublic(ctx.workspaceId);
+    invalidateSite(ctx.accountId);
   },
 );

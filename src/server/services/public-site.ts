@@ -1,4 +1,14 @@
-import { and, eq, exists, ilike, inArray, isNull, or, sql } from "drizzle-orm";
+import {
+  and,
+  eq,
+  exists,
+  ilike,
+  inArray,
+  isNull,
+  or,
+  type SQL,
+  sql,
+} from "drizzle-orm";
 import { renderRichText } from "@/lib/rich-text";
 import {
   defaultDisplay,
@@ -25,6 +35,17 @@ import { byPosition } from "./positions";
 // Public site queries (doc 19 §4.1). The account comes from the URL path
 // (/<account>/…), never from an account id sent by the client. Only public roadmaps, public columns and public,
 // unarchived cards are returned, with only the fields `display` allows.
+
+/**
+ * A roadmap the public may see: marked public, and its workspace hasn't
+ * switched the Roadmap module off (Public settings, doc 22 P2). Written with
+ * a table-qualified column: in one-table selects Drizzle renders columns
+ * unqualified, which inside a subquery would bind to the wrong table.
+ */
+const roadmapIsPublic = and(
+  eq(roadmaps.isPublic, true),
+  sql`not exists (select 1 from ${workspaces} hidden where hidden.id = "roadmaps"."workspace_id" and hidden.settings->>'showRoadmap' = 'false')`,
+) as SQL;
 
 export type PublicSite = {
   accountId: string;
@@ -75,10 +96,7 @@ export async function listPublicWorkspaces(db: Db, ctx: PublicContext) {
             .select({ one: sql`1` })
             .from(roadmaps)
             .where(
-              and(
-                eq(roadmaps.workspaceId, workspaces.id),
-                eq(roadmaps.isPublic, true),
-              ),
+              and(eq(roadmaps.workspaceId, workspaces.id), roadmapIsPublic),
             ),
         ),
       ),
@@ -110,7 +128,7 @@ export async function getPublicWorkspace(
       and(
         eq(roadmaps.accountId, ctx.accountId),
         eq(roadmaps.workspaceId, ws.id),
-        eq(roadmaps.isPublic, true),
+        roadmapIsPublic,
       ),
     )
     .orderBy(byPosition(roadmaps.position));
@@ -122,6 +140,8 @@ export async function getPublicWorkspace(
     logo: ws.logo,
     settings: ws.settings,
     roadmaps: boards,
+    // Ideas join in doc 22 step 4.
+    modules: { roadmap: boards.length > 0, ideas: false },
   };
 }
 
@@ -263,7 +283,7 @@ async function getPublicRoadmapRow(
       and(
         eq(roadmaps.accountId, ctx.accountId),
         eq(roadmaps.workspaceId, workspaceId),
-        eq(roadmaps.isPublic, true),
+        roadmapIsPublic,
         slug ? eq(roadmaps.slug, slug) : undefined,
       ),
     )
@@ -333,7 +353,7 @@ export async function getPublicCard(
         eq(roadmapCards.accountId, ctx.accountId),
         eq(roadmapCards.workspaceId, workspaceId),
         eq(roadmapCards.slug, slug),
-        eq(roadmaps.isPublic, true),
+        roadmapIsPublic,
       ),
     )
     .limit(1)
@@ -388,7 +408,7 @@ export async function getVotableCard(
         eq(roadmapCards.id, cardId),
         eq(roadmapCards.isPublic, true),
         isNull(roadmapCards.archivedAt),
-        eq(roadmaps.isPublic, true),
+        roadmapIsPublic,
         eq(roadmapColumns.isPublic, true),
       ),
     )
@@ -421,7 +441,7 @@ export async function listSitemapEntries(db: Db, ctx: PublicContext) {
         eq(roadmapCards.accountId, ctx.accountId),
         eq(roadmapCards.isPublic, true),
         isNull(roadmapCards.archivedAt),
-        eq(roadmaps.isPublic, true),
+        roadmapIsPublic,
         eq(roadmapColumns.isPublic, true),
       ),
     );
@@ -477,7 +497,7 @@ export async function publicPathStatus(
   const roadmapScope = and(
     eq(roadmaps.accountId, ctx.accountId),
     eq(workspaces.slug, ws),
-    eq(roadmaps.isPublic, true),
+    roadmapIsPublic,
   );
 
   if (!cardSlug) {

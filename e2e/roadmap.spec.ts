@@ -66,8 +66,9 @@ async function publicUrl(page: Page) {
   return href;
 }
 
+/** A public board card: its title link and vote button live in one article. */
 function publicCard(page: Page, title: string) {
-  return page.locator("a", { hasText: title });
+  return page.locator("article", { hasText: title });
 }
 
 test("admin builds a roadmap: add, drag, set objective, autosave", async ({
@@ -364,6 +365,9 @@ test("public site shows only public cards; drawer, card page and search work", a
       .getByRole("heading", { level: 1, name: "Public idea" }),
   ).toBeVisible();
   await expect(guest).toHaveURL(/\/roadmap\/public-idea$/);
+  const details = guest.getByRole("dialog").getByRole("tabpanel");
+  await expect(details.getByText("Status")).toBeVisible();
+  await expect(details.getByText("Untagged")).toBeVisible();
   await guest.goBack();
   await expect(guest.getByRole("dialog")).toHaveCount(0);
 
@@ -402,6 +406,7 @@ test("anonymous visitors vote, unvote, and count separately", async ({
   const card = publicCard(first, "Vote me");
   await card.getByRole("button", { name: "Vote for this" }).click();
   await expect(card.getByRole("button", { pressed: true })).toBeVisible();
+  await expect(first.getByText("Vote added")).toBeVisible();
   await expect(card.getByTestId("vote-count")).toHaveText("1");
 
   // The vote survives a reload (fresh server render + visitor cookie).
@@ -498,7 +503,7 @@ test("embed.js inserts a self-sizing iframe where voting works", async ({
   await expect(iframe).toBeVisible();
 
   const frame = host.frameLocator('iframe[title="Roadmap"]');
-  const card = frame.locator("a", { hasText: "Embedded idea" });
+  const card = frame.locator("article", { hasText: "Embedded idea" });
   await expect(card).toBeVisible();
 
   // The iframe grows from its 600px default to fit the board.

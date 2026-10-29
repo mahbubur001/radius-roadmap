@@ -1,9 +1,11 @@
+import { Search } from "lucide-react";
 import type { Metadata } from "next";
 import Link from "next/link";
 import { notFound } from "next/navigation";
 import { Suspense } from "react";
 import { PageView } from "@/components/public/page-view";
 import { PublicBoard } from "@/components/public/public-board";
+import { Input } from "@/components/ui/input";
 import { Skeleton } from "@/components/ui/skeleton";
 import { cn } from "@/lib/utils";
 import { loadRoadmap, loadSite, loadWorkspace, siteUrl } from "../../data";
@@ -77,18 +79,34 @@ async function PublicRoadmap(props: Props) {
     >
       <PageView />
       <div className="flex flex-col gap-6">
-        {embed ? null : (
-          <div className="flex flex-col gap-2">
-            <h1 className="text-3xl font-semibold tracking-tight">
-              {roadmap.title}
-            </h1>
-            {roadmap.summary ? (
-              <p className="max-w-2xl text-muted-foreground">
-                {roadmap.summary}
-              </p>
-            ) : null}
-          </div>
-        )}
+        <div className="flex flex-wrap items-center gap-4 border-b pb-6">
+          {embed ? null : (
+            <div className="flex flex-col gap-2">
+              <h1 className="text-3xl font-semibold tracking-tight">
+                {roadmap.title}
+              </h1>
+              {roadmap.summary ? (
+                <p className="max-w-2xl text-muted-foreground">
+                  {roadmap.summary}
+                </p>
+              ) : null}
+            </div>
+          )}
+          <search className="ml-auto w-full sm:w-96">
+            <form action={base} className="relative">
+              <Search className="pointer-events-none absolute top-1/2 left-3 size-4 -translate-y-1/2 text-muted-foreground" />
+              <Input
+                type="search"
+                name="q"
+                defaultValue={q ?? ""}
+                aria-label="Search the roadmap"
+                placeholder="Search…"
+                className="h-10 pl-9"
+              />
+              {embed ? <input type="hidden" name="embed" value="1" /> : null}
+            </form>
+          </search>
+        </div>
         {ws.roadmaps.length > 1 ? (
           <nav className="flex gap-1 text-sm" aria-label="Roadmaps">
             {ws.roadmaps.map((r) => (
@@ -111,10 +129,9 @@ async function PublicRoadmap(props: Props) {
           columns={roadmap.columns}
           cards={roadmap.cards}
           cardHref={base}
-          showCompletedToggle={roadmap.display.showCompleted}
           query={q ?? ""}
-          searchAction={base}
           embed={embed}
+          commentsEnabled={!!ws.settings.commentsEnabled}
         />
       </div>
     </SiteShell>

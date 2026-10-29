@@ -1,18 +1,22 @@
 "use client";
 
-import { ChevronUp } from "lucide-react";
+import { ArrowUp } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { useVoter } from "./voter-provider";
 
-/** Upvote toggle. `votes` is null when the roadmap hides counts. */
+/**
+ * Upvote toggle (↑ everywhere, doc 22 P5). `votes` is null when the roadmap
+ * hides counts. `inline` sits in a card's footer; `pill` is the bordered
+ * button at the top of the card drawer and page.
+ */
 export function VoteButton({
   cardId,
   votes,
-  size = "sm",
+  variant = "inline",
 }: {
   cardId: string;
   votes: number | null;
-  size?: "sm" | "lg";
+  variant?: "inline" | "pill";
 }) {
   const { voted, totals, toggleVote } = useVoter();
   const active = voted.has(cardId);
@@ -29,14 +33,17 @@ export function VoteButton({
         void toggleVote(cardId);
       }}
       className={cn(
-        "flex shrink-0 flex-col items-center justify-center rounded-md border font-medium transition-colors focus-visible:ring-2 focus-visible:ring-ring focus-visible:outline-none",
-        size === "lg" ? "h-14 w-14 text-sm" : "h-11 w-11 text-xs",
+        "flex shrink-0 items-center gap-1.5 rounded-md font-medium transition-colors focus-visible:ring-2 focus-visible:ring-ring focus-visible:outline-none",
+        variant === "pill"
+          ? "h-9 border px-3 text-sm"
+          : "-ml-1.5 h-7 px-1.5 text-sm",
         active
-          ? "border-primary bg-primary text-primary-foreground"
-          : "bg-background hover:border-primary hover:text-primary",
+          ? "text-primary"
+          : "text-muted-foreground hover:bg-muted hover:text-foreground",
+        active && variant === "pill" && "border-primary bg-primary/10",
       )}
     >
-      <ChevronUp className={size === "lg" ? "size-5" : "size-4"} />
+      <ArrowUp className={cn("size-4", active && "stroke-[2.5]")} />
       {total !== null ? <span data-testid="vote-count">{total}</span> : null}
     </button>
   );

@@ -1,9 +1,7 @@
 "use client";
 
-import { Lightbulb, Search } from "lucide-react";
+import { Lightbulb, MessageSquare } from "lucide-react";
 import { useEffect, useState } from "react";
-import { Input } from "@/components/ui/input";
-import { Label } from "@/components/ui/label";
 import {
   Sheet,
   SheetContent,
@@ -11,7 +9,6 @@ import {
   SheetHeader,
   SheetTitle,
 } from "@/components/ui/sheet";
-import { Switch } from "@/components/ui/switch";
 import { cn } from "@/lib/utils";
 import type { PublicCard } from "@/server/services/public-site";
 import { CardDetail } from "./card-detail";
@@ -20,28 +17,27 @@ import { VoteButton } from "./vote-button";
 type Column = { id: string; name: string; isDone: boolean };
 
 /**
- * The public roadmap board. Cards are real links (crawlable card pages);
- * a plain click opens them in a drawer and updates the URL instead.
+ * The public roadmap board (doc 22 step 3). Each card's title is a real link
+ * (crawlable card page) stretched over the card; a plain click opens it in a
+ * drawer and updates the URL instead. The vote button sits above the link.
  */
 export function PublicBoard({
   columns,
   cards,
   cardHref,
-  showCompletedToggle,
   query,
-  searchAction,
   embed,
+  commentsEnabled,
 }: {
   columns: Column[];
   cards: PublicCard[];
   /** Base path for card links, e.g. "/classified-listing/roadmap". */
   cardHref: string;
-  showCompletedToggle: boolean;
   query: string;
-  searchAction: string;
   embed: boolean;
+  /** Public comments are on for this workspace (doc 20 D3). */
+  commentsEnabled: boolean;
 }) {
-  const [showCompleted, setShowCompleted] = useState(true);
   const [open, setOpen] = useState<PublicCard | null>(null);
 
   // Back button closes the drawer.
@@ -65,135 +61,120 @@ export function PublicBoard({
     if (window.history.state?.card) window.history.back();
   }
 
-  const visible = (card: PublicCard) => showCompleted || !card.completed;
-
   return (
     <div className="flex flex-col gap-4">
-      <div className="flex flex-wrap items-center gap-3">
-        <search>
-          <form action={searchAction} className="relative">
-            <Search className="pointer-events-none absolute top-2.5 left-2.5 size-4 text-muted-foreground" />
-            <Input
-              type="search"
-              name="q"
-              defaultValue={query}
-              aria-label="Search the roadmap"
-              placeholder="Search"
-              className="w-60 pl-8"
-            />
-            {embed ? <input type="hidden" name="embed" value="1" /> : null}
-          </form>
-        </search>
-        {showCompletedToggle ? (
-          <Label className="flex items-center gap-2 font-normal">
-            <Switch
-              checked={showCompleted}
-              onCheckedChange={setShowCompleted}
-            />
-            Show completed
-          </Label>
-        ) : null}
-      </div>
-
       {query && cards.length === 0 ? (
         <p className="text-sm text-muted-foreground">
           Nothing matches “{query}”.
         </p>
       ) : null}
 
-      <div className="flex gap-4 overflow-x-auto pb-4">
+      <div className="flex gap-6 overflow-x-auto pb-4">
         {columns.map((column) => {
-          const items = cards.filter(
-            (c) => c.columnId === column.id && visible(c),
-          );
+          const items = cards.filter((c) => c.columnId === column.id);
           return (
             <section
               key={column.id}
               aria-label={column.name}
-              className="flex w-72 shrink-0 flex-col gap-2 rounded-lg bg-muted/50 p-2"
+              className="flex w-80 shrink-0 flex-col gap-3"
             >
-              <h2 className="flex items-center gap-2 px-1 py-1 text-sm font-medium">
+              <h2 className="flex items-center gap-2 text-lg font-medium">
                 {column.name}
-                <span className="text-xs text-muted-foreground">
+                <span className="rounded-full bg-primary/10 px-2 py-0.5 text-xs font-semibold text-primary">
                   {items.length}
                 </span>
               </h2>
-              {items.map((card) => (
-                <a
-                  key={card.id}
-                  href={href(card)}
-                  onClick={(e) => {
-                    if (
-                      e.metaKey ||
-                      e.ctrlKey ||
-                      e.shiftKey ||
-                      e.button !== 0
-                    ) {
-                      return;
-                    }
-                    e.preventDefault();
-                    openCard(card);
-                  }}
-                  className="flex gap-3 overflow-hidden rounded-md border bg-card p-3 text-card-foreground shadow-xs transition-colors hover:border-ring"
-                  style={
-                    card.objective
-                      ? { borderTop: `3px solid ${card.objective.color}` }
-                      : undefined
-                  }
-                >
-                  <VoteButton cardId={card.id} votes={card.votes} />
-                  <div className="flex min-w-0 flex-col gap-1">
-                    {card.objective ? (
-                      <span className="text-xs text-muted-foreground">
-                        {card.objective.name}
-                      </span>
-                    ) : null}
-                    <h3
-                      className={cn(
-                        "text-sm font-medium leading-snug",
-                        card.completed && "text-muted-foreground",
-                      )}
+              {items.length ? (
+                <div className="flex flex-col divide-y overflow-hidden rounded-md border bg-card text-card-foreground shadow-xs">
+                  {items.map((card) => (
+                    <article
+                      key={card.id}
+                      className="relative flex flex-col gap-2.5 border-l-4 px-5 py-4 transition-colors hover:bg-muted/40"
+                      style={{
+                        borderLeftColor:
+                          card.objective?.color ?? "var(--border)",
+                      }}
                     >
-                      {card.title}
-                    </h3>
-                    {card.preview ? (
-                      <p className="line-clamp-2 text-xs text-muted-foreground">
-                        {card.preview}
-                      </p>
-                    ) : null}
-                    {card.ideas ? (
-                      <span
-                        className="flex items-center gap-1 text-xs text-muted-foreground"
-                        title="Requested by your users"
+                      {card.objective ? (
+                        <span className="flex w-fit items-center gap-1.5 rounded border px-2 py-0.5 text-xs">
+                          <span
+                            className="size-2 rounded-full"
+                            style={{ backgroundColor: card.objective.color }}
+                          />
+                          {card.objective.name}
+                        </span>
+                      ) : null}
+                      <h3
+                        className={cn(
+                          "font-medium leading-snug",
+                          card.completed && "text-muted-foreground",
+                        )}
                       >
-                        <Lightbulb className="size-3.5" />
-                        {card.ideas} {card.ideas === 1 ? "request" : "requests"}
-                      </span>
-                    ) : null}
-                    {card.features?.length ? (
-                      <div className="mt-1 h-1 rounded-full bg-muted">
-                        <div
-                          className="h-1 rounded-full bg-primary"
-                          style={{
-                            width: `${Math.round(
-                              (card.features.filter((f) => f.done).length /
-                                card.features.length) *
-                                100,
-                            )}%`,
+                        <a
+                          href={href(card)}
+                          onClick={(e) => {
+                            if (
+                              e.metaKey ||
+                              e.ctrlKey ||
+                              e.shiftKey ||
+                              e.button !== 0
+                            ) {
+                              return;
+                            }
+                            e.preventDefault();
+                            openCard(card);
                           }}
-                        />
+                          className="outline-none after:absolute after:inset-0 focus-visible:after:ring-2 focus-visible:after:ring-ring focus-visible:after:ring-inset"
+                        >
+                          {card.title}
+                        </a>
+                      </h3>
+                      {card.preview ? (
+                        <p className="line-clamp-3 text-sm text-muted-foreground">
+                          {card.preview}
+                        </p>
+                      ) : null}
+                      {card.features?.length ? (
+                        <FeatureBar features={card.features} />
+                      ) : null}
+                      <div className="relative z-10 flex items-center gap-3 text-sm text-muted-foreground">
+                        <VoteButton cardId={card.id} votes={card.votes} />
+                        {commentsEnabled ? (
+                          <>
+                            <span className="h-4 w-px bg-border" />
+                            <span
+                              className="flex items-center gap-1.5"
+                              title="Comments"
+                            >
+                              <MessageSquare className="size-4" />
+                              {card.comments}
+                            </span>
+                          </>
+                        ) : null}
+                        {card.ideas ? (
+                          <span
+                            className="ml-auto flex size-7 items-center justify-center rounded-full bg-primary/10 text-primary"
+                            title={`Requested by your users (${card.ideas})`}
+                          >
+                            <Lightbulb className="size-4" />
+                          </span>
+                        ) : null}
                       </div>
-                    ) : null}
-                  </div>
-                </a>
-              ))}
+                    </article>
+                  ))}
+                </div>
+              ) : (
+                <p className="rounded-md border border-dashed p-4 text-center text-sm text-muted-foreground">
+                  Nothing here yet.
+                </p>
+              )}
             </section>
           );
         })}
       </div>
 
       <Sheet open={!!open} onOpenChange={(next) => !next && close()}>
-        <SheetContent className="overflow-y-auto p-6 data-[side=right]:w-full data-[side=right]:sm:max-w-xl">
+        <SheetContent className="gap-0 overflow-y-auto p-0 data-[side=right]:w-full data-[side=right]:sm:max-w-xl">
           <SheetHeader className="sr-only">
             <SheetTitle>{open?.title}</SheetTitle>
             <SheetDescription>Roadmap card</SheetDescription>
@@ -204,10 +185,30 @@ export function PublicBoard({
               columnName={
                 columns.find((c) => c.id === open.columnId)?.name ?? ""
               }
+              commentsEnabled={commentsEnabled}
             />
           ) : null}
         </SheetContent>
       </Sheet>
+    </div>
+  );
+}
+
+function FeatureBar({
+  features,
+}: {
+  features: NonNullable<PublicCard["features"]>;
+}) {
+  const done = features.filter((f) => f.done).length;
+  return (
+    <div className="flex items-center gap-2 text-xs text-muted-foreground">
+      <div className="h-1 flex-1 rounded-full bg-muted">
+        <div
+          className="h-1 rounded-full bg-primary"
+          style={{ width: `${Math.round((done / features.length) * 100)}%` }}
+        />
+      </div>
+      {done}/{features.length}
     </div>
   );
 }

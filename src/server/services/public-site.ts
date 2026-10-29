@@ -19,6 +19,7 @@ import {
   cardFeatures,
   cardFeedbackLinks,
   cardTags,
+  comments,
   feedbackItems,
   objectives,
   organization,
@@ -163,6 +164,8 @@ export type PublicCard = {
   features: { title: string; done: boolean }[] | null;
   /** Public, approved feedback linked to the card (the 💡 count). */
   ideas: number;
+  /** Approved public comments (team notes never count). */
+  comments: number;
 };
 
 type CardFilter = { roadmapId: string; q?: string; slug?: string };
@@ -210,6 +213,7 @@ async function publicCards(
       objectiveName: objectives.name,
       objectiveColor: objectives.color,
       ideas: sql<number>`(select count(*)::int from ${cardFeedbackLinks} inner join ${feedbackItems} on ${feedbackItems.id} = ${cardFeedbackLinks.feedbackId} where ${cardFeedbackLinks.cardId} = ${roadmapCards.id} and ${feedbackItems.isPublic} and ${feedbackItems.review} = 'approved' and ${feedbackItems.archivedAt} is null)`,
+      comments: sql<number>`(select count(*)::int from ${comments} where ${comments.cardId} = ${roadmapCards.id} and not ${comments.isInternal} and ${comments.review} = 'approved' and ${comments.deletedAt} is null)`,
     })
     .from(roadmapCards)
     .innerJoin(roadmapColumns, eq(roadmapColumns.id, roadmapCards.columnId))
@@ -267,6 +271,7 @@ async function publicCards(
           .map(({ title, done }) => ({ title, done }))
       : null,
     ideas: r.ideas,
+    comments: r.comments,
   }));
 }
 

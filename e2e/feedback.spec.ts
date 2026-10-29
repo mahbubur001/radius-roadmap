@@ -164,7 +164,9 @@ test("push to roadmap, 💡 on the card, card completion syncs, merge", async ({
   const visitor = await page.context().browser()?.newPage();
   if (visitor && publicHref) {
     await visitor.goto(publicHref);
-    await expect(visitor.getByText("1 request")).toBeVisible();
+    await expect(
+      visitor.getByTitle("Requested by your users (1)"),
+    ).toBeVisible();
     await visitor.close();
   }
 

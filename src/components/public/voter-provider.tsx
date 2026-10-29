@@ -156,6 +156,8 @@ export function VoterProvider({
           return next;
         });
         setTotals((all) => ({ ...all, [cardId]: res.data.total }));
+        // A short note instead of LoopedIn's modal (doc 22 P4).
+        toast.success(res.data.voted ? "Vote added" : "Vote removed");
       } catch {
         toast.error("Couldn't save your vote.");
       } finally {

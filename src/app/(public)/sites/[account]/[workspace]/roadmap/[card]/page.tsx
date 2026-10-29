@@ -73,7 +73,13 @@ async function PublicCard(props: Props) {
           <ArrowLeft className="size-4" />
           Back to roadmap
         </Link>
-        <CardDetail card={card} columnName={columnName} />
+        <div className="overflow-hidden rounded-lg border bg-card">
+          <CardDetail
+            card={card}
+            columnName={columnName}
+            commentsEnabled={!!ws.settings.commentsEnabled}
+          />
+        </div>
       </div>
     </SiteShell>
   );

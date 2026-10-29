@@ -48,7 +48,7 @@
   - Real 404 / 308 statuses for public sites, checked in `src/proxy.ts` (`publicPathStatus`).
   - Playwright flows 1–5 (`e2e/roadmap.spec.ts`).
 - Rate-limit bypass fixed: `cf-*` headers trusted only with `TRUST_CLOUDFLARE=1` (new env var); `src/server/rate-limit.test.ts`.
-- **Checks:** `pnpm lint`, `typecheck`, `test` (147 tests), `test:e2e` (21 tests in `e2e/roadmap.spec.ts`, `feedback.spec.ts`, `ideas.spec.ts`, `team.spec.ts`) and `build` pass.
+- **Checks:** `pnpm lint`, `typecheck`, `test` (152 tests), `test:e2e` (21 tests in `e2e/roadmap.spec.ts`, `feedback.spec.ts`, `ideas.spec.ts`, `team.spec.ts`) and `build` pass.
 - **Git:** doc 21 work is committed locally on `main` (sidebar `668679c`, step A `e853923`, step B `92ae9fa`, step C + docs after it). **Not pushed yet.**
 - **Dev tip:** Turbopack's dev cache sometimes serves stale code after edits (seen twice: CSS and a new service export). If a change doesn't show up, stop `pnpm dev`, delete `.next/dev`, and start it again.
 - **Dev test account on this Mac:** `claude-dev@example.test` / `devpassword123` (account `claude-dev`, workspace `dev-product`). Local dev DB only.
@@ -57,7 +57,7 @@
 
 ## Next step
 Resume here. On a new session say: *"Read docs/PROGRESS.md and continue from Next step."*
-1. **Phase 3 step 8**: notification preferences + email jobs (new idea, new comment) via BullMQ (doc 20 §4.3; per member instant / daily / off; owners and admins instant by default).
+1. **Phase 4 plan** (Updates / changelog + subscribers + email, doc 05 and doc 22 §2.4): write the plan doc for approval. Updates get their own `update_categories` (coloured; defaults from doc 15 §9 #5). Follow emails to voters ("status changed", "shipped") ship with it (doc 20 D3).
 2. **Owner (blocking for the imports):** export from LoopedIn and put both files in `docs/samples/`: the roadmap (Roadmap → More → Export) and the feedback (Boards → More → Export).
 3. With the exports: Phase 2 step 10 (LoopedIn roadmap import at `/dashboard/<workspace>/roadmap/import?r=<roadmap-slug>`: papaparse, preview step, idempotent by `external_ref`, totals into `imported_votes`, Vitest + Playwright flow 6), then Phase 3 step 9 (feedback import + CSV export). Tick doc 19 "Done when" and mark Phase 2 done.
 4. Open follow-ups: a strict Content-Security-Policy on public pages (they now share the dashboard's origin, doc 19 "D1 revised"); optional redirect from old dashboard URLs `/<workspace>/…` to `/dashboard/<workspace>/…`.
@@ -102,7 +102,7 @@ Resume here. On a new session say: *"Read docs/PROGRESS.md and continue from Nex
 - [x] Phase 0 — Scaffold (doc 17)
 - [x] Phase 1 — Accounts & workspaces (doc 18)
 - [ ] Phase 2 — Roadmap + voting + public page + embed (all built except step 10, LoopedIn import)
-- [ ] Phase 3 — Feedback + triage + import (steps 1–7 built; 5–6 as doc 22 step 4)
+- [ ] Phase 3 — Feedback + triage + import (steps 1–8 built; step 9 import waits for the LoopedIn export)
 - [x] Roadmap admin redesign — doc 21 (steps A–C)
 - [ ] Phase 4 — Updates + email
 - [ ] Phase 5 — Knowledge base
@@ -129,3 +129,4 @@ Resume here. On a new session say: *"Read docs/PROGRESS.md and continue from Nex
 | 2026-10-29 | radiustheme (Mac 2) | Public site analysis + plan (doc 22) approved; step 1: categories → objectives everywhere (migration 0006, run `pnpm db:migrate`) | Doc 22 step 2 (public shell) |
 | 2026-10-29 | radiustheme (Mac 2) | Doc 22 steps 2–4: public header tabs + Public site switches + legal links; public roadmap restyle; public Ideas page with submission, voting, inbox review, 308 for merged ideas (doc 20 steps 5–6). 144 unit + 20 e2e passing | Phase 3 step 7 (public comments + follows) |
 | 2026-10-29 | radiustheme (Mac 2) | Phase 3 step 7: public comments on ideas + cards (approval, team replies, internal notes, moderation page), idea follows (auto on vote/submit), Public settings switches; shared comments service replaces card-only comments. 147 unit + 21 e2e | Phase 3 step 8 (notification emails) |
+| 2026-10-29 | radiustheme (Mac 2) | Phase 3 step 8: team email alerts (new idea, new comment; instant / daily digest / off per member), notify queue + daily scheduler, Settings → Notifications. 152 unit + 21 e2e | Phase 4 plan (Updates) |

@@ -9,6 +9,7 @@ import {
 import { workspaceAction } from "@/server/action";
 import { db } from "@/server/db/client";
 import { invalidatePublic } from "@/server/public-cache";
+import { notify } from "@/server/queue/notifications";
 import {
   addTeamComment,
   approveComment,
@@ -41,6 +42,7 @@ export const addCommentAction = workspaceAction(
       internal,
     });
     if (!internal) invalidatePublic(ctx.workspaceId);
+    await notify({ type: "new-comment", commentId: row.id });
     return { id: row.id, createdAt: row.createdAt };
   },
 );

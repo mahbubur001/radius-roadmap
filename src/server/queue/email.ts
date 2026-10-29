@@ -22,7 +22,10 @@ export const emailQueue =
 
 globalForQueue.emailQueue = emailQueue;
 
-/** Queue an email. Rendering and sending happen in the worker. */
-export async function enqueueEmail(job: EmailJob) {
-  await emailQueue.add(job.template, job);
+/**
+ * Queue an email. Rendering and sending happen in the worker. `jobId` makes
+ * it idempotent (the same id is only queued once).
+ */
+export async function enqueueEmail(job: EmailJob, jobId?: string) {
+  await emailQueue.add(job.template, job, jobId ? { jobId } : undefined);
 }

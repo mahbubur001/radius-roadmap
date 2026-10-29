@@ -95,4 +95,121 @@ export const templates: { [T in EmailTemplate]: TemplateDef<T> } = {
       </EmailLayout>
     ),
   },
+  "new-feedback": {
+    subject: ({ workspaceName, title }) =>
+      `New idea in ${workspaceName}: ${title}`,
+    render: ({
+      workspaceName,
+      title,
+      excerpt,
+      author,
+      pending,
+      url,
+      settingsUrl,
+    }) => (
+      <EmailLayout
+        preview={`${author} suggested “${title}”`}
+        heading="New idea"
+        action={{
+          label: pending ? "Review in the inbox" : "Open the idea",
+          url,
+        }}
+      >
+        <Text>
+          <strong>{author}</strong> suggested an idea in {workspaceName}:
+        </Text>
+        <Text style={{ fontSize: 18, fontWeight: 600 }}>{title}</Text>
+        {excerpt ? <Text style={{ color: "#555" }}>{excerpt}</Text> : null}
+        {pending ? (
+          <Text>
+            It's waiting in the inbox and isn't public until someone approves
+            it.
+          </Text>
+        ) : null}
+        <Unsubscribe url={settingsUrl} />
+      </EmailLayout>
+    ),
+  },
+  "new-comment": {
+    subject: ({ targetTitle, author }) =>
+      `${author} commented on “${targetTitle}”`,
+    render: ({
+      workspaceName,
+      targetTitle,
+      author,
+      excerpt,
+      pending,
+      internal,
+      url,
+      settingsUrl,
+    }) => (
+      <EmailLayout
+        preview={excerpt}
+        heading={internal ? "New internal note" : "New comment"}
+        action={{ label: pending ? "Review the comment" : "Open", url }}
+      >
+        <Text>
+          <strong>{author}</strong> commented on <strong>{targetTitle}</strong>{" "}
+          in {workspaceName}:
+        </Text>
+        <Text style={{ color: "#555", whiteSpace: "pre-wrap" }}>{excerpt}</Text>
+        {pending ? (
+          <Text>
+            It's waiting for approval before it shows on your public site.
+          </Text>
+        ) : null}
+        <Unsubscribe url={settingsUrl} />
+      </EmailLayout>
+    ),
+  },
+  "feedback-digest": {
+    subject: ({ workspaceName, ideas, comments }) =>
+      `${workspaceName}: ${count(ideas.length, "new idea")}, ${count(comments.length, "comment")}`,
+    render: ({ workspaceName, ideas, comments, url, settingsUrl }) => (
+      <EmailLayout
+        preview={`What happened in ${workspaceName} today`}
+        heading={`Today in ${workspaceName}`}
+        action={{ label: "Open feedback", url }}
+      >
+        {ideas.length ? (
+          <>
+            <Text style={{ fontWeight: 600 }}>
+              {count(ideas.length, "new idea")}
+            </Text>
+            {ideas.map((i) => (
+              <Text key={i.url}>
+                • <a href={i.url}>{i.title}</a> by {i.author}
+              </Text>
+            ))}
+          </>
+        ) : null}
+        {comments.length ? (
+          <>
+            <Text style={{ fontWeight: 600 }}>
+              {count(comments.length, "new comment")}
+            </Text>
+            {comments.map((c) => (
+              <Text key={c.url + c.excerpt}>
+                • {c.author} on <a href={c.url}>{c.target}</a>: {c.excerpt}
+              </Text>
+            ))}
+          </>
+        ) : null}
+        <Unsubscribe url={settingsUrl} />
+      </EmailLayout>
+    ),
+  },
 };
+
+function count(n: number, noun: string) {
+  return `${n} ${noun}${n === 1 ? "" : "s"}`;
+}
+
+function Unsubscribe({ url }: { url: string }) {
+  return (
+    <Text style={{ color: "#888", fontSize: 12 }}>
+      You get this because of your notification settings.{" "}
+      <a href={url}>Change them</a>.
+    </Text>
+  );
+}

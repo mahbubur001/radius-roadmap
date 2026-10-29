@@ -1,6 +1,7 @@
 import { randomUUID } from "node:crypto";
 import { type Browser, expect, type Page, test } from "@playwright/test";
 import { signUpOwner } from "./helpers";
+import { waitForMail } from "./mail";
 
 // Public Ideas (doc 20 steps 5–8, doc 22 step 4).
 
@@ -31,7 +32,7 @@ test("a guest submits an idea, the team approves it, a visitor votes", async ({
   browser,
 }) => {
   const id = randomUUID().slice(0, 8);
-  const { slug } = await signUpOwner(page, id);
+  const { slug, email } = await signUpOwner(page, id);
   const url = await ideasUrl(page, slug);
 
   // A guest fills in LoopedIn's side form.
@@ -58,6 +59,11 @@ test("a guest submits an idea, the team approves it, a visitor votes", async ({
   await expect(mine.getByText("Waiting for review")).toBeVisible();
   // Now logged in as the guest: the form stops asking for a name.
   await expect(form.getByText("Posting as")).toBeVisible();
+
+  // The owner gets an instant email (worker → notify → email queue).
+  const alert = await waitForMail(email, "New idea in");
+  expect(alert.text).toContain("Dark mode please");
+  expect(alert.text).toContain("Guest Gina");
 
   // The team approves it from the inbox.
   await page.goto(`/dashboard/${slug}/feedback/inbox`);

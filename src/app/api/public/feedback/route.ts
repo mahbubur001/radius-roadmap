@@ -3,6 +3,7 @@ import { submitIdeaSchema } from "@/lib/schemas/feedback";
 import { db } from "@/server/db/client";
 import { invalidatePublic } from "@/server/public-cache";
 import { notFound, publicRequest } from "@/server/public-request";
+import { notify } from "@/server/queue/notifications";
 import { hit, SUBMIT_LIMITS } from "@/server/rate-limit";
 import { setIdeaFollow } from "@/server/services/comments";
 import { NotFoundError } from "@/server/services/context";
@@ -99,6 +100,7 @@ export async function POST(request: NextRequest) {
       source,
     });
     if (item.review === "approved") invalidatePublic(ws.id);
+    await notify({ type: "new-feedback", feedbackId: item.id });
     return req.respond({
       id: item.id,
       slug: item.slug,

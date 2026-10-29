@@ -7,6 +7,7 @@ import { db } from "@/server/db/client";
 import { invalidatePublic } from "@/server/public-cache";
 import { publicCommentTarget } from "@/server/public-comment-target";
 import { notFound, publicRequest } from "@/server/public-request";
+import { notify } from "@/server/queue/notifications";
 import { COMMENT_LIMITS, hit } from "@/server/rate-limit";
 import {
   addPublicComment,
@@ -102,6 +103,7 @@ export async function POST(request: NextRequest) {
     source: req.embed ? "embed" : "public",
   });
   if (row.review === "approved") invalidatePublic(found.workspaceId);
+  await notify({ type: "new-comment", commentId: row.id });
   return req.respond({
     comment: {
       id: row.id,

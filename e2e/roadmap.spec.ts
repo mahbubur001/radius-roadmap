@@ -5,6 +5,9 @@ import { type Browser, expect, type Page, test } from "@playwright/test";
 import { signUpOwner } from "./helpers";
 import { waitForMail } from "./mail";
 
+// A stuck action fails fast with its locator instead of the whole test timing out.
+test.use({ actionTimeout: 10_000 });
+
 // Phase 2 flows (doc 19 §6). Each test signs up its own account, so the
 // public site lives at /<account-slug>/<workspace> (doc 19, D1 revised).
 

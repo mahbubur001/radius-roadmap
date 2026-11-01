@@ -2,6 +2,7 @@
 
 import { ArrowUp } from "lucide-react";
 import { cn } from "@/lib/utils";
+import { Hint } from "./hint";
 import { useVoter, type VoteKind } from "./voter-provider";
 
 /**
@@ -26,7 +27,7 @@ export function VoteButton({
   const active = voted.has(cardId);
   const total = totals[cardId] ?? votes;
 
-  return (
+  const button = (
     <button
       type="button"
       aria-pressed={active}
@@ -60,4 +61,6 @@ export function VoteButton({
       {total !== null ? <span data-testid="vote-count">{total}</span> : null}
     </button>
   );
+  // Small counts on cards and lists get a "Votes" tooltip (LoopedIn).
+  return variant === "inline" ? <Hint label="Votes">{button}</Hint> : button;
 }

@@ -1,6 +1,6 @@
 "use client";
 
-import { Lightbulb, MessageSquare } from "lucide-react";
+import { Lightbulb, MessagesSquare } from "lucide-react";
 import { useEffect, useState } from "react";
 import {
   Sheet,
@@ -12,6 +12,7 @@ import {
 import { cn } from "@/lib/utils";
 import type { PublicCard } from "@/server/services/public-site";
 import { CardDetail } from "./card-detail";
+import { Hint } from "./hint";
 import { VoteButton } from "./vote-button";
 
 type Column = { id: string; name: string; isDone: boolean };
@@ -151,22 +152,28 @@ export function PublicBoard({
                         {commentsEnabled ? (
                           <>
                             <span className="h-4 w-px bg-border" />
-                            <span
-                              className="flex items-center gap-1.5"
-                              title="Comments"
-                            >
-                              <MessageSquare className="size-4" />
-                              {card.comments}
-                            </span>
+                            <Hint label="Comments">
+                              <span
+                                // biome-ignore lint/a11y/noNoninteractiveTabindex: focusable so keyboard users get the tooltip
+                                tabIndex={0}
+                                className="flex items-center gap-1.5 rounded-md outline-none focus-visible:ring-2 focus-visible:ring-ring"
+                              >
+                                <MessagesSquare className="size-4" />
+                                {card.comments}
+                              </span>
+                            </Hint>
                           </>
                         ) : null}
                         {card.ideas ? (
-                          <span
-                            className="ml-auto flex size-7 items-center justify-center rounded-full bg-primary/10 text-primary"
-                            title={`Requested by your users (${card.ideas})`}
-                          >
-                            <Lightbulb className="size-4" />
-                          </span>
+                          <Hint label={`Requested by users (${card.ideas})`}>
+                            <span
+                              // biome-ignore lint/a11y/noNoninteractiveTabindex: focusable so keyboard users get the tooltip
+                              tabIndex={0}
+                              className="ml-auto flex size-7 items-center justify-center rounded-full bg-primary/10 text-primary outline-none focus-visible:ring-2 focus-visible:ring-ring"
+                            >
+                              <Lightbulb className="size-4" />
+                            </span>
+                          </Hint>
                         ) : null}
                       </div>
                     </article>

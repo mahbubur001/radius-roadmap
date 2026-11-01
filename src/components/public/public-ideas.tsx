@@ -1,6 +1,6 @@
 "use client";
 
-import { Lightbulb, MessageSquare, Plus, Search } from "lucide-react";
+import { Lightbulb, MessagesSquare, Plus, Search } from "lucide-react";
 import { useEffect, useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -13,6 +13,7 @@ import {
 } from "@/components/ui/sheet";
 import { cn } from "@/lib/utils";
 import type { IdeaSort, PublicIdea } from "@/server/services/public-ideas";
+import { Hint } from "./hint";
 import { IdeaDetail, StatusChip } from "./idea-detail";
 import { IdeaForm } from "./idea-form";
 import { VoteButton } from "./vote-button";
@@ -252,10 +253,16 @@ export function PublicIdeas({
                       </span>
                     ) : null}
                     {commentsEnabled ? (
-                      <span className="flex items-center gap-1">
-                        <MessageSquare className="size-3.5" />
-                        {idea.comments}
-                      </span>
+                      <Hint label="Comments">
+                        <span
+                          // biome-ignore lint/a11y/noNoninteractiveTabindex: focusable so keyboard users get the tooltip
+                          tabIndex={0}
+                          className="relative z-10 flex items-center gap-1 rounded-md outline-none focus-visible:ring-2 focus-visible:ring-ring"
+                        >
+                          <MessagesSquare className="size-3.5" />
+                          {idea.comments}
+                        </span>
+                      </Hint>
                     ) : null}
                   </div>
                 </div>

@@ -118,11 +118,13 @@
 }
 
 /*
- * Public sites (LoopedIn look): blue accent and slate greys. On :root so
- * drawers and dialogs, which portal to <body>, get it too. The account's
- * brand colour will override --primary here (doc 26 6C).
+ * Public sites (LoopedIn look): blue accent and slate greys. Set on :root so
+ * drawers and dialogs, which portal to <body>, get it too. Dark mode comes
+ * from the system (`.dark` on <html>) or the site's default (`.dark` on the
+ * site root); the light set must never apply then. The account's brand
+ * colour will override --primary here (doc 26 6C).
  */
-:root:has([data-site-theme]) {
+:root:not(.dark):has([data-site-theme]:not(.dark)) {
   --foreground: oklch(0.208 0.042 265.755);
   --card-foreground: oklch(0.208 0.042 265.755);
   --popover-foreground: oklch(0.208 0.042 265.755);
@@ -139,12 +141,26 @@
   --ring: oklch(0.585 0.233 277.117);
 }
 
-/* The public site's dark mode is a class on its root element. */
-[data-site-theme].dark,
-:root:has([data-site-theme].dark) {
+:root.dark:has([data-site-theme]),
+:root:has([data-site-theme].dark),
+[data-site-theme].dark {
+  --background: oklch(0.129 0.042 264.695);
+  --foreground: oklch(0.984 0.003 247.858);
+  --card: oklch(0.208 0.042 265.755);
+  --card-foreground: oklch(0.984 0.003 247.858);
+  --popover: oklch(0.208 0.042 265.755);
+  --popover-foreground: oklch(0.984 0.003 247.858);
   --primary: oklch(0.673 0.182 276.935);
-  --primary-foreground: oklch(0.208 0.042 265.755);
+  --primary-foreground: oklch(0.129 0.042 264.695);
+  --secondary: oklch(0.279 0.041 260.031);
+  --secondary-foreground: oklch(0.984 0.003 247.858);
+  --muted: oklch(0.279 0.041 260.031);
   --muted-foreground: oklch(0.704 0.04 256.788);
+  --accent: oklch(0.279 0.041 260.031);
+  --accent-foreground: oklch(0.984 0.003 247.858);
+  --border: oklch(1 0 0 / 10%);
+  --input: oklch(1 0 0 / 15%);
+  --ring: oklch(0.585 0.233 277.117);
 }
 
 @layer base {

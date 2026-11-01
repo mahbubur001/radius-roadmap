@@ -6,7 +6,7 @@ import { PublicComments } from "./public-comments";
 import { VoteButton } from "./vote-button";
 
 const TAB =
-  "-mb-px h-auto! flex-none rounded-none border-0 border-b-2 border-transparent px-1 pt-1 pb-4 text-muted-foreground after:hidden hover:text-foreground data-[state=active]:border-primary data-[state=active]:text-primary";
+  "-mb-px h-auto! flex-none rounded-none border-0 border-b-2 border-transparent px-1 pt-1 pb-4 text-muted-foreground after:hidden hover:text-foreground data-[state=active]:border-primary! data-[state=active]:text-primary!";
 
 /**
  * Full card view, shared by the card page and the board's drawer (doc 22

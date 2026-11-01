@@ -7,7 +7,7 @@ import { PublicComments } from "./public-comments";
 import { VoteButton } from "./vote-button";
 
 const TAB =
-  "-mb-px h-auto! flex-none rounded-none border-0 border-b-2 border-transparent px-1 pt-1 pb-4 text-muted-foreground after:hidden hover:text-foreground data-[state=active]:border-primary data-[state=active]:text-primary";
+  "-mb-px h-auto! flex-none rounded-none border-0 border-b-2 border-transparent px-1 pt-1 pb-4 text-muted-foreground after:hidden hover:text-foreground data-[state=active]:border-primary! data-[state=active]:text-primary!";
 
 /**
  * One idea, shared by the Ideas drawer and the idea page. `tags` and

@@ -345,6 +345,39 @@ export const templates: { [T in EmailTemplate]: TemplateDef<T> } = {
       </EmailLayout>
     ),
   },
+  "billing-payment-failed": {
+    subject: ({ accountName }) =>
+      `${accountName}: your payment didn't go through`,
+    render: ({ accountName, planName, url }) => (
+      <EmailLayout
+        preview="Update your card to keep your plan"
+        heading="Your payment didn't go through"
+        action={{ label: "Update payment details", url }}
+      >
+        <Text>
+          We couldn't charge the card for <strong>{accountName}</strong>'s{" "}
+          {planName} plan. We'll try again over the next few days. Update your
+          payment details to keep the plan.
+        </Text>
+      </EmailLayout>
+    ),
+  },
+  "billing-canceled": {
+    subject: ({ accountName }) => `${accountName}: your subscription has ended`,
+    render: ({ accountName, planName, url }) => (
+      <EmailLayout
+        preview="Your account is now on the Free plan"
+        heading="Your subscription has ended"
+        action={{ label: "See plans", url }}
+      >
+        <Text>
+          <strong>{accountName}</strong>'s {planName} plan has ended and the
+          account is now on the Free plan. Nothing was deleted: upgrade again
+          any time to turn paid features back on.
+        </Text>
+      </EmailLayout>
+    ),
+  },
 };
 
 function count(n: number, noun: string) {

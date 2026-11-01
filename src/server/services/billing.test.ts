@@ -15,6 +15,7 @@ import {
   createTestUser,
 } from "@/test/factories";
 import {
+  billingNotice,
   getBillingOverview,
   handleStripeEvent,
   type SubscriptionSnapshot,
@@ -252,5 +253,19 @@ describe("billing overview", () => {
     await expect(getBillingOverview(db, memberA)).rejects.toBeInstanceOf(
       ForbiddenError,
     );
+  });
+});
+
+describe("billing notices", () => {
+  it("finds the owners of the account behind a Stripe customer", async () => {
+    const notice = await billingNotice(db, `cus_${wsA.accountId}`);
+    expect(notice).toMatchObject({
+      accountId: wsA.accountId,
+      planName: "Pro",
+      billingPath: "/dashboard/alpha/settings/billing",
+    });
+    expect(notice?.owners).toHaveLength(1);
+    expect(notice?.owners[0]).toContain("owner-a");
+    expect(await billingNotice(db, "cus_unknown")).toBeNull();
   });
 });

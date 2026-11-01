@@ -7,11 +7,12 @@ import {
   NotFoundError,
   type WorkspaceContext,
 } from "@/server/services/context";
+import { PlanLimitError } from "@/server/services/plan-limits";
 import { requireWorkspace } from "@/server/session";
 
 export type ActionResult<T = undefined> =
   | { ok: true; data: T }
-  | { ok: false; error: string };
+  | { ok: false; error: string; upgrade?: true };
 
 /**
  * Wraps a server action: re-validates the input with the same Zod schema the
@@ -35,6 +36,10 @@ export function action<S extends z.ZodType, T>(
       return { ok: true, data: await handler(parsed.data) };
     } catch (error) {
       unstable_rethrow(error);
+      // The plan lacks a limit or feature: the UI offers an upgrade.
+      if (error instanceof PlanLimitError) {
+        return { ok: false, error: error.message, upgrade: true };
+      }
       if (
         error instanceof ForbiddenError ||
         error instanceof NotFoundError ||

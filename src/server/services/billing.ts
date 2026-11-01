@@ -1,4 +1,4 @@
-import { eq } from "drizzle-orm";
+import { and, asc, eq } from "drizzle-orm";
 import type Stripe from "stripe";
 import {
   type BillingInterval,
@@ -10,7 +10,14 @@ import {
   parseLookupKey,
 } from "@/lib/plans";
 import type { Db, DbOrTx } from "@/server/db/client";
-import { accountBilling, member, stripeEvents } from "@/server/db/schema";
+import {
+  accountBilling,
+  member,
+  organization,
+  stripeEvents,
+  user,
+  workspaces,
+} from "@/server/db/schema";
 import { stripe } from "@/server/stripe";
 import {
   type AccountContext,
@@ -259,4 +266,45 @@ function subscriptionOf(event: Pick<Stripe.Event, "type" | "data">) {
     default:
       return null;
   }
+}
+
+/**
+ * Who to tell about a billing problem (payment failed, subscription ended):
+ * the owners of the account behind a Stripe customer.
+ */
+export async function billingNotice(db: Db, customerId: string) {
+  const [row] = await db
+    .select({
+      accountId: accountBilling.accountId,
+      plan: accountBilling.plan,
+      accountName: organization.name,
+    })
+    .from(accountBilling)
+    .innerJoin(organization, eq(organization.id, accountBilling.accountId))
+    .where(eq(accountBilling.stripeCustomerId, customerId))
+    .limit(1);
+  if (!row) return null;
+  const [owners, [first]] = await Promise.all([
+    db
+      .select({ email: user.email })
+      .from(member)
+      .innerJoin(user, eq(user.id, member.userId))
+      .where(
+        and(eq(member.organizationId, row.accountId), eq(member.role, "owner")),
+      ),
+    db
+      .select({ slug: workspaces.slug })
+      .from(workspaces)
+      .where(eq(workspaces.accountId, row.accountId))
+      .orderBy(asc(workspaces.createdAt))
+      .limit(1),
+  ]);
+  return {
+    accountId: row.accountId,
+    accountName: row.accountName,
+    planName: PLANS[row.plan].name,
+    owners: owners.map((o) => o.email),
+    /** Path of Settings → Billing in the account's first workspace. */
+    billingPath: first ? `/dashboard/${first.slug}/settings/billing` : "/",
+  };
 }

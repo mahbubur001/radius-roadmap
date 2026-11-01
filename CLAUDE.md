@@ -53,6 +53,7 @@ pnpm db:generate            # drizzle-kit generate (after schema change)
 pnpm db:migrate             # apply migrations
 pnpm db:studio
 pnpm auth:generate          # regenerate Better Auth tables → src/server/db/schema/auth.ts
+pnpm stripe:setup           # create Stripe products + prices (lookup keys) for src/lib/plans.ts
 pnpm check                  # biome check --write
 pnpm lint                   # biome check (no writes, used by CI)
 pnpm typecheck              # next typegen + tsc (app + widget)

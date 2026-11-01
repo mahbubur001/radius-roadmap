@@ -95,6 +95,14 @@ export type EmailTemplateProps = {
     url: string;
     settingsUrl: string;
   };
+  /** To account owners: Stripe couldn't charge the card (doc 26 6A). */
+  "billing-payment-failed": {
+    accountName: string;
+    planName: string;
+    url: string;
+  };
+  /** To account owners: the subscription ended; the account is on Free. */
+  "billing-canceled": { accountName: string; planName: string; url: string };
 };
 
 export type EmailTemplate = keyof EmailTemplateProps;

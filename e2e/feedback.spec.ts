@@ -165,7 +165,7 @@ test("push to roadmap, 💡 on the card, card completion syncs, merge", async ({
   if (visitor && publicHref) {
     await visitor.goto(publicHref);
     await expect(
-      visitor.getByTitle("Requested by your users (1)"),
+      visitor.getByRole("img", { name: "Requested by your users (1)" }),
     ).toBeVisible();
     await visitor.close();
   }

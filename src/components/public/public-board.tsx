@@ -165,10 +165,14 @@ export function PublicBoard({
                           </>
                         ) : null}
                         {card.ideas ? (
-                          <Hint label={`Requested by users (${card.ideas})`}>
+                          <Hint
+                            label={`Requested by your users (${card.ideas})`}
+                          >
                             <span
                               // biome-ignore lint/a11y/noNoninteractiveTabindex: focusable so keyboard users get the tooltip
                               tabIndex={0}
+                              role="img"
+                              aria-label={`Requested by your users (${card.ideas})`}
                               className="ml-auto flex size-7 items-center justify-center rounded-full bg-primary/10 text-primary outline-none focus-visible:ring-2 focus-visible:ring-ring"
                             >
                               <Lightbulb className="size-4" />

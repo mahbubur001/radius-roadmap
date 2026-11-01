@@ -28,7 +28,7 @@ export function IdeaDetail({
 }) {
   return (
     <article className="flex flex-col">
-      <header className="flex flex-col items-start gap-4 px-6 pt-6 pb-5">
+      <header className="flex flex-col items-start gap-4 border-b px-6 pt-6 pb-5">
         <h1 className="pr-8 text-xl font-semibold tracking-tight">
           {idea.title}
         </h1>
@@ -45,7 +45,7 @@ export function IdeaDetail({
       <Tabs defaultValue="details" className="gap-0">
         <TabsList
           variant="line"
-          className="mx-6 h-auto w-auto justify-start gap-6 rounded-none border-b p-0"
+          className="mx-6 mt-5 h-auto w-auto justify-start gap-6 rounded-none border-b p-0"
         >
           <TabsTrigger value="details" className={TAB}>
             Details

@@ -22,6 +22,7 @@ import {
   NotFoundError,
   type WorkspaceContext,
 } from "./context";
+import { assertWithinLimit } from "./plan-limits";
 import { byPosition, keyAfter, keyBetween } from "./positions";
 import { inWorkspace } from "./roadmaps";
 
@@ -80,6 +81,7 @@ export async function createBoard(
   input: z.output<typeof createBoardSchema>,
 ) {
   assertRole(ctx, "admin");
+  await assertWithinLimit(db, ctx.accountId, "boards");
   const [last] = await db
     .select({ p: max(feedbackBoards.position) })
     .from(feedbackBoards)

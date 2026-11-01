@@ -15,11 +15,10 @@ import {
   type AccountContext,
   assertRole,
   ConflictError,
-  ForbiddenError,
   NotFoundError,
   toRole,
 } from "./context";
-import { getPlanLimits } from "./plan-limits";
+import { getPlanLimits, PlanLimitError } from "./plan-limits";
 
 // Invitations are written here (with our role rules) and accepted through
 // Better Auth's accept endpoint, whose afterAcceptInvitation hook calls
@@ -98,7 +97,9 @@ export async function invite(db: Db, ctx: AccountContext, input: InviteInput) {
     .from(member)
     .where(eq(member.organizationId, ctx.accountId));
   if ((members?.n ?? 0) + pending.length >= limits.teammates) {
-    throw new ForbiddenError("Your plan doesn't allow more teammates.");
+    throw new PlanLimitError(
+      `Your plan allows ${limits.teammates} teammates. Upgrade to add more.`,
+    );
   }
 
   const workspaceIds =

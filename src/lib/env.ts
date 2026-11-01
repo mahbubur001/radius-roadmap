@@ -40,6 +40,10 @@ export const env = createEnv({
     // "1" only when the app sits behind Cloudflare: trusts its cf-connecting-ip
     // (vote rate limits) and cf-ipcountry/cf-ipcity (geo) headers.
     TRUST_CLOUDFLARE: z.enum(["0", "1"]).default("0"),
+
+    // Stripe billing (doc 26 6A). Unset = billing off, every account unlimited.
+    STRIPE_SECRET_KEY: z.string().optional(),
+    STRIPE_WEBHOOK_SECRET: z.string().optional(),
   },
   client: {
     NEXT_PUBLIC_APP_URL: z.url(),
@@ -67,6 +71,8 @@ export const env = createEnv({
     VISITOR_SECRET: process.env.VISITOR_SECRET,
     TURNSTILE_SECRET_KEY: process.env.TURNSTILE_SECRET_KEY,
     TRUST_CLOUDFLARE: process.env.TRUST_CLOUDFLARE,
+    STRIPE_SECRET_KEY: process.env.STRIPE_SECRET_KEY,
+    STRIPE_WEBHOOK_SECRET: process.env.STRIPE_WEBHOOK_SECRET,
     NEXT_PUBLIC_APP_URL: process.env.NEXT_PUBLIC_APP_URL,
     NEXT_PUBLIC_TURNSTILE_SITE_KEY: process.env.NEXT_PUBLIC_TURNSTILE_SITE_KEY,
   },

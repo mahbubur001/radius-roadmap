@@ -30,6 +30,7 @@ import {
   type WorkspaceContext,
 } from "./context";
 import { seedFeedback } from "./feedback-boards";
+import { assertWithinLimit } from "./plan-limits";
 import { byPosition, keyAfter, keyBetween } from "./positions";
 import { seedUpdateCategories } from "./update-categories";
 
@@ -177,6 +178,7 @@ export async function createRoadmap(
   input: z.input<typeof createRoadmapSchema>,
 ) {
   assertRole(ctx, "admin");
+  await assertWithinLimit(db, ctx.accountId, "roadmaps");
   return db.transaction((tx) =>
     insertRoadmap(tx, ctx.accountId, ctx.workspaceId, input.title.trim()),
   );

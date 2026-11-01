@@ -19,7 +19,7 @@ import {
   seesAllWorkspaces,
   type WorkspaceContext,
 } from "./context";
-import { getPlanLimits } from "./plan-limits";
+import { assertSwitchesAllowed, assertWithinLimit } from "./plan-limits";
 import { seedWorkspace } from "./roadmaps";
 
 // Every query here is scoped by ctx.accountId. Never accept an accountId
@@ -96,14 +96,7 @@ export async function createWorkspace(
   assertRole(ctx, "admin");
   const data = createWorkspaceSchema.parse(input);
 
-  const limits = await getPlanLimits(db, ctx.accountId);
-  const [existing] = await db
-    .select({ n: count() })
-    .from(workspaces)
-    .where(eq(workspaces.accountId, ctx.accountId));
-  if ((existing?.n ?? 0) >= limits.workspaces) {
-    throw new ForbiddenError("Your plan doesn't allow more workspaces.");
-  }
+  await assertWithinLimit(db, ctx.accountId, "workspaces");
 
   try {
     return await db.transaction(async (tx) => {
@@ -163,6 +156,7 @@ export async function updatePublicSite(
   assertRole(ctx, "admin");
   const data = publicSiteSchema.parse(input);
   const current = await getOwnWorkspace(db, ctx, ctx.workspaceId);
+  await assertSwitchesAllowed(db, ctx.accountId, current.settings, data);
   const [row] = await db
     .update(workspaces)
     .set({ settings: { ...current.settings, ...data } })

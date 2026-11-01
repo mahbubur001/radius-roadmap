@@ -37,6 +37,7 @@ import {
 import { fileUrl } from "@/server/storage/url";
 import { likePattern } from "./cards";
 import type { PublicContext } from "./context";
+import { gateSettings } from "./plan-limits";
 import { byPosition } from "./positions";
 import {
   articleIsPublic,
@@ -199,7 +200,7 @@ async function publicWorkspace(db: Db, ctx: PublicContext, match: SQL) {
     name: ws.name,
     slug: ws.slug,
     logo: ws.logo,
-    settings: ws.settings,
+    settings: await gateSettings(db, ctx.accountId, ws.settings),
     roadmaps: boards,
     modules: {
       roadmap: boards.length > 0,

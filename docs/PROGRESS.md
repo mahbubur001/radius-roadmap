@@ -29,6 +29,7 @@
 - Phase 4 plan (Updates, subscribers, emails; approved + built 2026-10-29): `docs/23-phase-4-plan.md`
 - Edit roadmap redesign (LoopedIn modal, internal/public display, header images, completion emails; approved + built 2026-10-29): `docs/24-edit-roadmap-plan.md`
 - Phase 5 plan (Articles / knowledge base; approved + built 2026-10-29): `docs/25-phase-5-plan.md`
+- Phase 6 plan (Billing, widget, custom domain, white-label; draft 2026-11-01, waiting for approval): `docs/26-phase-6-plan.md`
 - Stack versions as built: `docs/14-dev-tools.md` → "Versions as built"
 
 ## Current status
@@ -63,7 +64,7 @@
 
 ## Next step
 Resume here. On a new session say: *"Read docs/PROGRESS.md and continue from Next step."*
-1. **Phase 6 plan** (Billing with Stripe + plan limits from doc 11, the embeddable widget, custom domains, white-label; doc 17/18 roadmap): write the plan doc (26) for approval. Phase 6 is large, so the plan should split it into sub-phases and ask which comes first.
+1. **Owner: approve doc 26** (Phase 6, decisions P1–P12) and pick the first sub-phase (recommended 6A Billing → 6B Widget → 6C Branding → 6D Custom domain). Then number its steps in doc 26 §8 and build.
 2. **Owner (blocking for the imports):** export from LoopedIn and put both files in `docs/samples/`: the roadmap (Roadmap → More → Export) and the feedback (Boards → More → Export).
 3. With the exports: Phase 2 step 10 (LoopedIn roadmap import at `/dashboard/<workspace>/roadmap/import?r=<roadmap-slug>`: papaparse, preview step, idempotent by `external_ref`, totals into `imported_votes`, Vitest + Playwright flow 6), then Phase 3 step 9 (feedback import + CSV export). Tick doc 19 "Done when" and mark Phase 2 done.
 4. Open follow-ups: a strict Content-Security-Policy on public pages (they now share the dashboard's origin, doc 19 "D1 revised"); optional redirect from old dashboard URLs `/<workspace>/…` to `/dashboard/<workspace>/…`.
@@ -146,3 +147,4 @@ Resume here. On a new session say: *"Read docs/PROGRESS.md and continue from Nex
 | 2026-10-29 | radiustheme (Mac 2) | Phase 4 step 7: emoji reactions on posts, update views tracked, Home tiles. **Phase 4 done.** 182 unit + 25 e2e | Phase 5 plan (Articles) |
 | 2026-10-29 | radiustheme (Mac 2) | Edit roadmap redesign (doc 24, approved): LoopedIn modal (one-transaction save, staged columns, Discard), Internal/Public display toggles, rich summaries, card header images, completion emails, public logo switch + tab names; migration 0009. 191 unit + 26 e2e | Phase 5 plan (Articles) |
 | 2026-10-29 | radiustheme (Mac 2) | Phase 5 Articles (doc 25, approved): schema 0010, admin list + categories + editor, public Articles tab (search, featured, recent, categories, pages), ratings, views, Home tiles, video embeds. **Phase 5 done.** 207 unit + 27 e2e | Phase 6 plan |
+| 2026-11-01 | radiustheme (Mac 2) | Phase 6 plan written (doc 26): sub-phases 6A billing, 6B widget, 6C branding, 6D custom domain; decisions P1–P12 | Owner approves doc 26 + picks the first sub-phase → build it |

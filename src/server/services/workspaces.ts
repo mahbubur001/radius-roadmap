@@ -125,13 +125,15 @@ export async function updateWorkspace(
   assertRole(ctx, "admin");
   const data = updateWorkspaceSchema.parse(input);
   const current = await getOwnWorkspace(db, ctx, id);
+  // `theme` replaces the old switch (doc 26 B2).
+  const { darkModeDefault: _, ...settings } = current.settings;
   try {
     const [row] = await db
       .update(workspaces)
       .set({
         name: data.name,
         slug: data.slug,
-        settings: { ...current.settings, ...data.settings },
+        settings: { ...settings, ...data.settings },
       })
       .where(
         and(eq(workspaces.accountId, ctx.accountId), eq(workspaces.id, id)),

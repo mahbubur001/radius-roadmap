@@ -2,7 +2,7 @@
 
 import { zodResolver } from "@hookform/resolvers/zod";
 import { useRouter } from "next/navigation";
-import { useForm } from "react-hook-form";
+import { Controller, useForm } from "react-hook-form";
 import { toast } from "sonner";
 import {
   deleteWorkspaceAction,
@@ -13,11 +13,32 @@ import { ConfirmDelete } from "@/components/form/confirm-delete";
 import { SwitchField } from "@/components/form/switch-field";
 import { TextField } from "@/components/form/text-field";
 import { Button } from "@/components/ui/button";
-import { FieldGroup, FieldSeparator } from "@/components/ui/field";
 import {
+  Field,
+  FieldContent,
+  FieldGroup,
+  FieldLabel,
+  FieldSeparator,
+} from "@/components/ui/field";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
+import {
+  SITE_THEMES,
+  type SiteTheme,
   type UpdateWorkspaceInput,
   updateWorkspaceSchema,
 } from "@/lib/schemas/workspace";
+
+const THEME_LABELS: Record<SiteTheme, string> = {
+  system: "Visitor's system",
+  light: "Light",
+  dark: "Dark",
+};
 
 export function WorkspaceSettingsForm({
   workspace,
@@ -67,10 +88,28 @@ export function WorkspaceSettingsForm({
             label="Require sign-in to vote, comment or submit"
             description="Off: anyone can vote anonymously."
           />
-          <SwitchField
+          <Controller
             control={form.control}
-            name="settings.darkModeDefault"
-            label="Dark mode by default"
+            name="settings.theme"
+            render={({ field }) => (
+              <Field orientation="horizontal">
+                <FieldContent>
+                  <FieldLabel htmlFor="settings.theme">Theme</FieldLabel>
+                </FieldContent>
+                <Select value={field.value} onValueChange={field.onChange}>
+                  <SelectTrigger id="settings.theme" className="w-44">
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {SITE_THEMES.map((t) => (
+                      <SelectItem key={t} value={t}>
+                        {THEME_LABELS[t]}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </Field>
+            )}
           />
           <SwitchField
             control={form.control}

@@ -92,6 +92,13 @@
       "when": 1793508073509,
       "tag": "0012_widget",
       "breakpoints": true
+    },
+    {
+      "idx": 13,
+      "version": "7",
+      "when": 1793516536430,
+      "tag": "0013_account_branding",
+      "breakpoints": true
     }
   ]
 }

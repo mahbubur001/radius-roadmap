@@ -24,8 +24,9 @@ import {
   updates,
   workspaces,
 } from "@/server/db/schema";
-import type { EmailJob } from "@/server/email/types";
+import type { EmailBrand, EmailJob } from "@/server/email/types";
 import { signLink } from "@/server/internal-signature";
+import { getEmailBrand } from "./branding";
 import { defaultWorkspaceSlug } from "./default-workspace";
 
 // Emails to people following an idea (doc 23 step 6, doc 20 D3): its status
@@ -145,10 +146,13 @@ export async function statusSweep(
     .limit(500);
 
   const out: FollowEmail[] = [];
+  // One workspace, so one account: its branding is looked up once.
+  let brand: EmailBrand | undefined;
   for (const idea of moved) {
     // Unknown previous status (e.g. it was deleted): record silently.
     if (idea.notifiedStatusId && idea.followable) {
       const followers = await followersOf(db, idea.accountId, [idea.id]);
+      if (followers.length) brand ??= await getEmailBrand(db, idea.accountId);
       for (const f of followers) {
         out.push({
           id: `status-${idea.id}-${idea.statusId}-${f.trackedUserId}`,
@@ -165,6 +169,7 @@ export async function statusSweep(
                 f.trackedUserId,
                 idea.id,
               ),
+              brand,
             },
           },
         });
@@ -236,6 +241,9 @@ export async function shippedEmails(
     first.accountId,
     ideas.map((i) => i.id),
   );
+  const brand = followers.length
+    ? await getEmailBrand(db, first.accountId)
+    : undefined;
   const postUrl = `${origin()}/${post.siteSlug}${wsSegment(post.wsSlug, post.defaultWs)}/updates/${post.slug}`;
   return followers.map((f) => ({
     id: `shipped-${post.id}-${f.feedbackId}-${f.trackedUserId}`,
@@ -252,6 +260,7 @@ export async function shippedEmails(
           f.trackedUserId,
           f.feedbackId,
         ),
+        brand,
       },
     },
   }));

@@ -49,11 +49,22 @@ export const createWorkspaceSchema = z.object({
 
 export type CreateWorkspaceInput = z.infer<typeof createWorkspaceSchema>;
 
+export const SITE_THEMES = ["system", "light", "dark"] as const;
+export type SiteTheme = (typeof SITE_THEMES)[number];
+
 export const workspaceSettingsSchema = z.object({
   requireVoterLogin: z.boolean(),
-  darkModeDefault: z.boolean(),
+  theme: z.enum(SITE_THEMES),
   indexPublicPages: z.boolean(),
 });
+
+/** The public site's theme; older workspaces stored `darkModeDefault`. */
+export function siteTheme(settings: {
+  theme?: SiteTheme;
+  darkModeDefault?: boolean;
+}): SiteTheme {
+  return settings.theme ?? (settings.darkModeDefault ? "dark" : "system");
+}
 
 const optionalUrl = z
   .union([

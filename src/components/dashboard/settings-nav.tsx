@@ -9,6 +9,7 @@ const items = [
   { href: "workspace", label: "Workspace" },
   { href: "notifications", label: "Notifications" },
   { href: "account", label: "Account" },
+  { href: "branding", label: "Branding" },
   { href: "team", label: "Team" },
 ];
 

@@ -4,6 +4,7 @@ import { Forbidden } from "@/components/dashboard/forbidden";
 import { SettingsSection } from "@/components/dashboard/settings-section";
 import { ImageUpload } from "@/components/form/image-upload";
 import { Skeleton } from "@/components/ui/skeleton";
+import { siteTheme } from "@/lib/schemas/workspace";
 import { db } from "@/server/db/client";
 import { seesAllWorkspaces } from "@/server/services/context";
 import { getWorkspaceBySlug } from "@/server/services/workspaces";
@@ -49,7 +50,7 @@ async function WorkspaceSettings({ slug }: { slug: Promise<string> }) {
           slug: ws.slug,
           settings: {
             requireVoterLogin: ws.settings.requireVoterLogin ?? false,
-            darkModeDefault: ws.settings.darkModeDefault ?? false,
+            theme: siteTheme(ws.settings),
             indexPublicPages: ws.settings.indexPublicPages ?? true,
           },
         }}

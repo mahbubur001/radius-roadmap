@@ -4,6 +4,7 @@ import {
   type AttachmentType,
   type ImageType,
   MAX_ATTACHMENT_BYTES,
+  MAX_FAVICON_BYTES,
   MAX_IMAGE_BYTES,
 } from "@/lib/schemas/upload";
 
@@ -18,6 +19,7 @@ export const prefixes = {
   /** Everything an account stored (deleted with the account). */
   account: (accountId: string) => `accounts/${accountId}/`,
   accountLogo: (accountId: string) => `accounts/${accountId}/logo`,
+  accountFavicon: (accountId: string) => `accounts/${accountId}/favicon`,
   workspaceLogo: (accountId: string, workspaceId: string) =>
     `accounts/${accountId}/workspaces/${workspaceId}/logo`,
   /** Images inside roadmap card descriptions. */
@@ -32,9 +34,11 @@ export function newKey(prefix: string, contentType: AttachmentType) {
   return `${prefix}/${randomUUID()}.${ATTACHMENT_TYPES[contentType]}`;
 }
 
-/** Largest upload a key may hold: only card attachments go above 2 MB. */
+/** Largest upload a key may hold: card attachments above 2 MB, favicons below. */
 export function maxBytesForKey(key: string) {
-  return key.includes("/card-files/") ? MAX_ATTACHMENT_BYTES : MAX_IMAGE_BYTES;
+  if (key.includes("/card-files/")) return MAX_ATTACHMENT_BYTES;
+  if (/^accounts\/[^/]+\/favicon\//.test(key)) return MAX_FAVICON_BYTES;
+  return MAX_IMAGE_BYTES;
 }
 
 export function isValidKey(key: string) {

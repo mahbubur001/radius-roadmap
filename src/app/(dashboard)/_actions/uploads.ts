@@ -1,6 +1,7 @@
 "use server";
 
 import {
+  MAX_FAVICON_BYTES,
   MAX_IMAGE_BYTES,
   requestUploadSchema,
   type SaveUploadInput,
@@ -8,7 +9,9 @@ import {
 } from "@/lib/schemas/upload";
 import { action } from "@/server/action";
 import { db } from "@/server/db/client";
+import { invalidateSite } from "@/server/public-cache";
 import { getAccount, setAccountLogo } from "@/server/services/accounts";
+import { setFavicon } from "@/server/services/branding";
 import { assertRole, ForbiddenError } from "@/server/services/context";
 import { setUserImage } from "@/server/services/profile";
 import {
@@ -29,6 +32,7 @@ type Target = {
   prefix: string;
   /** Saves the new key (or null) and returns the key it replaced. */
   save: (key: string | null) => Promise<string | null>;
+  maxBytes?: number;
 };
 
 /** Authorizes the caller for `purpose` and says where its file lives. */
@@ -65,6 +69,19 @@ async function resolveTarget(
       save: async (key) => {
         const before = (await getAccount(db, ctx)).logo;
         await setAccountLogo(db, ctx, key);
+        invalidateSite(ctx.accountId);
+        return before;
+      },
+    };
+  }
+
+  if (purpose === "account-favicon") {
+    return {
+      prefix: prefixes.accountFavicon(ctx.accountId),
+      maxBytes: MAX_FAVICON_BYTES,
+      save: async (key) => {
+        const before = await setFavicon(db, ctx, key);
+        invalidateSite(ctx.accountId);
         return before;
       },
     };
@@ -83,9 +100,14 @@ async function resolveTarget(
 
 export const requestUploadAction = action(
   requestUploadSchema,
-  async ({ purpose, workspaceId, contentType }) => {
+  async ({ purpose, workspaceId, contentType, size }) => {
     const target = await resolveTarget(purpose, workspaceId);
-    return createUpload(target.prefix, contentType);
+    if (target.maxBytes && size > target.maxBytes) {
+      throw new ForbiddenError(
+        `Files must be ${target.maxBytes / 1024} KB or smaller.`,
+      );
+    }
+    return createUpload(target.prefix, contentType, target.maxBytes);
   },
 );
 
@@ -96,7 +118,7 @@ export const saveUploadAction = action(
     if (key !== null) {
       if (!keyHasPrefix(key, target.prefix)) throw new ForbiddenError();
       const size = await fileSize(key);
-      if (size === null || size > MAX_IMAGE_BYTES) {
+      if (size === null || size > (target.maxBytes ?? MAX_IMAGE_BYTES)) {
         throw new ForbiddenError("The upload didn't finish. Try again.");
       }
     }

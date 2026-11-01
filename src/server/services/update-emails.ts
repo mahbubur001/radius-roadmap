@@ -11,7 +11,7 @@ import {
   updates,
   workspaces,
 } from "@/server/db/schema";
-import type { EmailJob } from "@/server/email/types";
+import type { EmailBrand, EmailJob } from "@/server/email/types";
 import { signLink } from "@/server/internal-signature";
 import { fileUrl } from "@/server/storage/url";
 import { defaultWorkspaceSlug } from "./default-workspace";
@@ -124,6 +124,7 @@ function absolute(html: string) {
 export function updateEmail(
   post: ClaimedPost,
   sub: { id: string; email: string },
+  brand?: EmailBrand,
 ): EmailJob {
   const unsubscribe = unsubscribeUrl(post.siteSlug ?? "", sub.id);
   const cover = fileUrl(post.cover);
@@ -146,6 +147,7 @@ export function updateEmail(
         : null,
       url: `${origin()}/${post.siteSlug}${wsSegment(post.workspaceSlug, post.defaultWs)}/updates/${post.slug}`,
       unsubscribeUrl: unsubscribe,
+      brand,
     },
     headers: {
       "List-Unsubscribe": `<${unsubscribe}>`,

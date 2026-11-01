@@ -1,9 +1,27 @@
+/**
+ * A tenant's branding on emails its end users get (doc 26 B4): voter codes,
+ * subscriptions, posts, follow emails. Team emails never carry one.
+ */
+export type EmailBrand = {
+  name: string;
+  /** Absolute URL; null = no logo (or the plan has none). */
+  logoUrl: string | null;
+  /** Hex button colour; null = the default. */
+  color: string | null;
+  poweredBy: boolean;
+};
+
 export type EmailTemplateProps = {
   "verify-email": { name: string; url: string };
   "reset-password": { name: string; url: string };
   "change-email": { name: string; newEmail: string; url: string };
   /** Voter sign-in on a public site: 6-digit code + one-click link. */
-  "voter-code": { siteName: string; code: string; url: string };
+  "voter-code": {
+    siteName: string;
+    code: string;
+    url: string;
+    brand?: EmailBrand;
+  };
   invitation: {
     inviterName: string;
     accountName: string;
@@ -51,7 +69,7 @@ export type EmailTemplateProps = {
     settingsUrl: string;
   };
   /** Double opt-in for update emails (doc 23 U1). */
-  "subscribe-confirm": { siteName: string; url: string };
+  "subscribe-confirm": { siteName: string; url: string; brand?: EmailBrand };
   /** A published post, sent to update subscribers (doc 23 step 5). */
   "update-published": {
     siteName: string;
@@ -63,6 +81,7 @@ export type EmailTemplateProps = {
     coverUrl: string | null;
     url: string;
     unsubscribeUrl: string;
+    brand?: EmailBrand;
   };
   /** To idea followers: its status changed (doc 23 step 6). */
   "idea-status-changed": {
@@ -71,6 +90,7 @@ export type EmailTemplateProps = {
     status: { name: string; color: string };
     url: string;
     unfollowUrl: string;
+    brand?: EmailBrand;
   };
   /** To idea followers: a published post shipped it. */
   "idea-shipped": {
@@ -79,6 +99,7 @@ export type EmailTemplateProps = {
     postTitle: string;
     postUrl: string;
     unfollowUrl: string;
+    brand?: EmailBrand;
   };
   /** To team members following a card: it was completed (doc 24 R4). */
   "card-completed": {

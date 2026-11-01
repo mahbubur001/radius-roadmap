@@ -4,6 +4,7 @@ import type { EmailJob } from "@/server/email/types";
 import { enqueueEmail } from "@/server/queue/email";
 import { type NotifyJob, notify } from "@/server/queue/notifications";
 import { revalidateFromWorker } from "@/server/revalidate-from-worker";
+import { getEmailBrand } from "@/server/services/branding";
 import { completionSweep } from "@/server/services/card-completion-emails";
 import { shippedEmails, statusSweep } from "@/server/services/follow-emails";
 import {
@@ -63,12 +64,16 @@ export async function notifyJob(job: Job<NotifyJob>) {
     // each email job id is post + subscriber (BullMQ ignores duplicates).
     const post = await claimUpdateEmail(db, data.updateId);
     if (!post) return { sent: 0 };
+    const brand = await getEmailBrand(db, post.accountId);
     let after: string | null = null;
     let sent = 0;
     for (;;) {
       const batch = await subscriberBatch(db, post, after);
       for (const sub of batch) {
-        await enqueueEmail(updateEmail(post, sub), `post-${post.id}-${sub.id}`);
+        await enqueueEmail(
+          updateEmail(post, sub, brand),
+          `post-${post.id}-${sub.id}`,
+        );
       }
       sent += batch.length;
       if (batch.length < 500) break;

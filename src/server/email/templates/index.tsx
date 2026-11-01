@@ -59,8 +59,9 @@ export const templates: { [T in EmailTemplate]: TemplateDef<T> } = {
   },
   "voter-code": {
     subject: ({ code, siteName }) => `${code} is your ${siteName} sign-in code`,
-    render: ({ siteName, code, url }) => (
+    render: ({ siteName, code, url, brand }) => (
       <EmailLayout
+        brand={brand}
         preview={`Your sign-in code is ${code}`}
         heading={`Sign in to ${siteName}`}
         action={{ label: "Sign in", url }}
@@ -214,8 +215,9 @@ export const templates: { [T in EmailTemplate]: TemplateDef<T> } = {
   "subscribe-confirm": {
     subject: ({ siteName }) =>
       `Confirm your subscription to ${siteName} updates`,
-    render: ({ siteName, url }) => (
+    render: ({ siteName, url, brand }) => (
       <EmailLayout
+        brand={brand}
         preview={`Confirm to get ${siteName} updates by email`}
         heading="Confirm your subscription"
         action={{ label: "Yes, send me updates", url }}
@@ -241,8 +243,10 @@ export const templates: { [T in EmailTemplate]: TemplateDef<T> } = {
       coverUrl,
       url,
       unsubscribeUrl,
+      brand,
     }) => (
       <EmailLayout
+        brand={brand}
         preview={`New from ${workspaceName}: ${title}`}
         heading={title}
         action={{ label: "Read on the site", url }}
@@ -276,8 +280,9 @@ export const templates: { [T in EmailTemplate]: TemplateDef<T> } = {
   },
   "idea-status-changed": {
     subject: ({ ideaTitle, status }) => `“${ideaTitle}” is now ${status.name}`,
-    render: ({ siteName, ideaTitle, status, url, unfollowUrl }) => (
+    render: ({ siteName, ideaTitle, status, url, unfollowUrl, brand }) => (
       <EmailLayout
+        brand={brand}
         preview={`An idea you follow is now ${status.name}`}
         heading="An idea you follow moved"
         action={{ label: "See the idea", url }}
@@ -295,8 +300,16 @@ export const templates: { [T in EmailTemplate]: TemplateDef<T> } = {
   },
   "idea-shipped": {
     subject: ({ ideaTitle }) => `Shipped: ${ideaTitle}`,
-    render: ({ siteName, ideaTitle, postTitle, postUrl, unfollowUrl }) => (
+    render: ({
+      siteName,
+      ideaTitle,
+      postTitle,
+      postUrl,
+      unfollowUrl,
+      brand,
+    }) => (
       <EmailLayout
+        brand={brand}
         preview={`${ideaTitle} has shipped`}
         heading="An idea you follow shipped"
         action={{ label: "Read the update", url: postUrl }}

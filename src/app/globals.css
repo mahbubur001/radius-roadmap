@@ -2,7 +2,14 @@
 @import "tw-animate-css";
 @import "shadcn/tailwind.css";
 
-@custom-variant dark (&:is(.dark *));
+/*
+ * Dark mode: `.dark` on <html> (next-themes), except on a public site whose
+ * theme is fixed (doc 26 B2): "dark" always, "light" never. Matched through
+ * :root so dialogs portalled to <body> follow it too.
+ */
+@custom-variant dark (&:is(.dark *, :root:has([data-site-theme="dark"]) *):not(
+    :root:has([data-site-theme="light"]) *
+  ));
 
 @theme inline {
   --color-background: var(--background);
@@ -119,17 +126,22 @@
 
 /*
  * Public sites (LoopedIn look): blue accent and slate greys. Set on :root so
- * drawers and dialogs, which portal to <body>, get it too. Dark mode comes
- * from the system (`.dark` on <html>) or the site's default (`.dark` on the
- * site root); the light set must never apply then. The account's brand
- * colour will override --primary here (doc 26 6C).
+ * drawers and dialogs, which portal to <body>, get it too. The site root's
+ * `data-site-theme` is "system" (follows `.dark` on <html>), "light" or
+ * "dark". The account's brand colour and font arrive as --brand,
+ * --brand-foreground and --site-font from SiteBrand (doc 26 6C).
  */
-:root:not(.dark):has([data-site-theme]:not(.dark)) {
+:root:has([data-site-theme="light"]),
+:root:not(.dark):has([data-site-theme="system"]) {
+  --background: oklch(1 0 0);
+  --card: oklch(1 0 0);
+  --popover: oklch(1 0 0);
+  --destructive: oklch(0.577 0.245 27.325);
   --foreground: oklch(0.208 0.042 265.755);
   --card-foreground: oklch(0.208 0.042 265.755);
   --popover-foreground: oklch(0.208 0.042 265.755);
-  --primary: oklch(0.511 0.262 276.966);
-  --primary-foreground: oklch(0.985 0 0);
+  --primary: var(--brand, oklch(0.511 0.262 276.966));
+  --primary-foreground: var(--brand-foreground, oklch(0.985 0 0));
   --secondary: oklch(0.968 0.007 247.896);
   --secondary-foreground: oklch(0.208 0.042 265.755);
   --muted: oklch(0.968 0.007 247.896);
@@ -138,20 +150,19 @@
   --accent-foreground: oklch(0.208 0.042 265.755);
   --border: oklch(0.929 0.013 255.508);
   --input: oklch(0.929 0.013 255.508);
-  --ring: oklch(0.585 0.233 277.117);
+  --ring: var(--brand, oklch(0.585 0.233 277.117));
 }
 
-:root.dark:has([data-site-theme]),
-:root:has([data-site-theme].dark),
-[data-site-theme].dark {
+:root.dark:has([data-site-theme="system"]),
+:root:has([data-site-theme="dark"]) {
   --background: oklch(0.129 0.042 264.695);
   --foreground: oklch(0.984 0.003 247.858);
   --card: oklch(0.208 0.042 265.755);
   --card-foreground: oklch(0.984 0.003 247.858);
   --popover: oklch(0.208 0.042 265.755);
   --popover-foreground: oklch(0.984 0.003 247.858);
-  --primary: oklch(0.673 0.182 276.935);
-  --primary-foreground: oklch(0.129 0.042 264.695);
+  --primary: var(--brand, oklch(0.673 0.182 276.935));
+  --primary-foreground: var(--brand-foreground, oklch(0.129 0.042 264.695));
   --secondary: oklch(0.279 0.041 260.031);
   --secondary-foreground: oklch(0.984 0.003 247.858);
   --muted: oklch(0.279 0.041 260.031);
@@ -160,7 +171,12 @@
   --accent-foreground: oklch(0.984 0.003 247.858);
   --border: oklch(1 0 0 / 10%);
   --input: oklch(1 0 0 / 15%);
-  --ring: oklch(0.585 0.233 277.117);
+  --ring: var(--brand, oklch(0.585 0.233 277.117));
+}
+
+/* The account's font (doc 26 P12); on <body> so portalled dialogs get it. */
+:root:has([data-site-theme]) body {
+  font-family: var(--site-font, var(--font-sans));
 }
 
 /* Underline tabs: the dashboard uses its blue (the sidebar colour). */

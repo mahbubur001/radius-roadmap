@@ -1,15 +1,12 @@
 import type { Metadata } from "next";
 import { Suspense } from "react";
 import { Forbidden } from "@/components/dashboard/forbidden";
-import { SettingsSection } from "@/components/dashboard/settings-section";
-import { ImageUpload } from "@/components/form/image-upload";
 import { Skeleton } from "@/components/ui/skeleton";
 import { db } from "@/server/db/client";
 import { getAccount } from "@/server/services/accounts";
 import { seesAllWorkspaces } from "@/server/services/context";
 import { billing, getAccountPlan } from "@/server/services/plan-limits";
 import { requireWorkspace } from "@/server/session";
-import { fileUrl } from "@/server/storage";
 import { AccountForm } from "./account-form";
 import { DeleteAccount } from "./delete-account";
 
@@ -35,17 +32,6 @@ async function AccountSettings({ slug }: { slug: Promise<string> }) {
 
   return (
     <>
-      <SettingsSection
-        title="Account logo"
-        description="Your company logo. Workspaces can have their own logo too."
-      >
-        <ImageUpload
-          purpose="account-logo"
-          name={account.name}
-          url={fileUrl(account.logo)}
-          rounded="md"
-        />
-      </SettingsSection>
       <AccountForm defaults={{ name: account.name, slug: account.slug }} />
       {ctx.role === "owner" ? (
         <DeleteAccount

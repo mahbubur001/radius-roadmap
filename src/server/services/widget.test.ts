@@ -17,6 +17,7 @@ import {
   createTestAccount,
   createTestUser,
 } from "@/test/factories";
+import { updateBranding } from "./branding";
 import {
   ForbiddenError,
   type PublicContext,
@@ -192,6 +193,33 @@ describe("widget site", () => {
     expect(site?.board).toBeTruthy();
     // Another account's slug doesn't resolve here.
     expect(await widgetSite(db, pub, "wiq")).toBeNull();
+  });
+
+  it("falls back to the account's brand colour and font", async () => {
+    await updateWidgetSettings(db, ws, { ...SETTINGS, color: "" });
+    await updateBranding(db, ws, {
+      color: "#facc15",
+      font: "lora",
+      hidePoweredBy: true,
+    });
+    const site = await widgetSite(db, pub, "wid");
+    expect(site?.settings).toMatchObject({
+      color: "#facc15",
+      onColor: "#0f172a",
+    });
+    expect(site?.brand).toEqual({
+      font: {
+        href: expect.stringContaining("family=Lora"),
+        stack: '"Lora", Georgia, serif',
+      },
+      poweredBy: false,
+    });
+    // The widget's own colour wins.
+    await updateWidgetSettings(db, ws, SETTINGS);
+    expect((await widgetSite(db, pub, "wid"))?.settings).toMatchObject({
+      color: "#123abc",
+      onColor: "#ffffff",
+    });
   });
 
   it("needs a plan with the widget when billing is on", async () => {

@@ -12,6 +12,8 @@ const geistMono = Geist_Mono({
 export const metadata: Metadata = {
   title: { default: "Radius Roadmap", template: "%s · Radius Roadmap" },
   description: "Customer feedback, public roadmaps and changelogs.",
+  // In public/ (not app/favicon.ico) so public sites can set their own (doc 26 B5).
+  icons: { icon: "/favicon.ico" },
 };
 
 export default function RootLayout({ children }: LayoutProps<"/">) {

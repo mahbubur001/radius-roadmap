@@ -101,10 +101,24 @@ export function App({
   }
 
   const side = s.position === "left" ? "left" : "right";
+  const font = site.brand.font;
+  useEffect(() => {
+    // Font faces only load from the page's own <head>, not a shadow root.
+    if (!font || document.querySelector(`link[href="${font.href}"]`)) return;
+    const link = document.createElement("link");
+    link.rel = "stylesheet";
+    link.href = font.href;
+    document.head.append(link);
+  }, [font]);
+  const vars = [
+    s.color && `--rr-accent:${s.color}`,
+    s.onColor && `--rr-on-accent:${s.onColor}`,
+    font && `--rr-font:${font.stack}`,
+  ].filter(Boolean);
   return (
     <div
       class={`rr ${s.layout} ${side}`}
-      style={s.color ? `--rr-accent:${s.color}` : undefined}
+      style={vars.length ? vars.join(";") : undefined}
     >
       {s.launcher === "bell" ? (
         <button
@@ -191,14 +205,16 @@ export function App({
                 </button>
               </footer>
             ) : null}
-            <a
-              class="powered"
-              href={site.siteUrl}
-              target="_blank"
-              rel="noopener"
-            >
-              Powered by Radius Roadmap
-            </a>
+            {site.brand.poweredBy ? (
+              <a
+                class="powered"
+                href={site.siteUrl}
+                target="_blank"
+                rel="noopener"
+              >
+                Powered by Radius Roadmap
+              </a>
+            ) : null}
           </div>
         </>
       ) : null}

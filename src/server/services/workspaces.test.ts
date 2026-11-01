@@ -23,7 +23,7 @@ import {
 
 const settings = {
   requireVoterLogin: false,
-  darkModeDefault: false,
+  theme: "system" as const,
   indexPublicPages: true,
 };
 
@@ -147,10 +147,10 @@ describe("update and delete", () => {
     const row = await updateWorkspace(db, ctxA, gamma.id, {
       name: "Gamma 2",
       slug: "gamma-2",
-      settings: { ...settings, darkModeDefault: true },
+      settings: { ...settings, theme: "dark" },
     });
     expect(row.slug).toBe("gamma-2");
-    expect(row.settings.darkModeDefault).toBe(true);
+    expect(row.settings.theme).toBe("dark");
   });
 
   it("deletes a workspace but never the last one", async () => {

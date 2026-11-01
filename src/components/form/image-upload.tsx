@@ -28,6 +28,8 @@ export function ImageUpload({
   name,
   url: initialUrl,
   rounded = "full",
+  maxBytes = MAX_IMAGE_BYTES,
+  disabled = false,
 }: {
   purpose: UploadPurpose;
   workspaceId?: string;
@@ -35,6 +37,10 @@ export function ImageUpload({
   name: string;
   url: string | null;
   rounded?: "full" | "md";
+  /** Smaller cap for some purposes (favicons: 256 KB). */
+  maxBytes?: number;
+  /** Uploading is off (plan); removing still works. */
+  disabled?: boolean;
 }) {
   const input = useRef<HTMLInputElement>(null);
   const [url, setUrl] = useState(initialUrl);
@@ -45,8 +51,8 @@ export function ImageUpload({
       toast.error("Use a PNG, JPEG or WebP image.");
       return;
     }
-    if (file.size > MAX_IMAGE_BYTES) {
-      toast.error("Images must be 2 MB or smaller.");
+    if (file.size > maxBytes) {
+      toast.error(`Images must be ${sizeLabel(maxBytes)} or smaller.`);
       return;
     }
     setBusy(true);
@@ -106,7 +112,7 @@ export function ImageUpload({
           type="button"
           variant="outline"
           size="sm"
-          disabled={busy}
+          disabled={busy || disabled}
           onClick={() => input.current?.click()}
         >
           <ImageUp />
@@ -131,8 +137,14 @@ export function ImageUpload({
         ) : null}
       </div>
       <p className="text-xs text-muted-foreground">
-        PNG, JPEG or WebP, up to 2 MB.
+        PNG, JPEG or WebP, up to {sizeLabel(maxBytes)}.
       </p>
     </div>
   );
+}
+
+function sizeLabel(bytes: number) {
+  return bytes >= 1024 * 1024
+    ? `${bytes / 1024 / 1024} MB`
+    : `${Math.round(bytes / 1024)} KB`;
 }

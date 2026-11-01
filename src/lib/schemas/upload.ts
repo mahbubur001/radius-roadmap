@@ -11,6 +11,9 @@ export type ImageType = keyof typeof IMAGE_TYPES;
 
 export const MAX_IMAGE_BYTES = 2 * 1024 * 1024;
 
+/** Favicons are tiny; browsers fetch them on every first visit (doc 26 B5). */
+export const MAX_FAVICON_BYTES = 256 * 1024;
+
 /**
  * Card attachments (doc 21 step C): images plus PDF. No Office files: they are
  * zip containers we can't check by their first bytes. PDFs are served as
@@ -32,6 +35,7 @@ export function isImageType(type: string): type is ImageType {
 export const uploadPurposeSchema = z.enum([
   "avatar",
   "account-logo",
+  "account-favicon",
   "workspace-logo",
   "card-image",
 ]);

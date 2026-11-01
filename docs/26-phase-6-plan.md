@@ -1,6 +1,6 @@
 # 26 — Phase 6 plan: Billing, widget, custom domains, white-label
 
-Status: **APPROVED 2026-11-01** (P1–P12 as recommended; order 6A → 6B → 6C → 6D; custom SMTP later). **6A and 6B built 2026-11-01** (see "As built"); 6C next.
+Status: **APPROVED 2026-11-01** (P1–P12 as recommended; order 6A → 6B → 6C → 6D; custom SMTP later). **6A and 6B built 2026-11-01** (see "As built"); **6C built 2026-11-01** (B1–B7 approved; see §13); 6D custom domain next.
 
 Phase 6 turns the product into something we can sell: paid plans with limits, the JavaScript widget, a customer's own domain, and branding. It is too large for one pass, so it is split into four sub-phases that can ship (and be committed) independently.
 
@@ -92,6 +92,22 @@ What exists today:
 - Gates: logo = Startup; colour/font/hide "Powered by" = Pro.
 - `invalidateSite(accountId)` on every change.
 
+### 6C decisions — **approved 2026-11-01 (all as recommended)**
+
+| # | Question | Recommendation | Alternative |
+|---|----------|----------------|-------------|
+| B1 | Branding level | **Account-level** (one brand for all workspaces, doc 09). Workspace logo stays as an override; nothing else per workspace | Full branding per workspace |
+| B2 | Default theme | **Per workspace, as today**, but the existing `darkModeDefault` switch becomes `theme: light \| dark \| system` (old `true` → `dark`). Account-level default would duplicate it | Move it to the account |
+| B3 | Brand colour scope | `--primary`, `--ring` and accent tab underline on public pages (light + dark), embeds, widget launcher/header **default** (widget's own colours still win when set), email buttons. Foreground (white / near-black) computed from luminance; Settings warns when contrast with white < 3:1 | Separate colours per surface |
+| B4 | Which emails get branded | Emails a tenant's **end users** receive (subscriber posts, double opt-in, follow/status, voter sign-in codes, completion): account logo, brand colour, "Powered by" footer. **Team** emails (auth, invites, alerts, billing) keep Radius Roadmap branding | Brand all emails |
+| B5 | Favicon | Upload PNG / ICO / SVG, ≤ 256 KB, square; falls back to the account logo, then to our icon | Generate from the logo |
+| B6 | Fonts (P12) | ~15 curated Google Fonts in `src/lib/fonts.ts` (Inter default, plus e.g. Roboto, Open Sans, Lato, Poppins, Montserrat, Nunito, Source Sans 3, Work Sans, DM Sans, Manrope, IBM Plex Sans, Merriweather, Lora, Playfair Display). One `<link>` with `display=swap`; widget uses the font too; emails keep a web-safe stack | Self-host fonts |
+| B7 | Downgrade (P6) | Stored values are kept; `effectiveBranding()` drops what the plan lacks (colour/font → defaults, "Powered by" shows again, logo → initials on Free) | Clear the values |
+
+### 6C data
+- Migration `0013`: `account_settings` (account_id PK → organization, cascade; `branding` jsonb `{ favicon?, color?, font?, hidePoweredBy? }`; updated_at). The account logo already exists (`organization.logo`, `setAccountLogo` in `services/accounts.ts`) and is reused, not duplicated. Favicon keys under a new `prefixes.accountFavicon(accountId)` (like `accountLogo`), checked with `keyHasPrefix`.
+- Workspace settings jsonb: `theme` replaces `darkModeDefault` (read both, write `theme`).
+
 ## 6. Sub-phase 6D — Custom domain
 
 - `custom_domains` table (migration): account_id (unique, P11), hostname (unique, lowercased), status `pending | active | failed`, verified_at, last_checked_at, error.
@@ -124,6 +140,13 @@ What exists today:
 3. **Bundle** `public/widget.js`: Preact in Shadow DOM, sidebar + popover, launcher (bell / custom selector), unread badge (`localStorage`), post list → post view, reactions, "Send feedback" form, JS API `RadiusRoadmap.init/show/hide/toggle`, < 15 KB gz check.
 4. **Views + e2e:** `widget_view` events + Home tile; Playwright: test page with the snippet → open → post → react → feedback lands in the inbox.
 5. **Docs:** "As built", PROGRESS.
+
+6C (approved + built 2026-11-01, §13):
+1. **Schema + service:** migration `0013` (`account_settings`), `src/lib/schemas/branding.ts` (Zod: hex colour, font id from the list, upload keys), `src/lib/fonts.ts`, `src/lib/color.ts` (luminance → foreground, contrast ratio), `src/server/services/branding.ts` (`getBranding`, `updateBranding` owner/admin only with gates per field, `effectiveBranding(plan)`), `invalidateSite` on save. Tests: tenant isolation, gates per field, downgrade fallback, colour maths.
+2. **Settings → Branding** (account section, owner/admin): logo (moves here from Account settings, same storage) + favicon upload, `ColorPicker` with contrast warning, font select (rendered in each font), "Show Powered by" switch, locks + upgrade toast for gated fields, small live preview (header, tab, button). Workspace settings: theme select Light / Dark / System.
+3. **Public sites + embeds:** `loadSite` returns effective branding; site root sets `--primary`, `--primary-foreground`, `--ring` (light + dark) inline; font `<link>` + `font-family` on the site root; favicon via `icons` in the public layout metadata; header logo = workspace logo → account logo → initials; footer hidden when "Powered by" is off; `next-themes` default from `theme`.
+4. **Widget + emails:** widget config gets `brand { color, font, poweredBy }` (widget colours default to the brand colour); widget footer obeys it; bundle size check still < 15 KB gz. `EmailLayout` takes an optional `brand { name, logoUrl, color, poweredBy }`; end-user emails (B4) pass the account's effective branding.
+5. **e2e + docs:** Playwright: Pro account sets colour + font + hides "Powered by" → public page shows them (computed style), downgrade → defaults return; Free sees locks. "As built", PROGRESS.
 
 ## 9. Done when (6A)
 - [x] An owner can upgrade, change interval, downgrade and cancel through Stripe; the app follows within one webhook. *(Code + unit tests with a mocked Stripe; not yet tried against Stripe test mode, waiting for keys.)*
@@ -178,3 +201,16 @@ What exists today:
 - **Home:** "Widget opens" tile (`widget_view`, rate-limited per visitor).
 - **Tests:** `src/server/services/widget.test.ts` (settings, keys + rotation, tokens: other account's key, expired, too long, missing `sub`; identity; site data; plan gate; inbox review). e2e `e2e/widget.spec.ts` (publish → test page → badge → post → reaction → badge cleared → feedback → inbox). 232 unit, 29 e2e (+1 skipped).
 - **Not done:** user segmentation (`segment`, Enterprise), ideas list / article search in the widget (P9: later), dark mode for the widget.
+
+## 13. As built: 6C Branding (2026-11-01)
+
+- **Schema (`0013_account_branding`):** `account_settings` (account_id PK → organization, cascade; `branding` jsonb `{ favicon, color, font, hidePoweredBy }`). The account logo stays `organization.logo`. Workspace settings: `theme: system | light | dark` replaces `darkModeDefault` (read as a fallback: old `true` → dark, else system; saving the workspace form drops the old key).
+- **Service** `src/server/services/branding.ts`: `getBranding`, `updateBranding` (owners/admins; a gated value can be set or changed only on a plan that has it; clearing and re-saving unchanged values after a downgrade are allowed), `setFavicon`, `effectiveBranding(plan, stored)` / `getEffectiveBranding` (B7: what the plan lacks falls back; hex re-checked because it goes into a `<style>` tag), `getEmailBrand` (worker-safe). Gates: favicon + colour = `whiteLabel`, font = `customFonts`, hide "Powered by" = `hidePoweredBy` (Pro); logo = `logo` (Startup).
+- **Libs:** `src/lib/color.ts` (WCAG luminance, contrast, `foregroundFor`), `src/lib/fonts.ts` (15 Google Fonts, `fontHref`, `fontStack`), `src/lib/schemas/branding.ts`.
+- **Settings → Branding** (new nav item, owners/admins): logo (moved here from Account), favicon (256 KB, `prefixes.accountFavicon`, also capped in the signed upload and the local upload route), brand colour with a low-contrast warning (< 3:1 on white), font picker rendered in each font, "Hide Powered by" switch, plan badges linking to Billing, live preview. Settings → Workspace: Theme select (Visitor's system / Light / Dark).
+- **Public sites + embeds:** `loadSite` returns the effective brand (site cache tag, which plan changes already drop). `SiteShell` sets `data-site-theme`, renders `SiteBrand` (`--brand`, `--brand-foreground`, `--site-font` on `:root` + the font stylesheet), header logo = workspace logo → account logo → initials, footer hidden when "Powered by" is off. `globals.css`: public `--primary`/`--ring` read `var(--brand, …)` in light and dark; the light set is complete so "Light" holds even when `<html>` is dark; the `dark:` variant also follows a fixed site theme (portalled dialogs included). New `sites/[account]/layout.tsx` sets the favicon (favicon → logo → app icon); the app icon moved from `src/app/favicon.ico` to `public/favicon.ico` + root `metadata.icons` so a nested `icons` replaces it cleanly.
+- **Widget:** config gets `settings.color` (widget colour, else brand colour), `settings.onColor`, `brand { font { href, stack }, poweredBy }`. The bundle uses `--rr-on-accent` for text on the accent, loads the font into the host page's `<head>` (font faces don't load from a shadow root), hides "Powered by". 10.1 KB gz.
+- **Emails (B4):** `EmailBrand` (`name`, absolute `logoUrl`, `color`, `poweredBy`) on `voter-code`, `subscribe-confirm`, `update-published`, `idea-status-changed`, `idea-shipped`: logo above the heading, brand-coloured button with readable text, footer "<Account> · Powered by Radius Roadmap" or just the name. Team emails unchanged.
+- **Changes from the plan:** favicons are PNG/JPEG/WebP only (SVG can carry scripts on our origin; ICO isn't in the upload pipeline). "Default" font = the app's font (Geist), not Inter, so existing sites don't change.
+- **Tests:** `branding.test.ts` (colour maths, font URL, roles, tenant isolation, favicon kept on save, validation, gates per field, downgrade fallback, Free, email brand vs team email), `widget.test.ts` (brand fallback, widget colour wins), `keys.test.ts` (favicon cap), e2e `e2e/branding.spec.ts` (colour, font, favicon, dark theme, Powered by → public page computed style + widget config). 243 unit, 30 e2e (+1 skipped).
+- **Not done:** custom SMTP per account (later, §7); fonts in emails (web-safe stack on purpose).

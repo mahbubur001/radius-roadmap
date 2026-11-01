@@ -1,18 +1,21 @@
 import Link from "next/link";
 import type { ReactNode } from "react";
 import { EmbedResizer } from "@/components/public/embed-resizer";
+import { SiteBrand } from "@/components/public/site-brand";
 import { VoterMenu } from "@/components/public/voter-menu";
 import { VoterProvider } from "@/components/public/voter-provider";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { initials } from "@/lib/initials";
 import { wsPath } from "@/lib/public-path";
+import { siteTheme } from "@/lib/schemas/workspace";
 import { cn } from "@/lib/utils";
 import type { WorkspaceSettings } from "@/server/db/schema";
+import { loadSite } from "./data";
 
 /**
  * Chrome around every public page of a workspace. In embed mode (inside the
- * customer's iframe) the header and footer are dropped and the height is
- * reported to embed.js.
+ * customer's iframe) the header is dropped and the height is reported to
+ * embed.js. The account's branding (doc 26 6C) applies in both.
  */
 export type SiteModule = "roadmap" | "updates" | "ideas" | "articles";
 
@@ -24,7 +27,7 @@ const MODULES: { key: SiteModule; label: string }[] = [
   { key: "articles", label: "Articles" },
 ];
 
-export function SiteShell({
+export async function SiteShell({
   account,
   workspace,
   active,
@@ -42,6 +45,7 @@ export function SiteShell({
     logoUrl: string | null;
     settings: Pick<
       WorkspaceSettings,
+      | "theme"
       | "darkModeDefault"
       | "showLogo"
       | "roadmapLabel"
@@ -60,18 +64,24 @@ export function SiteShell({
   children: ReactNode;
 }) {
   const home = MODULES.find((m) => workspace.modules[m.key])?.key ?? active;
+  const site = await loadSite(account);
+  const brand = site?.brand;
+  // Workspace logo, else the account's (both need the plan's logo feature).
+  const logoUrl = workspace.features.logo
+    ? (workspace.logoUrl ?? site?.logoUrl ?? null)
+    : null;
   return (
     <VoterProvider site={account} workspaceId={workspace.id} embed={embed}>
       <div
         data-embed-root={embed ? "" : undefined}
-        data-site-theme=""
+        data-site-theme={siteTheme(workspace.settings)}
         className={cn(
           "flex flex-col bg-background text-foreground",
           // In an iframe the height follows the content (see embed.js).
           !embed && "min-h-svh",
-          workspace.settings.darkModeDefault && "dark",
         )}
       >
+        {brand ? <SiteBrand brand={brand} /> : null}
         {embed ? (
           <>
             <EmbedResizer />
@@ -88,9 +98,7 @@ export function SiteShell({
               >
                 {workspace.settings.showLogo !== false ? (
                   <Avatar className="size-7 rounded-md">
-                    {workspace.features.logo && workspace.logoUrl ? (
-                      <AvatarImage src={workspace.logoUrl} alt="" />
-                    ) : null}
+                    {logoUrl ? <AvatarImage src={logoUrl} alt="" /> : null}
                     <AvatarFallback className="rounded-md text-xs">
                       {initials(workspace.name)}
                     </AvatarFallback>
@@ -144,9 +152,11 @@ export function SiteShell({
             children
           )}
         </main>
-        <footer className="py-4 text-center text-xs text-muted-foreground">
-          Powered by Radius Roadmap
-        </footer>
+        {brand?.poweredBy !== false ? (
+          <footer className="py-4 text-center text-xs text-muted-foreground">
+            Powered by Radius Roadmap
+          </footer>
+        ) : null}
       </div>
     </VoterProvider>
   );

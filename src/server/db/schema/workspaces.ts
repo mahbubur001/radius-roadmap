@@ -29,6 +29,9 @@ export type WorkspaceSettings = {
   widget?: WidgetSettings;
   /** Require voters to sign in before voting/commenting/submitting. */
   requireVoterLogin?: boolean;
+  /** Public site theme (doc 26 B2). Missing = `darkModeDefault`, then system. */
+  theme?: "system" | "light" | "dark";
+  /** Before 6C; read only when `theme` is missing. */
   darkModeDefault?: boolean;
   /** Let search engines index the public pages (on by default). */
   indexPublicPages?: boolean;

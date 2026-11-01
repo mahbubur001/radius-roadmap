@@ -88,3 +88,11 @@ describe("card attachments", () => {
     expect(sniffFile(enc.encode("%PDF-1.7"), "image/png")).toBe(false);
   });
 });
+
+describe("favicons", () => {
+  it("are capped at 256 KB", () => {
+    const icon = newKey(prefixes.accountFavicon("acct_1"), "image/png");
+    expect(keyHasPrefix(icon, prefixes.accountFavicon("acct_1"))).toBe(true);
+    expect(maxBytesForKey(icon)).toBe(256 * 1024);
+  });
+});

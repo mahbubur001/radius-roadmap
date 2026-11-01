@@ -3,6 +3,7 @@ import { cacheLife, cacheTag } from "next/cache";
 import { env } from "@/lib/env";
 import { db } from "@/server/db/client";
 import { publicTag, siteTag } from "@/server/public-cache";
+import { getEffectiveBranding } from "@/server/services/branding";
 import {
   getPublicArticle,
   getPublicArticleCategory,
@@ -35,8 +36,15 @@ export async function loadSite(account: string) {
   "use cache";
   cacheLife("minutes");
   const site = await resolveSite(db, account);
-  if (site) cacheTag(siteTag(site.accountId));
-  return site ? { ...site, logoUrl: fileUrl(site.logo) } : null;
+  if (!site) return null;
+  cacheTag(siteTag(site.accountId));
+  // Plan changes drop the site tag too, so gated branding stays current.
+  const brand = await getEffectiveBranding(db, site.accountId);
+  return {
+    ...site,
+    logoUrl: fileUrl(site.logo),
+    brand: { ...brand, faviconUrl: fileUrl(brand.favicon) },
+  };
 }
 
 export async function loadWorkspaces(accountId: string) {

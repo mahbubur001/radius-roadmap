@@ -6,6 +6,7 @@ import { db } from "@/server/db/client";
 import { notFound, publicRequest, siteOrigin } from "@/server/public-request";
 import { enqueueEmail } from "@/server/queue/email";
 import { hit, VOTE_LIMITS } from "@/server/rate-limit";
+import { getEmailBrand } from "@/server/services/branding";
 import { startEmailCode } from "@/server/services/voter-auth";
 
 const schema = startCodeSchema.extend({ next: z.string().max(500).optional() });
@@ -49,7 +50,12 @@ export async function POST(request: NextRequest) {
   await enqueueEmail({
     template: "voter-code",
     to: email,
-    props: { siteName: req.site.name, code, url: link.toString() },
+    props: {
+      siteName: req.site.name,
+      code,
+      url: link.toString(),
+      brand: await getEmailBrand(db, req.ctx.accountId),
+    },
   });
   return req.respond({ ok: true });
 }

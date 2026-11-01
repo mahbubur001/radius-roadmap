@@ -1,12 +1,12 @@
 // Shadow DOM styles: the host site's CSS can't reach in, ours can't leak out.
 export const styles = `
 :host { all: initial; }
-.rr { --rr-accent: #4f46e5; --rr-text: #0f172a; --rr-muted: #64748b; --rr-line: #e2e8f0;
-  font: 14px/1.5 system-ui, -apple-system, "Segoe UI", sans-serif; color: var(--rr-text); }
+.rr { --rr-accent: #4f46e5; --rr-on-accent: #fff; --rr-text: #0f172a; --rr-muted: #64748b; --rr-line: #e2e8f0;
+  font: 14px/1.5 var(--rr-font, system-ui, -apple-system, "Segoe UI", sans-serif); color: var(--rr-text); }
 .rr * { box-sizing: border-box; font: inherit; }
 .rr button { cursor: pointer; }
 .launcher { position: fixed; bottom: 20px; z-index: 2147483000; width: 52px; height: 52px;
-  display: grid; place-items: center; border: 0; border-radius: 50%; color: #fff;
+  display: grid; place-items: center; border: 0; border-radius: 50%; color: var(--rr-on-accent);
   background: var(--rr-accent); box-shadow: 0 6px 20px rgba(15,23,42,.25); }
 .right .launcher { right: 20px; } .left .launcher { left: 20px; }
 .badge { position: absolute; top: -2px; right: -2px; min-width: 20px; height: 20px; padding: 0 5px;
@@ -21,7 +21,7 @@ export const styles = `
   max-width: calc(100vw - 40px); border-radius: 14px; }
 .popover.right .panel { right: 20px; } .popover.left .panel { left: 20px; }
 header { display: flex; align-items: center; justify-content: space-between; gap: 8px;
-  padding: 14px 18px; background: var(--rr-accent); color: #fff; }
+  padding: 14px 18px; background: var(--rr-accent); color: var(--rr-on-accent); }
 .rr header strong { font-size: 16px; font-weight: 600; }
 header button { border: 0; background: none; color: inherit; }
 .close { font-size: 24px; line-height: 1; padding: 0 4px; opacity: .9; }
@@ -29,7 +29,7 @@ header button { border: 0; background: none; color: inherit; }
 .body { flex: 1; overflow-y: auto; }
 footer { padding: 12px 18px; border-top: 1px solid var(--rr-line); }
 .primary { width: 100%; padding: 9px 14px; border: 0; border-radius: 8px; background: var(--rr-accent);
-  color: #fff; font-weight: 600; }
+  color: var(--rr-on-accent); font-weight: 600; }
 .primary:disabled { opacity: .6; cursor: default; }
 .powered { display: block; padding: 6px; text-align: center; font-size: 11px; color: var(--rr-muted);
   text-decoration: none; }

@@ -1,6 +1,8 @@
 import { randomBytes } from "node:crypto";
 import { and, eq } from "drizzle-orm";
 import { jwtVerify } from "jose";
+import { foregroundFor } from "@/lib/color";
+import { fontHref, fontStack } from "@/lib/fonts";
 import {
   type WidgetSettingsInput,
   widgetSettings,
@@ -8,6 +10,7 @@ import {
 } from "@/lib/schemas/widget";
 import type { Db } from "@/server/db/client";
 import { widgetKeys, workspaces } from "@/server/db/schema";
+import { getEffectiveBranding } from "./branding";
 import {
   type AccountContext,
   assertRole,
@@ -190,14 +193,17 @@ export async function widgetSite(
   const ws = await getPublicWorkspace(db, ctx, workspaceSlug);
   if (!ws) return null;
   const settings = widgetSettings(ws.settings.widget);
-  const [updates, boards] = await Promise.all([
+  const [updates, boards, brand] = await Promise.all([
     ws.modules.updates
       ? listPublicUpdates(db, ctx, ws.id, { limit: 10 })
       : null,
     ws.modules.ideas && settings.feedback
       ? listPublicBoards(db, ctx, ws.id)
       : [],
+    getEffectiveBranding(db, ctx.accountId),
   ]);
+  // The widget's own colour wins; else the account's brand colour (doc 26 B3).
+  const color = settings.color ?? brand.color?.value ?? null;
   return {
     workspace: {
       id: ws.id,
@@ -208,8 +214,17 @@ export async function widgetSite(
     },
     settings: {
       ...settings,
+      color,
+      /** Text on the colour (white or near-black). */
+      onColor: color ? foregroundFor(color) : null,
       reactions: settings.reactions && ws.features.reactions,
       feedback: !!boards[0],
+    },
+    brand: {
+      font: brand.font
+        ? { href: fontHref(brand.font), stack: fontStack(brand.font) }
+        : null,
+      poweredBy: brand.poweredBy,
     },
     posts: updates?.posts ?? [],
     /** Where "Send feedback" posts go: the first public ideas board. */

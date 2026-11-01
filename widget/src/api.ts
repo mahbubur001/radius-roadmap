@@ -34,9 +34,16 @@ export type Site = {
     position: "right" | "left";
     launcher: "bell" | "none";
     color: string | null;
+    /** Text colour on `color`. */
+    onColor: string | null;
     title: string;
     reactions: boolean;
     feedback: boolean;
+  };
+  /** The account's branding (doc 26 6C). */
+  brand: {
+    font: { href: string; stack: string } | null;
+    poweredBy: boolean;
   };
   posts: Post[];
   siteUrl: string;

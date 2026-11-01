@@ -5,6 +5,7 @@ import { notFound, publicRequest, siteOrigin } from "@/server/public-request";
 import { enqueueEmail } from "@/server/queue/email";
 import { notify } from "@/server/queue/notifications";
 import { hit, SUBSCRIBE_LIMITS } from "@/server/rate-limit";
+import { getEmailBrand } from "@/server/services/branding";
 import { trackEvent } from "@/server/services/events";
 import { getPublicWorkspaceById } from "@/server/services/public-site";
 import { subscribe } from "@/server/services/subscribers";
@@ -75,7 +76,11 @@ export async function POST(request: NextRequest) {
     await enqueueEmail({
       template: "subscribe-confirm",
       to: email,
-      props: { siteName: ws.name, url: url.toString() },
+      props: {
+        siteName: ws.name,
+        url: url.toString(),
+        brand: await getEmailBrand(db, req.ctx.accountId),
+      },
     });
   } else if (result.activated) {
     await notify({ type: "new-subscriber", subscriberId: result.id });

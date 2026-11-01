@@ -48,6 +48,8 @@ export function SiteShell({
     >;
     /** Modules switched on and with something public (doc 22 P2). */
     modules: Record<SiteModule, boolean>;
+    /** Plan features (doc 26 P7). */
+    features: { embed: boolean; logo: boolean };
   };
   /** The module this page belongs to (its tab is highlighted). */
   active: SiteModule;
@@ -82,7 +84,7 @@ export function SiteShell({
               >
                 {workspace.settings.showLogo !== false ? (
                   <Avatar className="size-7 rounded-md">
-                    {workspace.logoUrl ? (
+                    {workspace.features.logo && workspace.logoUrl ? (
                       <AvatarImage src={workspace.logoUrl} alt="" />
                     ) : null}
                     <AvatarFallback className="rounded-md text-xs">
@@ -122,7 +124,21 @@ export function SiteShell({
             embed ? "py-3" : "py-8",
           )}
         >
-          {children}
+          {embed && !workspace.features.embed ? (
+            <p className="py-6 text-center text-sm text-muted-foreground">
+              Embedding needs a paid plan.{" "}
+              <a
+                href={`/${account}/${workspace.slug}/${active}`}
+                target="_blank"
+                rel="noopener"
+                className="text-primary underline"
+              >
+                Open {workspace.name}
+              </a>
+            </p>
+          ) : (
+            children
+          )}
         </main>
         <footer className="py-4 text-center text-xs text-muted-foreground">
           Powered by Radius Roadmap

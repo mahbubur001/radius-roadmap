@@ -12,13 +12,16 @@ const items = [
   { href: "team", label: "Team" },
 ];
 
-export function SettingsNav() {
+export function SettingsNav({ billing }: { billing: boolean }) {
   const { workspace } = useParams<{ workspace: string }>();
   const pathname = usePathname();
 
   return (
     <nav className="flex gap-1 md:flex-col" aria-label="Settings">
-      {items.map(({ href, label }) => {
+      {(billing
+        ? [...items, { href: "billing", label: "Billing" }]
+        : items
+      ).map(({ href, label }) => {
         const to = `/dashboard/${workspace}/settings/${href}`;
         return (
           <Link

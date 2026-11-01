@@ -10,6 +10,7 @@ import {
   type SQL,
   sql,
 } from "drizzle-orm";
+import { planIncludes } from "@/lib/plans";
 import { renderRichText } from "@/lib/rich-text";
 import {
   defaultDisplay,
@@ -37,7 +38,7 @@ import {
 import { fileUrl } from "@/server/storage/url";
 import { likePattern } from "./cards";
 import type { PublicContext } from "./context";
-import { gateSettings } from "./plan-limits";
+import { gateSettings, getAccountPlan } from "./plan-limits";
 import { byPosition } from "./positions";
 import {
   articleIsPublic,
@@ -195,12 +196,19 @@ async function publicWorkspace(db: Db, ctx: PublicContext, match: SQL) {
     hasPublicArticles(db, ctx, ws.id),
   ]);
   if (!boards.length && !ideas && !posts && !kb) return null;
+  const plan = await getAccountPlan(db, ctx.accountId);
   return {
     id: ws.id,
     name: ws.name,
     slug: ws.slug,
     logo: ws.logo,
     settings: await gateSettings(db, ctx.accountId, ws.settings),
+    /** Plan features the public site checks (doc 26 P7). */
+    features: {
+      reactions: planIncludes(plan, "reactions"),
+      embed: planIncludes(plan, "embed"),
+      logo: planIncludes(plan, "logo"),
+    },
     roadmaps: boards,
     modules: {
       roadmap: boards.length > 0,

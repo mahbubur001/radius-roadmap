@@ -3,10 +3,10 @@
 import { z } from "zod";
 import { env } from "@/lib/env";
 import { checkoutSchema } from "@/lib/schemas/billing";
-import { workspaceAction } from "@/server/action";
+import { action, workspaceAction } from "@/server/action";
 import { db } from "@/server/db/client";
 import { openPortal, startCheckout } from "@/server/services/billing";
-import { requireUser } from "@/server/session";
+import { requireUser, requireWorkspace } from "@/server/session";
 
 function billingUrl(workspaceSlug: string) {
   return new URL(
@@ -28,6 +28,10 @@ export const checkoutAction = workspaceAction(
   },
 );
 
-export const portalAction = workspaceAction(z.object({}), async (ctx) =>
-  openPortal(db, ctx, billingUrl(ctx.workspaceSlug)),
+export const portalAction = action(
+  z.object({ workspace: z.string().min(1) }),
+  async ({ workspace }) => {
+    const ctx = await requireWorkspace(workspace);
+    return openPortal(db, ctx, billingUrl(ctx.workspaceSlug));
+  },
 );

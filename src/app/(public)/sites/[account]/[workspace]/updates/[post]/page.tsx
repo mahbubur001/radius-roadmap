@@ -82,6 +82,7 @@ async function Post(props: Props) {
         <div className="overflow-hidden rounded-lg border bg-card">
           <UpdateDetail
             post={post}
+            reactions={ws.features.reactions}
             roadmapBase={
               ws.modules.roadmap ? `/${site.slug}/${ws.slug}/roadmap` : null
             }

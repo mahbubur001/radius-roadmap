@@ -3,8 +3,8 @@
 import { zodResolver } from "@hookform/resolvers/zod";
 import { useRouter } from "next/navigation";
 import { useForm } from "react-hook-form";
-import { toast } from "sonner";
 import { createWorkspaceAction } from "@/app/(dashboard)/_actions/workspaces";
+import { useActionError } from "@/components/dashboard/use-action-error";
 import { TextField } from "@/components/form/text-field";
 import { Button } from "@/components/ui/button";
 import {
@@ -30,6 +30,7 @@ export function CreateWorkspaceDialog({
   onOpenChange: (open: boolean) => void;
 }) {
   const router = useRouter();
+  const actionError = useActionError();
   const form = useForm<CreateWorkspaceInput>({
     resolver: zodResolver(createWorkspaceSchema),
     defaultValues: { name: "", slug: "" },
@@ -46,7 +47,7 @@ export function CreateWorkspaceDialog({
   async function onSubmit(values: CreateWorkspaceInput) {
     const result = await createWorkspaceAction(values);
     if (!result.ok) {
-      toast.error(result.error);
+      actionError(result);
       return;
     }
     onOpenChange(false);

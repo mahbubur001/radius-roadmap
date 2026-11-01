@@ -94,6 +94,7 @@ async function Updates(props: Props) {
             ws.modules.roadmap ? `/${site.slug}/${ws.slug}/roadmap` : null
           }
           justSubscribed={subscribed}
+          reactions={ws.features.reactions}
         />
       </div>
     </SiteShell>

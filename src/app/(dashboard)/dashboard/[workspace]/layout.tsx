@@ -1,3 +1,4 @@
+import Link from "next/link";
 import { Suspense } from "react";
 import { Sidebar } from "@/components/dashboard/sidebar";
 import { SidebarNav } from "@/components/dashboard/sidebar-nav";
@@ -6,8 +7,10 @@ import { WorkspaceSwitcher } from "@/components/dashboard/workspace-switcher";
 import { Skeleton } from "@/components/ui/skeleton";
 import { db } from "@/server/db/client";
 import { listMyAccounts } from "@/server/services/accounts";
+import { getBillingRow } from "@/server/services/billing";
 import { seesAllWorkspaces } from "@/server/services/context";
 import { inboxCount } from "@/server/services/feedback";
+import { billing } from "@/server/services/plan-limits";
 import {
   getWorkspaceBySlug,
   listWorkspaces,
@@ -42,6 +45,9 @@ export default function WorkspaceLayout({
             <CurrentUser slug={slug} />
           </Suspense>
         </header>
+        <Suspense fallback={null}>
+          <PastDueBanner slug={slug} />
+        </Suspense>
         <main className="flex-1 bg-muted/40 p-6">
           <div className="mx-auto w-full max-w-[1500px]">{children}</div>
         </main>
@@ -91,5 +97,25 @@ async function CurrentUser({ slug }: { slug: Promise<string> }) {
       accounts={accounts.map((a) => ({ id: a.id, name: a.name }))}
       currentAccountId={ctx.accountId}
     />
+  );
+}
+
+/** Owners and admins see it while Stripe retries a failed payment. */
+async function PastDueBanner({ slug }: { slug: Promise<string> }) {
+  const ctx = await requireWorkspace(await slug);
+  if (!seesAllWorkspaces(ctx) || !billing.enabled()) return null;
+  const row = await getBillingRow(db, ctx.accountId);
+  if (row?.status !== "past_due") return null;
+  return (
+    <div className="border-b border-destructive/40 bg-destructive/10 px-6 py-2 text-sm">
+      Your last payment didn&apos;t go through.{" "}
+      <Link
+        href={`/dashboard/${ctx.workspaceSlug}/settings/billing`}
+        className="font-medium underline"
+      >
+        Update your payment details
+      </Link>{" "}
+      to keep your plan.
+    </div>
   );
 }

@@ -8,6 +8,7 @@ import { Controller, useForm } from "react-hook-form";
 import { toast } from "sonner";
 import type { z } from "zod";
 import { inviteAction } from "@/app/(dashboard)/_actions/team";
+import { useActionError } from "@/components/dashboard/use-action-error";
 import { TextField } from "@/components/form/text-field";
 import { Button } from "@/components/ui/button";
 import {
@@ -55,6 +56,7 @@ export function InviteDialog({
   workspaces: WorkspaceOption[];
 }) {
   const router = useRouter();
+  const actionError = useActionError();
   const [open, setOpen] = useState(false);
   const form = useForm<Values, unknown, z.output<typeof inviteSchema>>({
     resolver: zodResolver(inviteSchema),
@@ -65,7 +67,7 @@ export function InviteDialog({
   async function onSubmit(values: z.output<typeof inviteSchema>) {
     const result = await inviteAction(values);
     if (!result.ok) {
-      toast.error(result.error);
+      actionError(result);
       return;
     }
     toast.success(`Invitation sent to ${values.email}.`);

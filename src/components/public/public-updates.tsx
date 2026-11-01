@@ -34,6 +34,7 @@ export function PublicUpdates({
   embed,
   roadmapBase,
   justSubscribed,
+  reactions,
 }: {
   /** e.g. "/acme/product/updates" */
   base: string;
@@ -45,6 +46,8 @@ export function PublicUpdates({
   roadmapBase: string | null;
   /** Arrived from the confirmation email link. */
   justSubscribed: boolean;
+  /** Emoji reactions are in the account's plan (doc 26 P7). */
+  reactions: boolean;
 }) {
   const [open, setOpen] = useState<PublicPostView | null>(null);
 
@@ -174,11 +177,13 @@ export function PublicUpdates({
                     {post.excerpt}
                   </p>
                 ) : null}
-                <ReactionBar
-                  postId={post.id}
-                  counts={post.reactions}
-                  className="mt-2"
-                />
+                {reactions ? (
+                  <ReactionBar
+                    postId={post.id}
+                    counts={post.reactions}
+                    className="mt-2"
+                  />
+                ) : null}
               </div>
             </article>
           ))}
@@ -196,7 +201,12 @@ export function PublicUpdates({
             <SheetDescription>Update</SheetDescription>
           </SheetHeader>
           {open ? (
-            <PostDrawerBody post={open} base={base} roadmapBase={roadmapBase} />
+            <PostDrawerBody
+              post={open}
+              base={base}
+              roadmapBase={roadmapBase}
+              reactions={reactions}
+            />
           ) : null}
         </SheetContent>
       </Sheet>
@@ -209,14 +219,20 @@ function PostDrawerBody({
   post,
   base,
   roadmapBase,
+  reactions,
 }: {
   post: PublicPostView;
   base: string;
   roadmapBase: string | null;
+  reactions: boolean;
 }) {
   return (
     <div className="flex flex-col">
-      <UpdateDetail post={post} roadmapBase={roadmapBase} />
+      <UpdateDetail
+        post={post}
+        roadmapBase={roadmapBase}
+        reactions={reactions}
+      />
       <a
         href={`${base}/${post.slug}`}
         className="mx-6 mb-6 w-fit text-sm text-primary underline"

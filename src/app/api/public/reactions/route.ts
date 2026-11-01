@@ -6,6 +6,7 @@ import { invalidatePublic } from "@/server/public-cache";
 import { notFound, publicRequest } from "@/server/public-request";
 import { hit } from "@/server/rate-limit";
 import { trackEvent } from "@/server/services/events";
+import { hasFeature } from "@/server/services/plan-limits";
 import { getReactablePost } from "@/server/services/public-updates";
 import { toggleReaction } from "@/server/services/reactions";
 
@@ -23,7 +24,9 @@ export async function POST(request: NextRequest) {
     return req.respond({ error: "Invalid request." }, { status: 400 });
   }
   const post = await getReactablePost(db, req.ctx, parsed.data.updateId);
-  if (!post) return notFound();
+  if (!post || !(await hasFeature(db, req.ctx.accountId, "reactions"))) {
+    return notFound();
+  }
   const allowed = await hit([
     {
       key: `reaction:ip:${req.ipHash ?? req.visitorId}`,

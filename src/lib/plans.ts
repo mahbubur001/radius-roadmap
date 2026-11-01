@@ -102,6 +102,12 @@ export const LIMIT_LABELS: Record<LimitKey, string> = {
   boards: "feedback boards",
 };
 
+/** "1 roadmap", "3 feedback boards", "Unlimited teammates". */
+export function limitText(key: LimitKey, n: number) {
+  if (n === Infinity) return `Unlimited ${LIMIT_LABELS[key]}`;
+  return `${n} ${n === 1 ? LIMIT_LABELS[key].replace(/s$/, "") : LIMIT_LABELS[key]}`;
+}
+
 export const FEATURE_LABELS: Record<Feature, string> = {
   logo: "Your logo",
   widget: "Widget",

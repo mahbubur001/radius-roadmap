@@ -6,6 +6,7 @@ import { useForm } from "react-hook-form";
 import { toast } from "sonner";
 import { updatePublicSiteAction } from "@/app/(dashboard)/_actions/workspaces";
 import { SettingsSection } from "@/components/dashboard/settings-section";
+import { useActionError } from "@/components/dashboard/use-action-error";
 import { SwitchField } from "@/components/form/switch-field";
 import { TextField } from "@/components/form/text-field";
 import { Button } from "@/components/ui/button";
@@ -20,12 +21,17 @@ export function PublicSiteForm({
   workspace,
   defaults,
   canManage,
+  locked,
 }: {
   workspace: string;
   defaults: PublicSiteInput;
   canManage: boolean;
+  /** Plan each gated switch needs, when the account's plan lacks it. */
+  locked: { comments: string | null; follows: string | null };
 }) {
   const router = useRouter();
+  const actionError = useActionError();
+  const billing = `/dashboard/${workspace}/settings/billing`;
   const form = useForm<PublicSiteInput>({
     resolver: zodResolver(publicSiteSchema),
     defaultValues: defaults,
@@ -33,7 +39,7 @@ export function PublicSiteForm({
 
   async function onSubmit(values: PublicSiteInput) {
     const result = await updatePublicSiteAction({ workspace, ...values });
-    if (!result.ok) return toast.error(result.error);
+    if (!result.ok) return actionError(result);
     toast.success("Public site saved.");
     form.reset(values);
     router.refresh();
@@ -107,6 +113,11 @@ export function PublicSiteForm({
               control={form.control}
               name="commentsEnabled"
               label="Comments"
+              locked={
+                locked.comments
+                  ? { plan: locked.comments, href: billing }
+                  : null
+              }
               description="Visitors can comment on ideas and roadmap cards. Your team can always leave internal notes."
             />
             <SwitchField
@@ -119,6 +130,9 @@ export function PublicSiteForm({
               control={form.control}
               name="followsEnabled"
               label="Follows"
+              locked={
+                locked.follows ? { plan: locked.follows, href: billing } : null
+              }
               description="Visitors can follow ideas. Voting on or suggesting an idea follows it. Follow emails arrive with Updates."
             />
             <FieldSeparator>Idea form</FieldSeparator>

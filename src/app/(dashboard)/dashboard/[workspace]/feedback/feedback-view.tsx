@@ -28,6 +28,7 @@ import {
   createFeedbackAction,
   reviewFeedbackAction,
 } from "@/app/(dashboard)/_actions/feedback";
+import { useActionError } from "@/components/dashboard/use-action-error";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Checkbox } from "@/components/ui/checkbox";
@@ -123,6 +124,7 @@ export function FeedbackView({
   initialFeedbackId?: string;
 }) {
   const router = useRouter();
+  const actionError = useActionError();
   const pathname = usePathname();
   const searchParams = useSearchParams();
   const [pending, startTransition] = useTransition();
@@ -346,7 +348,7 @@ export function FeedbackView({
 
   async function newBoard() {
     const result = await createBoardAction({ workspace, name: "New board" });
-    if (!result.ok) return toast.error(result.error);
+    if (!result.ok) return actionError(result);
     router.push(`${base}?b=${result.data.slug}&edit=board`);
   }
 

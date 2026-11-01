@@ -35,10 +35,13 @@ export function CategoryChip({
 export function UpdateDetail({
   post,
   roadmapBase,
+  reactions,
 }: {
   post: PublicPostView;
   /** e.g. "/acme/product/roadmap"; null when the roadmap isn't shown. */
   roadmapBase: string | null;
+  /** Emoji reactions are in the account's plan (doc 26 P7). */
+  reactions: boolean;
 }) {
   return (
     <article className="flex flex-col">
@@ -76,7 +79,9 @@ export function UpdateDetail({
             {post.excerpt}
           </p>
         ) : null}
-        <ReactionBar postId={post.id} counts={post.reactions} />
+        {reactions ? (
+          <ReactionBar postId={post.id} counts={post.reactions} />
+        ) : null}
         {roadmapBase && post.cards?.length ? (
           <section className="flex flex-col gap-2 rounded-md border bg-muted/40 p-4">
             <h2 className="text-sm font-medium">Shipped from the roadmap</h2>

@@ -1,5 +1,6 @@
 import { Suspense } from "react";
 import { SettingsNav } from "@/components/dashboard/settings-nav";
+import { billing } from "@/server/services/plan-limits";
 
 export default function SettingsLayout({
   children,
@@ -10,7 +11,7 @@ export default function SettingsLayout({
       <div className="flex flex-col gap-6 md:flex-row">
         <aside className="md:w-48">
           <Suspense fallback={null}>
-            <SettingsNav />
+            <SettingsNav billing={billing.enabled()} />
           </Suspense>
         </aside>
         <div className="flex min-w-0 flex-1 flex-col gap-6">{children}</div>

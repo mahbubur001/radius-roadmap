@@ -1,10 +1,12 @@
 import type { Metadata } from "next";
 import { Suspense } from "react";
 import { Skeleton } from "@/components/ui/skeleton";
+import { type Feature, PLANS, planFor } from "@/lib/plans";
 import { db } from "@/server/db/client";
 import { appOrigin } from "@/server/public-url";
 import { getAccount } from "@/server/services/accounts";
 import { seesAllWorkspaces } from "@/server/services/context";
+import { hasFeature } from "@/server/services/plan-limits";
 import { listRoadmaps } from "@/server/services/roadmaps";
 import { getWorkspaceBySlug } from "@/server/services/workspaces";
 import { requireWorkspace } from "@/server/session";
@@ -25,17 +27,24 @@ export default function PublicSettingsPage({
 
 async function PublicSettings({ slug }: { slug: Promise<string> }) {
   const ctx = await requireWorkspace(await slug);
-  const [account, roadmaps, ws] = await Promise.all([
+  const [account, roadmaps, ws, comments, follows] = await Promise.all([
     getAccount(db, ctx),
     listRoadmaps(db, ctx),
     getWorkspaceBySlug(db, ctx, ctx.workspaceSlug),
+    hasFeature(db, ctx.accountId, "comments"),
+    hasFeature(db, ctx.accountId, "follows"),
   ]);
+  const needs = (feature: Feature) => PLANS[planFor(feature)].name;
   const { settings } = ws;
   return (
     <div className="flex max-w-3xl flex-col gap-6">
       <PublicSiteForm
         workspace={ctx.workspaceSlug}
         canManage={seesAllWorkspaces(ctx)}
+        locked={{
+          comments: comments ? null : needs("comments"),
+          follows: follows ? null : needs("follows"),
+        }}
         defaults={{
           showRoadmap: settings.showRoadmap !== false,
           showIdeas: settings.showIdeas !== false,

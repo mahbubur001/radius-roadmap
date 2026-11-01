@@ -28,6 +28,7 @@ import {
   moveColumnAction,
   updateCardAction,
 } from "@/app/(dashboard)/_actions/roadmap";
+import { useActionError } from "@/components/dashboard/use-action-error";
 import { useStoredFlag } from "@/components/dashboard/use-stored-flag";
 import { SWATCHES } from "@/components/form/color-picker";
 import { Badge } from "@/components/ui/badge";
@@ -81,6 +82,7 @@ export function RoadmapView({
   initialCardId?: string;
 }) {
   const router = useRouter();
+  const actionError = useActionError();
   const { workspace } = data;
   const [cards, setCards] = useState(data.cards);
   const [columns, setColumns] = useState(data.columns);
@@ -313,7 +315,7 @@ export function RoadmapView({
       workspace,
       title: "New roadmap",
     });
-    if (!result.ok) return toast.error(result.error);
+    if (!result.ok) return actionError(result);
     router.push(`/dashboard/${workspace}/roadmap?r=${result.data.slug}`);
     setSettingsOpen(true);
   }

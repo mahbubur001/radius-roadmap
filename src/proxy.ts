@@ -1,14 +1,20 @@
 import { type NextRequest, NextResponse } from "next/server";
 import { isSiteModule, shortenPath } from "@/lib/public-path";
 import { LAST_WORKSPACE_COOKIE, RESERVED_SLUGS } from "@/lib/schemas/workspace";
+import { auth } from "@/server/auth";
 import { db } from "@/server/db/client";
+import { isPlatformAdmin } from "@/server/platform-admins";
 import {
   activeHostname,
   hostOrigin,
   inactiveDomainSite,
   siteForHost,
 } from "@/server/services/custom-domains";
-import { publicPathStatus, resolveSite } from "@/server/services/public-site";
+import {
+  isSuspendedSlug,
+  publicPathStatus,
+  resolveSite,
+} from "@/server/services/public-site";
 import {
   newVisitorToken,
   VISITOR_COOKIE,
@@ -59,12 +65,30 @@ export async function proxy(request: NextRequest) {
   const [first, ...rest] = segments;
 
   if (first === "sites") return notFoundPage();
+  // Platform admin panel (doc 28 C2): a real 404 for everyone else, before
+  // anything renders (a streamed page can't change its status).
+  if (first === "admin") {
+    const session = await auth.api
+      .getSession({ headers: request.headers })
+      .catch(() => null);
+    if (
+      !session ||
+      !isPlatformAdmin(session.user.email, session.user.emailVerified)
+    ) {
+      return notFoundPage();
+    }
+  }
   if (!first || RESERVED_SLUGS.has(first) || first.includes(".")) {
     return dashboard(first === "dashboard" ? rest[0] : undefined);
   }
 
   const site = await resolveSite(db, first);
-  if (!site) return notFoundPage();
+  if (!site) {
+    // Suspended by a platform admin (doc 28 C8): say so, don't pretend 404.
+    return (await isSuspendedSlug(db, first))
+      ? unavailablePage()
+      : notFoundPage();
+  }
   const [rawFirst = "", ...rawRest] = pathname.split("/").filter(Boolean);
 
   // A live custom domain is the site's only address (D5); embeds stay here.
@@ -249,6 +273,20 @@ function notFoundPage(home?: string) {
     {
       status: 404,
       headers: { "content-type": "text/html; charset=utf-8" },
+    },
+  );
+}
+
+/** A suspended account's public site (doc 28 C8). */
+function unavailablePage() {
+  return new NextResponse(
+    `<!doctype html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><meta name="robots" content="noindex"><title>Site unavailable</title><style>body{font:16px/1.5 system-ui,sans-serif;margin:0;min-height:100vh;display:grid;place-items:center;color:#18181b;background:#fff}@media(prefers-color-scheme:dark){body{color:#fafafa;background:#09090b}}main{text-align:center;padding:24px}h1{font-size:20px;margin:0 0 8px}</style></head><body><main><h1>This site is unavailable</h1><p>It has been switched off for now.</p></main></body></html>`,
+    {
+      status: 503,
+      headers: {
+        "content-type": "text/html; charset=utf-8",
+        "retry-after": "86400",
+      },
     },
   );
 }

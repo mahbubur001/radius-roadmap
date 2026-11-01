@@ -83,15 +83,19 @@ async function BillingSettings({
           <div>
             <p className="text-lg font-semibold">{plan.name}</p>
             <p className="text-sm text-muted-foreground">
-              {overview.plan === "free"
-                ? "Free forever."
-                : `Billed ${overview.interval === "year" ? "yearly" : "monthly"}. ${
-                    overview.cancelAtPeriodEnd
-                      ? `Ends on ${ends}, then moves to Free.`
-                      : ends
-                        ? `Renews on ${ends}.`
-                        : ""
-                  }`}
+              {overview.granted
+                ? overview.granted.endsAt
+                  ? `Granted by Radius Roadmap until ${dateFormat.format(overview.granted.endsAt)}. After that it moves to your paid plan, or to Free.`
+                  : "Granted by Radius Roadmap."
+                : overview.plan === "free"
+                  ? "Free forever."
+                  : `Billed ${overview.interval === "year" ? "yearly" : "monthly"}. ${
+                      overview.cancelAtPeriodEnd
+                        ? `Ends on ${ends}, then moves to Free.`
+                        : ends
+                          ? `Renews on ${ends}.`
+                          : ""
+                    }`}
             </p>
           </div>
           {isOwner && overview.hasCustomer ? (

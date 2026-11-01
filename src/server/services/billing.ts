@@ -27,6 +27,7 @@ import {
 } from "./context";
 import { listInvitations } from "./invitations";
 import { billing, countUsage, getAccountPlan } from "./plan-limits";
+import { getOverride, overrideActive } from "./platform/overrides";
 
 // Stripe is the source of truth: checkout and the customer portal change the
 // subscription there, and webhooks mirror it into account_billing (doc 26 §3).
@@ -43,7 +44,7 @@ export async function getBillingRow(db: Db, accountId: string) {
 /** Settings → Billing: plan, subscription state and usage against limits. */
 export async function getBillingOverview(db: Db, ctx: AccountContext) {
   assertRole(ctx, "admin");
-  const [plan, row, workspaces, roadmaps, boards, members, invites] =
+  const [plan, row, workspaces, roadmaps, boards, members, invites, override] =
     await Promise.all([
       getAccountPlan(db, ctx.accountId),
       getBillingRow(db, ctx.accountId),
@@ -55,6 +56,7 @@ export async function getBillingOverview(db: Db, ctx: AccountContext) {
         .from(member)
         .where(eq(member.organizationId, ctx.accountId)),
       listInvitations(db, ctx),
+      getOverride(db, ctx.accountId),
     ]);
   const used = {
     teammates: members.length + invites.length,
@@ -69,6 +71,11 @@ export async function getBillingOverview(db: Db, ctx: AccountContext) {
     currentPeriodEnd: row?.currentPeriodEnd ?? null,
     cancelAtPeriodEnd: row?.cancelAtPeriodEnd ?? false,
     hasCustomer: !!row?.stripeCustomerId,
+    /** A plan granted by us (doc 28 C4), shown instead of Stripe's while on. */
+    granted:
+      override && overrideActive(override)
+        ? { plan: override.plan, endsAt: override.endsAt }
+        : null,
     usage: (Object.keys(used) as (keyof typeof used)[]).map((key) => ({
       key,
       label: LIMIT_LABELS[key],

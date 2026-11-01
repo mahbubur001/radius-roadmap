@@ -391,6 +391,61 @@ export const templates: { [T in EmailTemplate]: TemplateDef<T> } = {
       </EmailLayout>
     ),
   },
+  "customer-invite": {
+    subject: ({ accountName }) =>
+      `Your Radius Roadmap account “${accountName}” is ready`,
+    render: ({ accountName, planName, endsAt, url }) => (
+      <EmailLayout
+        preview="Accept the invitation to start"
+        heading="Your account is ready"
+        action={{ label: "Accept and sign in", url }}
+      >
+        <Text>
+          We've set up <strong>{accountName}</strong> on Radius Roadmap for you,
+          with you as the owner.
+          {planName
+            ? ` It's on the ${planName} plan${endsAt ? ` until ${day(endsAt)}` : ""}.`
+            : ""}
+        </Text>
+        <Text>
+          Accept with the button below: you can create your login or use an
+          existing one. The invitation expires in 14 days.
+        </Text>
+      </EmailLayout>
+    ),
+  },
+  "plan-override-ending": {
+    subject: ({ planName, endsAt }) =>
+      `Your ${planName} plan ends on ${day(endsAt)}`,
+    render: ({ accountName, planName, endsAt, url }) => (
+      <EmailLayout
+        preview={`${accountName}'s ${planName} plan ends soon`}
+        heading={`Your ${planName} plan ends soon`}
+        action={{ label: "See plans", url }}
+      >
+        <Text>
+          <strong>{accountName}</strong> has the {planName} plan until{" "}
+          {day(endsAt)}. After that it moves to your paid plan, or to Free.
+          Nothing is deleted.
+        </Text>
+      </EmailLayout>
+    ),
+  },
+  "plan-override-ended": {
+    subject: ({ planName }) => `Your ${planName} plan has ended`,
+    render: ({ accountName, planName, url }) => (
+      <EmailLayout
+        preview={`${accountName}'s ${planName} plan has ended`}
+        heading={`Your ${planName} plan has ended`}
+        action={{ label: "Choose a plan", url }}
+      >
+        <Text>
+          <strong>{accountName}</strong>'s {planName} plan has ended. Your data
+          is all still there; upgrade any time to switch paid features back on.
+        </Text>
+      </EmailLayout>
+    ),
+  },
   "webhook-disabled": {
     subject: () => "A webhook was switched off",
     render: ({ accountName, url, reason, settingsUrl }) => (
@@ -442,6 +497,16 @@ export const templates: { [T in EmailTemplate]: TemplateDef<T> } = {
     ),
   },
 };
+
+/** "1 March 2027" from an ISO date-time (UTC). */
+function day(iso: string) {
+  return new Intl.DateTimeFormat("en-GB", {
+    day: "numeric",
+    month: "long",
+    year: "numeric",
+    timeZone: "UTC",
+  }).format(new Date(iso));
+}
 
 function count(n: number, noun: string) {
   return `${n} ${noun}${n === 1 ? "" : "s"}`;

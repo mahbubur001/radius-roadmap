@@ -39,6 +39,13 @@ await notifyQueue.upsertJobScheduler(
   { name: "verify-domains", data: { type: "verify-domains" } },
 );
 
+// Reminders before a granted plan ends, and when it has (doc 28 C5).
+await notifyQueue.upsertJobScheduler(
+  "plan-overrides",
+  { pattern: "0 0 9 * * *" },
+  { name: "plan-overrides", data: { type: "plan-overrides" } },
+);
+
 for (const worker of workers) {
   worker.on("failed", (job, err) => {
     console.error(`[worker] ${worker.name} job ${job?.id} failed:`, err);

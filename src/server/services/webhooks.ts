@@ -39,6 +39,7 @@ import {
   NotFoundError,
 } from "./context";
 import { assertFeature, hasFeature } from "./plan-limits";
+import { isSuspended } from "./platform/suspension";
 
 // Outgoing webhooks (doc 27 A8–A11). Runs in the worker too (delivery):
 // no server-only imports.
@@ -533,6 +534,7 @@ export async function createDeliveries(
     );
   if (!endpoints.length) return [];
   if (!(await hasFeature(db, job.accountId, "webhooks"))) return [];
+  if (await isSuspended(db, job.accountId)) return []; // doc 28 C8
   const data =
     job.data ?? (await eventData(db, job.accountId, job.event, job.entityId));
   if (!data) return []; // gone again, or never committed

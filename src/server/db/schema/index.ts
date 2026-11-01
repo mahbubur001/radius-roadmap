@@ -5,6 +5,7 @@ export * from "./auth";
 export * from "./billing";
 export * from "./custom-domains";
 export * from "./feedback";
+export * from "./platform";
 export * from "./roadmaps";
 export * from "./tracked-users";
 export * from "./updates";

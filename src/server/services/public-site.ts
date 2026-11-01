@@ -19,6 +19,7 @@ import {
 } from "@/lib/schemas/roadmap";
 import type { Db } from "@/server/db/client";
 import {
+  accountSettings,
   articles,
   cardAttachments,
   cardFeatures,
@@ -97,9 +98,27 @@ export async function resolveSite(
       defaultWorkspace: defaultWorkspaceSlug('"organization"."id"'),
     })
     .from(organization)
-    .where(eq(organization.slug, s))
+    .where(and(eq(organization.slug, s), notSuspended))
     .limit(1);
   return row ?? null;
+}
+
+/**
+ * A suspended account's site is hidden from everything that resolves sites
+ * (pages, public API, widget, embeds; doc 28 C8). Raw SQL on the outer
+ * organization row, like roadmapIsPublic.
+ */
+const notSuspended = sql`not exists (select 1 from ${accountSettings} s where s.account_id = "organization"."id" and s.suspended_at is not null)`;
+
+/** True when `slug` is an account that a platform admin suspended. */
+export async function isSuspendedSlug(db: Db, slug: string) {
+  const [row] = await db
+    .select({ at: accountSettings.suspendedAt })
+    .from(organization)
+    .innerJoin(accountSettings, eq(accountSettings.accountId, organization.id))
+    .where(eq(organization.slug, slug.toLowerCase()))
+    .limit(1);
+  return !!row?.at;
 }
 
 /** Workspaces with at least one public roadmap or public ideas board. */

@@ -22,7 +22,9 @@ export type NotifyJob =
   /** Remove a deleted account's uploads (doc 26 6A). */
   | { type: "delete-account-files"; accountId: string }
   /** Re-check custom domains (doc 26 6D, every 10 minutes). */
-  | { type: "verify-domains" };
+  | { type: "verify-domains" }
+  /** Emails about granted plans ending (doc 28 C5, daily). */
+  | { type: "plan-overrides" };
 
 const globalForQueue = globalThis as typeof globalThis & {
   notifyQueue?: Queue<NotifyJob>;
@@ -55,7 +57,8 @@ export async function notify(
         | "publish-update"
         | "idea-status-sweep"
         | "delete-account-files"
-        | "verify-domains";
+        | "verify-domains"
+        | "plan-overrides";
     }
   >,
 ) {

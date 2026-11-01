@@ -86,7 +86,7 @@ export function apiRoute<P = Record<string, never>>(
       return apiError(
         401,
         "unauthorized",
-        "This API key is invalid, revoked, or its plan has no API access.",
+        "This API key is invalid or revoked, its plan has no API access, or the account is suspended.",
       );
     }
     if (options.write && caller.permission !== "write") {

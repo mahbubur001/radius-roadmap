@@ -29,6 +29,7 @@ import {
   isUniqueViolation,
 } from "./context";
 import { assertFeature, getAccountPlan } from "./plan-limits";
+import { isSuspended } from "./platform/suspension";
 
 // Customer-owned domains for public sites (doc 26 6D). Runs in the worker
 // too (verification job, email links): no server-only imports.
@@ -313,6 +314,8 @@ export async function siteForHost(db: Db, host: string) {
     )
     .limit(1);
   if (!row) return null;
+  // Suspended (doc 28 C8): the host falls back to the app-domain page.
+  if (await isSuspended(db, row.accountId)) return null;
   const plan = await getAccountPlan(db, row.accountId);
   return planIncludes(plan, "customDomain") ? row : null;
 }

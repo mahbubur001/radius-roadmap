@@ -99,6 +99,11 @@ Keep this list in sync with `package.json`. Deploy files: `ecosystem.config.cjs`
 - A service that changes something a webhook event covers calls `emitEvent(accountId, event, id)` from `src/server/queue/webhooks.ts` right after the write (it never throws). New events go in `WEBHOOK_EVENTS` (`src/lib/schemas/webhooks.ts`) and `eventData()`.
 - Outgoing HTTP to customer URLs only through `postJson()` in `services/webhooks.ts` (SSRF guard, no redirects, no pooled sockets).
 
+### Platform admin (doc 28)
+- `/admin` is for the operator only: emails in `PLATFORM_ADMIN_EMAILS`. The proxy 404s everyone else; every admin page and action also calls `requirePlatformAdmin()`. Admin services live in `src/server/services/platform/*`, take an admin actor (not a tenant context) and write the audit log (`audit()`) for every change.
+- Plans: always ask `getAccountPlan()` (override → Stripe → Free); never read `account_billing` directly for gates.
+- Suspension: anything new that serves an account's content or sends on its behalf must respect it (`resolveSite` already hides suspended sites; workers use `isSuspended` / `ownerSuspended`).
+
 ### Two kinds of user
 - **Team members** (dashboard) use Better Auth. Organization = Account; check roles (owner/admin/member) on every mutation.
 - **End users** (voters and commenters on public pages and the widget) are `tracked_users`, scoped per account: guest, anonymous, social, or customer SSO JWT (HS256, verified with `jose`). Never mix the two in Better Auth's user table.

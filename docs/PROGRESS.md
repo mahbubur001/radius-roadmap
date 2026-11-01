@@ -31,6 +31,7 @@
 - Phase 5 plan (Articles / knowledge base; approved + built 2026-10-29): `docs/25-phase-5-plan.md`
 - Phase 6 plan (Billing, widget, custom domain, white-label; approved 2026-11-01; 6A–6D all built): `docs/26-phase-6-plan.md`
 - Phase 7 plan (public REST API + webhooks; approved + built 2026-11-01): `docs/27-phase-7-plan.md`
+- Phase 8 plan (platform admin: invite customers, set plans, suspend; approved + built 2026-11-01): `docs/28-phase-8-plan.md`
 - Stack versions as built: `docs/14-dev-tools.md` → "Versions as built"
 
 ## Current status
@@ -58,12 +59,13 @@
 - **2026-11-01, Phase 6A Billing (doc 26 §10):** plans + limits + feature gates, Stripe Checkout / portal / webhook, Settings → Billing, upgrade toasts, past-due banner, account deletion. Billing is **off** (everything unlimited) until `STRIPE_SECRET_KEY` is set. Migration `0011`. New dependency `stripe`.
 - **2026-11-01, Phase 6B Widget (doc 26 §12):** `widget.js` (sidebar/popover, unread badge, posts, reactions, Send feedback), Settings → Widget (snippet, look, signing key), `/api/widget/*`, signed identity tokens, Home "Widget opens". Migration `0012`.
 - **2026-11-01, Phase 6C Branding (doc 26 §5, §13):** Settings → Branding (logo, favicon, brand colour, font, hide "Powered by", preview), workspace Theme (system/light/dark), applied to public sites, embeds, widget and end-user emails; plan gates with downgrade fallback. Migration `0013`. App favicon moved to `public/favicon.ico`.
+- **2026-11-01, Phase 8 Platform admin (doc 28):** `/admin` for emails in `PLATFORM_ADMIN_EMAILS` (real 404 for everyone else, from the proxy): overview counts, accounts list/search/filters, account page, grant a plan with an end date (wins over Stripe, reminder emails), invite a customer (account + workspace + owner invitation), suspend/restore (dashboard, public site 503, widget, API, webhooks, emails), audit log. Migration `0016`.
 - **2026-11-01, Phase 7 API + webhooks (doc 27):** account API keys (Settings → API, hashed, revoked when the creator leaves), REST API `/api/v1/*` (reads for everything; writes for cards, feedback, updates; cursor pages; 100/min per key), `openapi.json` + reference page, signed outgoing webhooks for 18 events (Settings → Webhooks, retries ~25 h, SSRF guard, delivery log, auto-off after 3 days + email). Migration `0015`.
 - **2026-11-01, Phase 6D Custom domain (doc 26 §6, §14):** customers' own domains (e.g. `feedback.acme.com`; never subdomains of ours), TXT + CNAME verification, Settings → Domain, 10-minute verify job + owner emails, proxy serves only the public site on the custom host, app-domain URLs 308 there (not embeds), links/canonicals/sitemaps/emails on the domain, Caddy on-demand TLS. Migration `0014`, env `CUSTOM_DOMAIN_TARGET`.
 - **2026-11-01, public UI polish:** LoopedIn look on public sites (blue accent, slate greys, light + dark), shared underline tabs (also Edit roadmap and the card drawer), objective colour strip on card drawers, Votes/Comments tooltips, clickable comment counts, short URLs for the default workspace (doc 26 §11).
-- **Checks:** `pnpm lint`, `typecheck`, `test` (280 tests), `test:e2e` (32 + 1 skipped unless `E2E_BILLING=1`; run `pnpm build:widget` first) and `build` pass.
-- **Git:** everything through Phase 7 is committed and pushed on `main`.
-- **Migrations to run on the other Mac:** `0005`–`0015` (`pnpm db:migrate`), then restart `pnpm worker:dev`.
+- **Checks:** `pnpm lint`, `typecheck`, `test` (287 tests), `test:e2e` (33 + 1 skipped unless `E2E_BILLING=1`; run `pnpm build:widget` first) and `build` pass.
+- **Git:** everything through Phase 8 is committed and pushed on `main`.
+- **Migrations to run on the other Mac:** `0005`–`0016` (`pnpm db:migrate`); add `PLATFORM_ADMIN_EMAILS=…` to `.env.local` (this Mac has `platform-admin@example.test` for the e2e test), then restart `pnpm worker:dev`.
 - **Dev tip:** Turbopack's dev cache sometimes serves stale code after edits (seen twice: CSS and a new service export). If a change doesn't show up, stop `pnpm dev`, delete `.next/dev`, and start it again.
 - **Dev test account on this Mac:** `claude-dev@example.test` / `devpassword123` (account `claude-dev`, workspace `dev-product`). Local dev DB only.
 - **Second Mac (user `radiustheme`):** set up 2026-10-28. Homebrew Postgres 18 (role `radiustheme`, no `postgres` role, so `DATABASE_URL=postgres://radiustheme@localhost:5432/radius_roadmap`) + Redis. `~/.zshrc` has `PNPM_HOME=/Users/mahbubur/...` copied from the first Mac, so pnpm (and the lefthook pre-commit hook) fails with EACCES until it's fixed to `$HOME/Library/pnpm` (workaround: prefix commands with `PNPM_HOME=$HOME/Library/pnpm`). Playwright Chromium installed 2026-10-28.
@@ -72,7 +74,7 @@
 ## Next step
 Resume here. On a new session say: *"Read docs/PROGRESS.md and continue from Next step."*
 1. **Owner decision pending:** Comments (and Follows) on by default for new workspaces? (Recommended yes; reverses doc 20 D3.) And switch them on for existing workspaces?
-2. **Phase 7 is done.** Next phase to plan from the "Later" list: WordPress plugin (builds on the API/widget), Jira sync, AI tagging, SSO/SAML. Ask the owner which first.
+2. **Phase 8 is done.** Next: owner adds their own email to `PLATFORM_ADMIN_EMAILS`; then plan the WordPress plugin (doc 29), then Jira / AI tagging / SSO.
    - For production custom domains: A record for the `CUSTOM_DOMAIN_TARGET` hostname → server, set the env var, deploy the new `deploy/Caddyfile`.
 3. **Owner (for a real billing test):** create a Stripe test account, put the keys in `.env.local`, run `pnpm stripe:setup`, `stripe listen --forward-to localhost:3000/api/webhooks/stripe`, turn on the customer portal with plan switching. Then try Checkout → Pro → cancel (doc 26 §10 last bullet).
 4. **Owner (blocking for the imports):** export from LoopedIn and put both files in `docs/samples/`: the roadmap (Roadmap → More → Export) and the feedback (Boards → More → Export).
@@ -113,7 +115,8 @@ Resume here. On a new session say: *"Read docs/PROGRESS.md and continue from Nex
   6. Phase 5 — Knowledge base
   7. Phase 6 — Billing (Stripe) + widget + custom domains + white-label
   8. Phase 7 — Public REST API + webhooks (doc 27)
-  9. Later — SSO/SAML, Jira, AI tagging, WordPress plugin
+  9. Phase 8 — Platform admin (doc 28)
+  10. Later — SSO/SAML, Jira, AI tagging, WordPress plugin
 
 ## Phase checklist
 - [x] Research LoopedIn (public docs) — docs 00–13
@@ -129,6 +132,7 @@ Resume here. On a new session say: *"Read docs/PROGRESS.md and continue from Nex
 - [x] Phase 5 — Knowledge base (doc 25, built 2026-10-29)
 - [x] Phase 6 — Billing, widget, domains, white-label (6A–6D built 2026-11-01; doc 26)
 - [x] Phase 7 — Public REST API + webhooks (doc 27, built 2026-11-01)
+- [x] Phase 8 — Platform admin (doc 28, built 2026-11-01)
 
 ## Open questions
 - Product name and app domain (not blocking).
@@ -167,3 +171,4 @@ Resume here. On a new session say: *"Read docs/PROGRESS.md and continue from Nex
 | 2026-11-01 | radiustheme (Mac 2) | Phase 6C Branding (doc 26 B1–B7 approved): account_settings (migration 0013), Settings → Branding, workspace theme, brand on public sites/embeds/widget/end-user emails, favicon; 243 unit + 30 e2e | Comments default decision; 6D Custom domain plan steps |
 | 2026-11-01 | radiustheme (Mac 2) | Phase 6D Custom domain (doc 26 D1–D9; D1 = customer-owned domains): custom_domains (migration 0014), Settings → Domain, verify job + emails, proxy custom-host routing + redirects, links on the domain, Caddy on-demand TLS; 256 unit + 31 e2e. **Phase 6 done** | Owner picks the next phase; production DNS for custom domains |
 | 2026-11-01 | radiustheme (Mac 2) | Phase 7 (doc 27, A1–A12): API keys, REST API v1 (reads + card/feedback/update writes), OpenAPI + reference page, signed webhooks (18 events, retries, SSRF guard with no socket reuse, delivery log, auto-off + email); migration 0015; 280 unit + 32 e2e. **Phase 7 done** | Owner picks the next phase (WordPress plugin / Jira / AI tagging / SSO) |
+| 2026-11-01 | radiustheme (Mac 2) | Phase 8 platform admin (doc 28, C1–C10, C1 = env email list): /admin (proxy 404 for others), accounts list/detail, plan overrides + reminder emails, invite a customer, suspend/restore everywhere, audit log; migration 0016; 287 unit + 33 e2e. **Phase 8 done** | Owner adds their email to PLATFORM_ADMIN_EMAILS; WordPress plugin plan (doc 29) |

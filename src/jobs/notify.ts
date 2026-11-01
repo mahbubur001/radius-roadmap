@@ -19,6 +19,11 @@ import {
   newSubscriberEmails,
 } from "@/server/services/notifications";
 import {
+  markReminder,
+  overrideReminders,
+} from "@/server/services/platform/overrides";
+import { ownerSuspended } from "@/server/services/platform/suspension";
+import {
   claimUpdateEmail,
   subscriberBatch,
   updateEmail,
@@ -80,6 +85,20 @@ export async function notifyJob(job: Job<NotifyJob>) {
     return { changed };
   }
 
+  if (data.type === "plan-overrides") {
+    const due = await overrideReminders(db);
+    for (const r of due) {
+      for (const email of r.emails) {
+        await enqueueEmail(
+          email,
+          `override-${r.accountId}-${r.kind}-${email.to}-${new Date().toISOString().slice(0, 10)}`,
+        );
+      }
+      await markReminder(db, r.accountId, r.kind);
+    }
+    return { reminders: due.length };
+  }
+
   if (data.type === "publish-update") {
     const post = await publishDue(db, data.updateId, new Date(data.at));
     if (post) {
@@ -91,6 +110,14 @@ export async function notifyJob(job: Job<NotifyJob>) {
   }
 
   if (data.type === "idea-status-sweep" || data.type === "idea-shipped") {
+    // Suspended accounts send nothing (doc 28 C8); a later sweep catches up.
+    const paused = await ownerSuspended(
+      db,
+      data.type === "idea-status-sweep"
+        ? { workspaceId: data.workspaceId }
+        : { updateId: data.updateId },
+    );
+    if (paused) return { sent: 0, suspended: true };
     // The sweep runs after every roadmap/feedback change (debounced), so it
     // also tells card followers about completed cards.
     const followEmails =
@@ -107,6 +134,10 @@ export async function notifyJob(job: Job<NotifyJob>) {
   if (data.type === "send-update") {
     // Claimed once: a retry after a crash resumes nothing twice, because
     // each email job id is post + subscriber (BullMQ ignores duplicates).
+    // Checked before claiming, so the post isn't marked as emailed.
+    if (await ownerSuspended(db, { updateId: data.updateId })) {
+      return { sent: 0, suspended: true };
+    }
     const post = await claimUpdateEmail(db, data.updateId);
     if (!post) return { sent: 0 };
     const brand = await getEmailBrand(db, post.accountId);

@@ -14,6 +14,7 @@ import {
   toRole,
 } from "./context";
 import { assertFeature, hasFeature } from "./plan-limits";
+import { isSuspended } from "./platform/suspension";
 
 // Public REST API keys (doc 27 A1–A3). Only hashes are stored.
 
@@ -150,6 +151,7 @@ export async function verifyApiKey(
     .limit(1);
   if (!row) return null;
   if (!(await hasFeature(db, row.accountId, "api"))) return null;
+  if (await isSuspended(db, row.accountId)) return null; // doc 28 C8
   const minuteAgo = new Date(now.getTime() - 60_000);
   if (!row.lastUsedAt || row.lastUsedAt < minuteAgo) {
     await db

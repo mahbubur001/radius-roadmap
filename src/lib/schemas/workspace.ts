@@ -17,6 +17,7 @@ export const RESERVED_SLUGS = new Set([
   "accept-invite",
   "settings",
   "admin",
+  "suspended",
   "widget",
   "embed",
   "app",

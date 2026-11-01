@@ -11,6 +11,7 @@ import {
   toRole,
   type WorkspaceContext,
 } from "@/server/services/context";
+import { isSuspended } from "@/server/services/platform/suspension";
 import { getWorkspaceBySlug } from "@/server/services/workspaces";
 
 // Request-scoped helpers. With Cache Components these read runtime data, so
@@ -42,6 +43,8 @@ export const requireAccount = cache(async (): Promise<AccountContext> => {
     .orderBy(asc(member.createdAt));
   const row = rows.find((r) => r.accountId === active) ?? rows[0];
   if (!row) redirect("/onboarding");
+  // Suspended by a platform admin (doc 28 C8): no dashboard, no actions.
+  if (await isSuspended(db, row.accountId)) redirect("/suspended");
 
   return {
     accountId: row.accountId,

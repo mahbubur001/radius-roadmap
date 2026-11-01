@@ -13,6 +13,8 @@ import type { Db } from "@/server/db/client";
 import {
   accountBilling,
   feedbackBoards,
+  organization,
+  planOverrides,
   roadmaps,
   type WorkspaceSettings,
   workspaces,
@@ -38,18 +40,34 @@ export const billing = {
 // Stripe keeps retrying a past_due invoice; the plan stays until it gives up.
 const PAID_STATUSES = new Set(["active", "trialing", "past_due"]);
 
-/** The plan the account gets right now (doc 26 §3). */
+/**
+ * The plan the account gets right now (doc 26 §3): a platform admin's
+ * override while it runs (doc 28 C4), else the Stripe plan, else Free.
+ */
 export async function getAccountPlan(
   db: Db,
   accountId: string,
+  now = new Date(),
 ): Promise<PlanId> {
   if (!billing.enabled()) return "enterprise";
   const [row] = await db
-    .select({ plan: accountBilling.plan, status: accountBilling.status })
-    .from(accountBilling)
-    .where(eq(accountBilling.accountId, accountId))
+    .select({
+      plan: accountBilling.plan,
+      status: accountBilling.status,
+      override: planOverrides.plan,
+      overrideEnds: planOverrides.endsAt,
+    })
+    .from(organization)
+    .leftJoin(accountBilling, eq(accountBilling.accountId, organization.id))
+    .leftJoin(planOverrides, eq(planOverrides.accountId, organization.id))
+    .where(eq(organization.id, accountId))
     .limit(1);
-  return row?.status && PAID_STATUSES.has(row.status) ? row.plan : "free";
+  if (row?.override && (!row.overrideEnds || row.overrideEnds > now)) {
+    return row.override;
+  }
+  return row?.plan && row.status && PAID_STATUSES.has(row.status)
+    ? row.plan
+    : "free";
 }
 
 export async function getPlanLimits(db: Db, accountId: string) {

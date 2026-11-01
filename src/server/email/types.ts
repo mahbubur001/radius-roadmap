@@ -124,6 +124,27 @@ export type EmailTemplateProps = {
   };
   /** To account owners: the subscription ended; the account is on Free. */
   "billing-canceled": { accountName: string; planName: string; url: string };
+  /** A platform admin set up an account for this person (doc 28 C3). */
+  "customer-invite": {
+    accountName: string;
+    planName: string | null;
+    endsAt: string | null;
+    url: string;
+  };
+  /** To account owners: a granted plan ends soon (doc 28 C5). */
+  "plan-override-ending": {
+    accountName: string;
+    planName: string;
+    endsAt: string;
+    url: string;
+  };
+  /** To account owners: a granted plan ended. */
+  "plan-override-ended": {
+    accountName: string;
+    planName: string;
+    endsAt: string;
+    url: string;
+  };
   /** To account owners: a webhook was switched off after failing (doc 27 A10). */
   "webhook-disabled": {
     accountName: string;

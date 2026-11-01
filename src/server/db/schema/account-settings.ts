@@ -20,6 +20,9 @@ export const accountSettings = pgTable("account_settings", {
     .primaryKey()
     .references(() => organization.id, { onDelete: "cascade" }),
   branding: jsonb().$type<AccountBranding>().notNull().default({}),
+  /** Suspended by a platform admin (doc 28 C8); data is kept. */
+  suspendedAt: timestamp({ withTimezone: true }),
+  suspendedReason: text(),
   updatedAt: timestamp({ withTimezone: true })
     .notNull()
     .defaultNow()

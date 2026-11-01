@@ -1,6 +1,6 @@
 # 26 — Phase 6 plan: Billing, widget, custom domains, white-label
 
-Status: **APPROVED 2026-11-01** (P1–P12 as recommended; order 6A → 6B → 6C → 6D; custom SMTP later). **6A being built.**
+Status: **APPROVED 2026-11-01** (P1–P12 as recommended; order 6A → 6B → 6C → 6D; custom SMTP later). **6A built 2026-11-01** (see "As built"); 6B next.
 
 Phase 6 turns the product into something we can sell: paid plans with limits, the JavaScript widget, a customer's own domain, and branding. It is too large for one pass, so it is split into four sub-phases that can ship (and be committed) independently.
 
@@ -111,7 +111,7 @@ What exists today:
 - Translations / multi-language, password-protected public sites (Pro gate exists; feature later), custom CSS.
 
 ## 8. Steps (each: tests, lint, typecheck, commit)
-Steps for the first approved sub-phase get numbered here once P1 is decided. Draft for 6A:
+6A (built):
 1. Plans config + `account_billing`/`stripe_events` migration + `billing.ts` + limits/gates in services, tests.
 2. Stripe Checkout, Portal, webhook route, emails job; env vars.
 3. Settings → Billing UI, upgrade dialog, locks on gated switches, banners.
@@ -119,8 +119,23 @@ Steps for the first approved sub-phase get numbered here once P1 is decided. Dra
 5. e2e + docs ("As built"), PROGRESS.
 
 ## 9. Done when (6A)
-- [ ] An owner can upgrade, change interval, downgrade and cancel through Stripe; the app follows within one webhook.
-- [ ] Limits and gates hold on the server for every create path (tests), with an upgrade prompt in the UI.
-- [ ] No Stripe keys ⇒ everything unlimited, no billing UI.
-- [ ] An owner can delete the account.
-- [ ] Checks green (unit, e2e, lint, typecheck, build).
+- [x] An owner can upgrade, change interval, downgrade and cancel through Stripe; the app follows within one webhook. *(Code + unit tests with a mocked Stripe; not yet tried against Stripe test mode, waiting for keys.)*
+- [x] Limits and gates hold on the server for every create path (tests), with an upgrade prompt in the UI.
+- [x] No Stripe keys ⇒ everything unlimited, no billing UI.
+- [x] An owner can delete the account.
+- [x] Checks green (unit, e2e, lint, typecheck, build).
+
+## 10. As built: 6A (2026-11-01)
+
+- **Plans (`src/lib/plans.ts`):** plan ids, prices (yearly = 20% off, shown per month), limits (teammates, workspaces, roadmaps, feedback boards), features, `planFor(feature)`, `limitText`. Stripe prices are found by lookup key `<plan>_<interval>ly` (`pro_monthly`, `startup_yearly`…). `pnpm stripe:setup` (`scripts/stripe-setup.ts`) creates the products and prices in the Stripe account from this file; safe to run again.
+- **Schema (`0011_billing`):** `account_billing` (one row per paying account; no row = Free), `stripe_events` (applied event ids), enum `plan_id`.
+- **Billing on/off:** `billing.enabled()` (`src/server/services/plan-limits.ts`) = `STRIPE_SECRET_KEY` is set. Off ⇒ every account is treated as Enterprise and Settings → Billing is hidden. So dev, CI and e2e run unlimited. (The planned `NEXT_PUBLIC_STRIPE_ENABLED` wasn't needed: the nav item is decided on the server.)
+- **Effective plan:** `active` / `trialing` / `past_due` keep the stored plan (Stripe retries past_due); anything else ⇒ Free.
+- **Limits:** `assertWithinLimit` on workspace, roadmap and feedback-board creation; teammates (members + pending invites) in invitations and Better Auth's `membershipLimit`. Errors are `PlanLimitError` (a `ForbiddenError`); `action()` returns `{ ok: false, error, upgrade: true }` and `useActionError()` shows a toast with an **Upgrade** button to Settings → Billing. Toasts are clickable over open modals now (`pointer-events-auto`).
+- **Gates (P6/P7):** saved switches stay saved; the public site applies the plan. Comments and follows: `gateSettings()` in the public workspace loader (also covers the public API routes, which use the same loader) and `assertSwitchesAllowed()` when saving Public settings (locked switches show a "Startup plan" badge; a switch that is still on can be turned off). Reactions (hidden + API 404), embeds (embed mode shows "Embedding needs a paid plan" with a link to the full page) and the workspace logo in the public header (initials instead) come from `features` on the public workspace. Uploading a logo isn't blocked; only its public display. The plan is read inside the cached loaders, so the webhook calls `invalidateSite(accountId)`.
+- **Stripe:** `src/server/stripe.ts` (lazy client). `startCheckout` (owner only; creates the customer once with an idempotency key; accounts already paying are sent to the portal instead, so never two subscriptions; promo codes allowed), `openPortal`, `toSnapshot` (period end from the first subscription item: Stripe's 2025+ API moved it there).
+- **Webhook `POST /api/webhooks/stripe`:** verifies the signature on the raw body, then `handleStripeEvent`: for `checkout.session.completed` and `customer.subscription.*` it **re-fetches the subscription from Stripe** (so out-of-order events can't roll it back), and records the event id in the same transaction as the update (a failure rolls both back and Stripe retries). The account is found from the subscription's `metadata.accountId`, else by customer id. Unknown price lookup keys are logged and ignored. `invoice.payment_failed` and `customer.subscription.deleted` email the owners (`billing-payment-failed`, `billing-canceled`; job id = event + recipient).
+- **UI:** Settings → **Billing** (owners and admins see it; only owners get the buttons): current plan, renew/end date, past-due warning, usage bars, plan cards with a Monthly/Yearly switch, **Manage billing** (portal). A past-due banner sits above every dashboard page for owners and admins.
+- **Account deletion:** Settings → Account → **Delete account** (owner; type the account name). Cancels the Stripe subscription at once (no proration), deletes the organization (everything cascades), drops the public site cache, then a `delete-account-files` job removes `accounts/<id>/` from storage (`src/server/storage/purge.ts`, kept free of `server-only` because the worker imports it).
+- **Tests:** `src/server/services/billing.test.ts` (13: billing off, Free limits, gates, Stripe statuses, lookup by customer, unknown prices, once-per-event webhooks, overview + roles, notices, deletion, file purge). e2e `e2e/billing.spec.ts`: delete account (always runs); Free limits + upgrade toast + locked switches (runs only with `E2E_BILLING=1` against a dev server started with any `STRIPE_SECRET_KEY`). 220 unit, 28 e2e (+1 skipped).
+- **Not done yet (needs the owner's Stripe test account):** a real Checkout → webhook → Pro run. Setup: put the test keys in `.env.local`, `pnpm stripe:setup`, `stripe listen --forward-to localhost:3000/api/webhooks/stripe` (gives `STRIPE_WEBHOOK_SECRET`), and in the Stripe dashboard turn on the customer portal with plan switching between the six prices.

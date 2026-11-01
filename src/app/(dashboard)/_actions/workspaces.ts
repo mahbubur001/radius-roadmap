@@ -2,6 +2,7 @@
 
 import { headers } from "next/headers";
 import {
+  deleteAccountSchema,
   switchAccountSchema,
   updateAccountSchema,
 } from "@/lib/schemas/account";
@@ -15,7 +16,8 @@ import { action, workspaceAction } from "@/server/action";
 import { auth } from "@/server/auth";
 import { db } from "@/server/db/client";
 import { invalidatePublic, invalidateSite } from "@/server/public-cache";
-import { updateAccount } from "@/server/services/accounts";
+import { deleteAccountFiles } from "@/server/queue/notifications";
+import { deleteAccount, updateAccount } from "@/server/services/accounts";
 import {
   createWorkspace,
   deleteWorkspace,
@@ -79,5 +81,16 @@ export const updatePublicSiteAction = workspaceAction(
     await updatePublicSite(db, ctx, input);
     invalidatePublic(ctx.workspaceId);
     invalidateSite(ctx.accountId);
+  },
+);
+
+/** Owner only: cancels billing, deletes the account, then its files (job). */
+export const deleteAccountAction = action(
+  deleteAccountSchema,
+  async (input) => {
+    const ctx = await requireAccount();
+    await deleteAccount(db, ctx, input);
+    invalidateSite(ctx.accountId);
+    await deleteAccountFiles(ctx.accountId);
   },
 );

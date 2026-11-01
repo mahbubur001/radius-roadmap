@@ -1,3 +1,5 @@
+import { randomUUID } from "node:crypto";
+import { eq } from "drizzle-orm";
 import {
   afterAll,
   afterEach,
@@ -8,12 +10,16 @@ import {
   vi,
 } from "vitest";
 import { db } from "@/server/db/client";
+import { organization, workspaces } from "@/server/db/schema";
+import { fileSize, prefixes, writeLocalFile } from "@/server/storage";
+import { deletePrefix } from "@/server/storage/purge";
 import {
   addTestMember,
   cleanup,
   createTestAccount,
   createTestUser,
 } from "@/test/factories";
+import { deleteAccount } from "./accounts";
 import {
   billingNotice,
   getBillingOverview,
@@ -267,5 +273,50 @@ describe("billing notices", () => {
     expect(notice?.owners).toHaveLength(1);
     expect(notice?.owners[0]).toContain("owner-a");
     expect(await billingNotice(db, "cus_unknown")).toBeNull();
+  });
+});
+
+describe("account deletion", () => {
+  it("only the owner, with the exact name; everything goes", async () => {
+    const id = await createTestAccount(db, "doomed");
+    const owner = await createTestUser(db, "doomed-owner");
+    const admin = await createTestUser(db, "doomed-admin");
+    accounts.push(id);
+    users.push(owner, admin);
+    const ctx = await addTestMember(db, id, owner, "owner");
+    const adminCtx = await addTestMember(db, id, admin, "admin");
+    const ws = await createWorkspace(db, ctx, {
+      name: "Doomed",
+      slug: "doomed",
+    });
+
+    await expect(
+      deleteAccount(db, adminCtx, { confirmName: "doomed" }),
+    ).rejects.toBeInstanceOf(ForbiddenError);
+    await expect(
+      deleteAccount(db, ctx, { confirmName: "wrong" }),
+    ).rejects.toThrow("Type the account name");
+
+    await deleteAccount(db, ctx, { confirmName: "doomed" });
+    expect(
+      await db.select().from(organization).where(eq(organization.id, id)),
+    ).toHaveLength(0);
+    expect(
+      await db.select().from(workspaces).where(eq(workspaces.id, ws.id)),
+    ).toHaveLength(0);
+    // Other accounts are untouched.
+    expect(await getAccountPlan(db, wsA.accountId)).toBe("enterprise");
+  });
+
+  it("removes only the account's files", async () => {
+    const mine = `${prefixes.accountLogo("acct-del-test")}/${randomUUID()}.png`;
+    const other = `${prefixes.accountLogo("acct-keep-test")}/${randomUUID()}.png`;
+    await writeLocalFile(mine, new Uint8Array([1]));
+    await writeLocalFile(other, new Uint8Array([2]));
+    await deletePrefix(prefixes.account("acct-del-test"));
+    expect(await fileSize(mine)).toBeNull();
+    expect(await fileSize(other)).toBe(1);
+    await deletePrefix(prefixes.account("acct-keep-test"));
+    await expect(deletePrefix("accounts/")).rejects.toThrow();
   });
 });

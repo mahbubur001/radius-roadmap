@@ -18,7 +18,9 @@ export type NotifyJob =
   /** Email followers of ideas whose status moved (doc 23 step 6). */
   | { type: "idea-status-sweep"; workspaceId: string }
   /** Email followers of ideas a published post shipped. */
-  | { type: "idea-shipped"; updateId: string };
+  | { type: "idea-shipped"; updateId: string }
+  /** Remove a deleted account's uploads (doc 26 6A). */
+  | { type: "delete-account-files"; accountId: string };
 
 const globalForQueue = globalThis as typeof globalThis & {
   notifyQueue?: Queue<NotifyJob>;
@@ -45,7 +47,13 @@ globalForQueue.notifyQueue = notifyQueue;
 export async function notify(
   job: Exclude<
     NotifyJob,
-    { type: "digest" | "publish-update" | "idea-status-sweep" }
+    {
+      type:
+        | "digest"
+        | "publish-update"
+        | "idea-status-sweep"
+        | "delete-account-files";
+    }
   >,
 ) {
   const jobId =
@@ -63,6 +71,15 @@ export async function notify(
   } catch (error) {
     console.error("[notify] enqueue failed", job, error);
   }
+}
+
+/** Remove a deleted account's uploads in the background. */
+export async function deleteAccountFiles(accountId: string) {
+  await notifyQueue.add(
+    "delete-account-files",
+    { type: "delete-account-files", accountId },
+    { jobId: `delete-account-files-${accountId}` },
+  );
 }
 
 /**

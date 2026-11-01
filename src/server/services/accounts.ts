@@ -1,10 +1,12 @@
 import { and, asc, eq } from "drizzle-orm";
 import {
+  deleteAccountSchema,
   type UpdateAccountInput,
   updateAccountSchema,
 } from "@/lib/schemas/account";
 import type { Db } from "@/server/db/client";
 import { member, organization } from "@/server/db/schema";
+import { cancelSubscriptionNow } from "./billing";
 import {
   type AccountContext,
   assertRole,
@@ -82,4 +84,24 @@ export async function isMember(db: Db, accountId: string, userId: string) {
     .where(and(eq(member.organizationId, accountId), eq(member.userId, userId)))
     .limit(1);
   return Boolean(row);
+}
+
+/**
+ * Owner only: cancel the subscription, then delete the account and (by
+ * cascade) everything in it. Uploads are removed by a job afterwards.
+ */
+export async function deleteAccount(
+  db: Db,
+  ctx: AccountContext,
+  input: { confirmName: string },
+) {
+  assertRole(ctx, "owner");
+  const { confirmName } = deleteAccountSchema.parse(input);
+  const account = await getAccount(db, ctx);
+  if (confirmName.trim() !== account.name) {
+    throw new ConflictError("Type the account name exactly to confirm.");
+  }
+  await cancelSubscriptionNow(db, ctx.accountId);
+  await db.delete(organization).where(eq(organization.id, ctx.accountId));
+  return { slug: account.slug };
 }

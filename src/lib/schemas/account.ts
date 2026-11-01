@@ -9,3 +9,6 @@ export const updateAccountSchema = z.object({
 export type UpdateAccountInput = z.infer<typeof updateAccountSchema>;
 
 export const switchAccountSchema = z.object({ accountId: z.string().min(1) });
+
+/** The owner types the account name to confirm (doc 26 6A). */
+export const deleteAccountSchema = z.object({ confirmName: z.string() });

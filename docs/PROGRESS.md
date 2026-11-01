@@ -29,7 +29,7 @@
 - Phase 4 plan (Updates, subscribers, emails; approved + built 2026-10-29): `docs/23-phase-4-plan.md`
 - Edit roadmap redesign (LoopedIn modal, internal/public display, header images, completion emails; approved + built 2026-10-29): `docs/24-edit-roadmap-plan.md`
 - Phase 5 plan (Articles / knowledge base; approved + built 2026-10-29): `docs/25-phase-5-plan.md`
-- Phase 6 plan (Billing, widget, custom domain, white-label; draft 2026-11-01, waiting for approval): `docs/26-phase-6-plan.md`
+- Phase 6 plan (Billing, widget, custom domain, white-label; approved 2026-11-01; 6A billing built): `docs/26-phase-6-plan.md`
 - Stack versions as built: `docs/14-dev-tools.md` → "Versions as built"
 
 ## Current status
@@ -54,9 +54,10 @@
 - Rate-limit bypass fixed: `cf-*` headers trusted only with `TRUST_CLOUDFLARE=1` (new env var); `src/server/rate-limit.test.ts`.
 - **2026-10-29, Edit roadmap (doc 24):** LoopedIn-style modal saved in one transaction (staged columns, Discard), Internal/Public display toggles, rich summaries, card header images, completion emails to card followers, public site logo switch + tab names. Migration `0009`.
 - **2026-10-29, Phase 5 Articles (doc 25):** admin Articles (tiles, categories with icons, drag order, editor), public Articles tab (search, featured, recent, categories, category + article pages), "Was this helpful?" ratings, article views, Home tiles, YouTube/Vimeo embeds in all rich text. Migration `0010`.
-- **Checks:** `pnpm lint`, `typecheck`, `test` (207 tests), `test:e2e` (27 tests in `e2e/roadmap.spec.ts`, `feedback.spec.ts`, `ideas.spec.ts`, `team.spec.ts`) and `build` pass.
-- **Git:** doc 21 work is committed locally on `main` (sidebar `668679c`, step A `e853923`, step B `92ae9fa`, step C + docs after it). **Not pushed yet.**
-- **Migrations to run on the other Mac:** `0005`–`0010` (`pnpm db:migrate`), then restart `pnpm worker:dev`.
+- **2026-11-01, Phase 6A Billing (doc 26 §10):** plans + limits + feature gates, Stripe Checkout / portal / webhook, Settings → Billing, upgrade toasts, past-due banner, account deletion. Billing is **off** (everything unlimited) until `STRIPE_SECRET_KEY` is set. Migration `0011`. New dependency `stripe`.
+- **Checks:** `pnpm lint`, `typecheck`, `test` (220 tests), `test:e2e` (28 + 1 skipped unless `E2E_BILLING=1`) and `build` pass.
+- **Git:** everything up to 6A is committed on `main`; push when ready.
+- **Migrations to run on the other Mac:** `0005`–`0011` (`pnpm db:migrate`), then restart `pnpm worker:dev`.
 - **Dev tip:** Turbopack's dev cache sometimes serves stale code after edits (seen twice: CSS and a new service export). If a change doesn't show up, stop `pnpm dev`, delete `.next/dev`, and start it again.
 - **Dev test account on this Mac:** `claude-dev@example.test` / `devpassword123` (account `claude-dev`, workspace `dev-product`). Local dev DB only.
 - **Second Mac (user `radiustheme`):** set up 2026-10-28. Homebrew Postgres 18 (role `radiustheme`, no `postgres` role, so `DATABASE_URL=postgres://radiustheme@localhost:5432/radius_roadmap`) + Redis. `~/.zshrc` has `PNPM_HOME=/Users/mahbubur/...` copied from the first Mac, so pnpm (and the lefthook pre-commit hook) fails with EACCES until it's fixed to `$HOME/Library/pnpm` (workaround: prefix commands with `PNPM_HOME=$HOME/Library/pnpm`). Playwright Chromium installed 2026-10-28.
@@ -64,7 +65,8 @@
 
 ## Next step
 Resume here. On a new session say: *"Read docs/PROGRESS.md and continue from Next step."*
-1. **Owner: approve doc 26** (Phase 6, decisions P1–P12) and pick the first sub-phase (recommended 6A Billing → 6B Widget → 6C Branding → 6D Custom domain). Then number its steps in doc 26 §8 and build.
+1. **6B Widget** (doc 26 §4): number its steps in doc 26 §8 and build (Updates sidebar/popover, Send feedback, identify with name/email or signed JWT, Settings → Widget, widget API).
+1a. **Owner (for a real billing test):** create a Stripe test account, put the keys in `.env.local`, run `pnpm stripe:setup`, `stripe listen --forward-to localhost:3000/api/webhooks/stripe`, turn on the customer portal with plan switching. Then try Checkout → Pro → cancel (doc 26 §10 last bullet).
 2. **Owner (blocking for the imports):** export from LoopedIn and put both files in `docs/samples/`: the roadmap (Roadmap → More → Export) and the feedback (Boards → More → Export).
 3. With the exports: Phase 2 step 10 (LoopedIn roadmap import at `/dashboard/<workspace>/roadmap/import?r=<roadmap-slug>`: papaparse, preview step, idempotent by `external_ref`, totals into `imported_votes`, Vitest + Playwright flow 6), then Phase 3 step 9 (feedback import + CSV export). Tick doc 19 "Done when" and mark Phase 2 done.
 4. Open follow-ups: a strict Content-Security-Policy on public pages (they now share the dashboard's origin, doc 19 "D1 revised"); optional redirect from old dashboard URLs `/<workspace>/…` to `/dashboard/<workspace>/…`.
@@ -115,7 +117,7 @@ Resume here. On a new session say: *"Read docs/PROGRESS.md and continue from Nex
 - [x] Roadmap admin redesign — doc 21 (steps A–C)
 - [x] Phase 4 — Updates + email (doc 23, built 2026-10-29)
 - [x] Phase 5 — Knowledge base (doc 25, built 2026-10-29)
-- [ ] Phase 6 — Billing, widget, domains, white-label
+- [ ] Phase 6 — Billing, widget, domains, white-label (6A billing built 2026-11-01; 6B widget next)
 
 ## Open questions
 - Product name and app domain (not blocking).
@@ -148,3 +150,4 @@ Resume here. On a new session say: *"Read docs/PROGRESS.md and continue from Nex
 | 2026-10-29 | radiustheme (Mac 2) | Edit roadmap redesign (doc 24, approved): LoopedIn modal (one-transaction save, staged columns, Discard), Internal/Public display toggles, rich summaries, card header images, completion emails, public logo switch + tab names; migration 0009. 191 unit + 26 e2e | Phase 5 plan (Articles) |
 | 2026-10-29 | radiustheme (Mac 2) | Phase 5 Articles (doc 25, approved): schema 0010, admin list + categories + editor, public Articles tab (search, featured, recent, categories, pages), ratings, views, Home tiles, video embeds. **Phase 5 done.** 207 unit + 27 e2e | Phase 6 plan |
 | 2026-11-01 | radiustheme (Mac 2) | Phase 6 plan written (doc 26): sub-phases 6A billing, 6B widget, 6C branding, 6D custom domain; decisions P1–P12 | Owner approves doc 26 + picks the first sub-phase → build it |
+| 2026-11-01 | radiustheme (Mac 2) | Doc 26 approved; Phase 6A Billing built: plans/limits/gates, Stripe checkout/portal/webhook, Settings → Billing, upgrade toasts, account deletion (migration 0011). 220 unit + 28 e2e | 6B Widget; owner sets up Stripe test mode |

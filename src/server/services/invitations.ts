@@ -1,5 +1,6 @@
 import { randomUUID } from "node:crypto";
 import { and, count, desc, eq, inArray } from "drizzle-orm";
+import { limitText } from "@/lib/plans";
 import { type InviteInput, inviteSchema } from "@/lib/schemas/team";
 import type { Db } from "@/server/db/client";
 import {
@@ -98,7 +99,7 @@ export async function invite(db: Db, ctx: AccountContext, input: InviteInput) {
     .where(eq(member.organizationId, ctx.accountId));
   if ((members?.n ?? 0) + pending.length >= limits.teammates) {
     throw new PlanLimitError(
-      `Your plan allows ${limits.teammates} teammates. Upgrade to add more.`,
+      `Your plan allows ${limitText("teammates", limits.teammates)}. Upgrade to add more.`,
     );
   }
 

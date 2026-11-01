@@ -18,6 +18,8 @@ import {
   updateEmail,
 } from "@/server/services/update-emails";
 import { publishDue } from "@/server/services/update-publish";
+import { prefixes } from "@/server/storage/keys";
+import { deletePrefix } from "@/server/storage/purge";
 
 /**
  * Fans an event out to one email job per recipient. Email job ids include
@@ -26,6 +28,11 @@ import { publishDue } from "@/server/services/update-publish";
 export async function notifyJob(job: Job<NotifyJob>) {
   const data = job.data;
   let emails: { id: string; email: EmailJob }[] = [];
+
+  if (data.type === "delete-account-files") {
+    await deletePrefix(prefixes.account(data.accountId));
+    return { deleted: true };
+  }
 
   if (data.type === "publish-update") {
     const post = await publishDue(db, data.updateId, new Date(data.at));

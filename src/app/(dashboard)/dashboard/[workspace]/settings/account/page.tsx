@@ -7,9 +7,11 @@ import { Skeleton } from "@/components/ui/skeleton";
 import { db } from "@/server/db/client";
 import { getAccount } from "@/server/services/accounts";
 import { seesAllWorkspaces } from "@/server/services/context";
+import { billing, getAccountPlan } from "@/server/services/plan-limits";
 import { requireWorkspace } from "@/server/session";
 import { fileUrl } from "@/server/storage";
 import { AccountForm } from "./account-form";
+import { DeleteAccount } from "./delete-account";
 
 export const metadata: Metadata = { title: "Account settings" };
 
@@ -26,7 +28,10 @@ export default function AccountSettingsPage({
 async function AccountSettings({ slug }: { slug: Promise<string> }) {
   const ctx = await requireWorkspace(await slug);
   if (!seesAllWorkspaces(ctx)) return <Forbidden what="account settings" />;
-  const account = await getAccount(db, ctx);
+  const [account, plan] = await Promise.all([
+    getAccount(db, ctx),
+    getAccountPlan(db, ctx.accountId),
+  ]);
 
   return (
     <>
@@ -42,6 +47,12 @@ async function AccountSettings({ slug }: { slug: Promise<string> }) {
         />
       </SettingsSection>
       <AccountForm defaults={{ name: account.name, slug: account.slug }} />
+      {ctx.role === "owner" ? (
+        <DeleteAccount
+          name={account.name}
+          paying={billing.enabled() && plan !== "free"}
+        />
+      ) : null}
     </>
   );
 }

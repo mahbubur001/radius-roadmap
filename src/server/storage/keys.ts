@@ -15,6 +15,8 @@ const KEY_PATTERN =
 /** Storage prefixes. A tenant can only ever write under its own prefix. */
 export const prefixes = {
   avatar: (userId: string) => `users/${userId}/avatar`,
+  /** Everything an account stored (deleted with the account). */
+  account: (accountId: string) => `accounts/${accountId}/`,
   accountLogo: (accountId: string) => `accounts/${accountId}/logo`,
   workspaceLogo: (accountId: string, workspaceId: string) =>
     `accounts/${accountId}/workspaces/${workspaceId}/logo`,

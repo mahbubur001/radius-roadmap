@@ -3,8 +3,8 @@ import { env } from "@/lib/env";
 import {
   FEATURE_LABELS,
   type Feature,
-  LIMIT_LABELS,
   type LimitKey,
+  limitText,
   PLANS,
   type PlanId,
   planFor,
@@ -102,7 +102,7 @@ export async function assertWithinLimit(
   if (limit === Infinity) return;
   if ((await countUsage(db, accountId, key)) >= limit) {
     throw new PlanLimitError(
-      `Your plan allows ${limit} ${LIMIT_LABELS[key]}. Upgrade to add more.`,
+      `Your plan allows ${limitText(key, limit)}. Upgrade to add more.`,
     );
   }
 }

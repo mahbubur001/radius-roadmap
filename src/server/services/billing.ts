@@ -308,3 +308,13 @@ export async function billingNotice(db: Db, customerId: string) {
     billingPath: first ? `/dashboard/${first.slug}/settings/billing` : "/",
   };
 }
+
+/** Ends the subscription at once (account deletion). No-op without one. */
+export async function cancelSubscriptionNow(db: Db, accountId: string) {
+  const row = await getBillingRow(db, accountId);
+  if (!billing.enabled() || !row?.stripeSubscriptionId) return;
+  if (row.status === "canceled" || row.status === "incomplete_expired") return;
+  await stripe().subscriptions.cancel(row.stripeSubscriptionId, {
+    prorate: false,
+  });
+}

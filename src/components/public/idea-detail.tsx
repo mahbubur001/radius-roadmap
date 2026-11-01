@@ -7,7 +7,7 @@ import { PublicComments } from "./public-comments";
 import { VoteButton } from "./vote-button";
 
 const TAB =
-  "-mb-px flex-none rounded-none border-0 border-b-2 border-transparent px-1 pt-2 pb-2.5 after:hidden data-active:border-primary data-active:text-primary";
+  "-mb-px h-auto flex-none rounded-none border-0 border-b-2 border-transparent px-1 pt-1 pb-3 text-muted-foreground after:hidden hover:text-foreground data-[state=active]:border-primary data-[state=active]:text-primary";
 
 /**
  * One idea, shared by the Ideas drawer and the idea page. `tags` and
@@ -28,7 +28,7 @@ export function IdeaDetail({
 }) {
   return (
     <article className="flex flex-col">
-      <header className="flex flex-col items-start gap-4 border-b px-6 pt-6 pb-5">
+      <header className="flex flex-col items-start gap-4 px-6 pt-6 pb-5">
         <h1 className="pr-8 text-xl font-semibold tracking-tight">
           {idea.title}
         </h1>
@@ -45,7 +45,7 @@ export function IdeaDetail({
       <Tabs defaultValue="details" className="gap-0">
         <TabsList
           variant="line"
-          className="h-auto w-full justify-start gap-5 rounded-none border-b px-6"
+          className="mx-6 h-auto w-auto justify-start gap-6 rounded-none border-b p-0"
         >
           <TabsTrigger value="details" className={TAB}>
             Details

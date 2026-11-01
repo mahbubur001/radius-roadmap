@@ -24,7 +24,11 @@ export function CardDetail({
   const features = card.features ?? [];
   const progress = card.progress;
   return (
-    <article className="flex flex-col">
+    <article
+      className="flex flex-col border-t-4"
+      // The objective's colour across the top, like the bar on board cards.
+      style={{ borderTopColor: card.objective?.color ?? "var(--border)" }}
+    >
       {card.image ? (
         // biome-ignore lint/performance/noImgElement: tenant uploads on any host
         <img

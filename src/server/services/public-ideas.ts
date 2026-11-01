@@ -320,7 +320,9 @@ export async function submitIdea(
     title: string;
     details: string;
     trackedUserId: string;
-    source: "public" | "embed";
+    source: "public" | "embed" | "widget";
+    /** Always to the triage inbox (unverified widget users, doc 26 6B). */
+    review?: boolean;
   },
 ) {
   const [board] = await db
@@ -358,7 +360,7 @@ export async function submitIdea(
     title: input.title,
     summaryJson: details ? plainToRichText(details) : null,
     summaryText: details,
-    review: board.autoPublish ? "approved" : "pending",
+    review: board.autoPublish && !input.review ? "approved" : "pending",
     source: input.source,
     authorTrackedUserId: input.trackedUserId,
   });

@@ -8,6 +8,7 @@ import {
   Map as MapIcon,
   Megaphone,
   MessageSquare,
+  PanelRight,
   Settings,
 } from "lucide-react";
 import Link from "next/link";
@@ -33,6 +34,7 @@ const main: Item[] = [
 const settings: Item[] = [
   { href: "/settings", label: "Settings", icon: Settings },
   { href: "/public-settings", label: "Public settings", icon: Globe },
+  { href: "/widget", label: "Widget", icon: PanelRight },
 ];
 
 /** `inbox`: feedback waiting for review, shown as a badge on Feedback. */

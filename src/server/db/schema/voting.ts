@@ -17,7 +17,12 @@ import { roadmapCards } from "./roadmaps";
 import { trackedUsers } from "./tracked-users";
 import { workspaces } from "./workspaces";
 
-export const voteSource = pgEnum("vote_source", ["public", "embed", "admin"]);
+export const voteSource = pgEnum("vote_source", [
+  "public",
+  "embed",
+  "admin",
+  "widget",
+]);
 
 /**
  * One row per voter per card or feedback item (doc 19 §3.6, doc 20 D1). Signed-in and guest voters are
@@ -84,6 +89,7 @@ export const eventType = pgEnum("event_type", [
   "subscribe",
   "article_view",
   "article_rating",
+  "widget_view",
 ]);
 
 /** Analytics v1 (doc 19 §3.7). Charts query this directly for now. */

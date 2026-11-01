@@ -11,7 +11,22 @@ import {
 } from "drizzle-orm/pg-core";
 import { organization, user } from "./auth";
 
+/** The JavaScript widget's look and modules (doc 26 6B). */
+export type WidgetSettings = {
+  layout?: "sidebar" | "popover";
+  position?: "right" | "left";
+  /** `none`: only a custom selector opens it. */
+  launcher?: "bell" | "none";
+  /** Launcher and header colour (hex); null = the site's accent. */
+  color?: string | null;
+  title?: string | null;
+  reactions?: boolean;
+  feedback?: boolean;
+};
+
 export type WorkspaceSettings = {
+  /** JavaScript widget (doc 26 6B). Missing = defaults. */
+  widget?: WidgetSettings;
   /** Require voters to sign in before voting/commenting/submitting. */
   requireVoterLogin?: boolean;
   darkModeDefault?: boolean;

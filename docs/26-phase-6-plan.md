@@ -118,6 +118,13 @@ What exists today:
 4. Account deletion.
 5. e2e + docs ("As built"), PROGRESS.
 
+6B (being built, 2026-11-01):
+1. **Schema + settings:** migration `0012` (`widget_keys` per account; `widget` added to the feedback/vote sources, `widget_view` event). Widget settings in the workspace `settings` jsonb (`widget`: layout, position, colours, reactions, feedback). **Settings → Widget** page: install snippet, options, signing key (show/rotate). Plan gate `widget`.
+2. **Widget API** (`/api/widget/*`, CORS `*`, no cookies; visitor id in `x-rr-visitor`, identity token in `x-rr-token`): `GET config` (workspace, settings, latest posts, own reactions), `GET posts/<slug>` (body), `POST reactions`, `POST feedback` (to the triage inbox unless the token is verified), `POST view`. Services + tenant tests.
+3. **Bundle** `public/widget.js`: Preact in Shadow DOM, sidebar + popover, launcher (bell / custom selector), unread badge (`localStorage`), post list → post view, reactions, "Send feedback" form, JS API `RadiusRoadmap.init/show/hide/toggle`, < 15 KB gz check.
+4. **Views + e2e:** `widget_view` events + Home tile; Playwright: test page with the snippet → open → post → react → feedback lands in the inbox.
+5. **Docs:** "As built", PROGRESS.
+
 ## 9. Done when (6A)
 - [x] An owner can upgrade, change interval, downgrade and cancel through Stripe; the app follows within one webhook. *(Code + unit tests with a mocked Stripe; not yet tried against Stripe test mode, waiting for keys.)*
 - [x] Limits and gates hold on the server for every create path (tests), with an upgrade prompt in the UI.

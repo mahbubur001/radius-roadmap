@@ -60,6 +60,7 @@ export const feedbackSource = pgEnum("feedback_source", [
   "embed",
   "admin",
   "import",
+  "widget",
 ]);
 
 export const commentReview = pgEnum("comment_review", ["approved", "pending"]);

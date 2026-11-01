@@ -8,6 +8,7 @@ import {
   CategoryGrid,
 } from "@/components/public/public-articles";
 import { Skeleton } from "@/components/ui/skeleton";
+import { wsPath } from "@/lib/public-path";
 import {
   loadArticleSearch,
   loadKnowledgeBase,
@@ -55,7 +56,7 @@ export async function generateMetadata(props: Props): Promise<Metadata> {
     title: { absolute: `Help articles · ${ws.name}` },
     description: `Guides and answers for ${ws.name}.`,
     robots: indexable ? undefined : { index: false, follow: false },
-    alternates: { canonical: `${origin}/${ws.slug}/articles` },
+    alternates: { canonical: `${origin}${wsPath(ws)}/articles` },
   };
 }
 
@@ -73,7 +74,7 @@ async function Articles(props: Props) {
   const data = await load(props);
   if (!data) notFound();
   const { site, ws, kb, results, q, embed } = data;
-  const base = `/${site.slug}/${ws.slug}/articles`;
+  const base = `/${site.slug}${wsPath(ws)}/articles`;
   const suffix = embed ? "?embed=1" : "";
   return (
     <SiteShell

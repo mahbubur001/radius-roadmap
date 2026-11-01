@@ -5,6 +5,7 @@ import { VoterMenu } from "@/components/public/voter-menu";
 import { VoterProvider } from "@/components/public/voter-provider";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { initials } from "@/lib/initials";
+import { wsPath } from "@/lib/public-path";
 import { cn } from "@/lib/utils";
 import type { WorkspaceSettings } from "@/server/db/schema";
 
@@ -36,6 +37,8 @@ export function SiteShell({
     id: string;
     name: string;
     slug: string;
+    /** The account's default workspace: no slug in its URLs. */
+    isDefault: boolean;
     logoUrl: string | null;
     settings: Pick<
       WorkspaceSettings,
@@ -79,7 +82,7 @@ export function SiteShell({
           <header className="border-b">
             <div className="mx-auto flex h-16 max-w-7xl items-center gap-6 px-4">
               <Link
-                href={`/${account}/${workspace.slug}/${home}`}
+                href={`/${account}${wsPath(workspace)}/${home}`}
                 className="flex items-center gap-2 font-semibold"
               >
                 {workspace.settings.showLogo !== false ? (
@@ -101,7 +104,7 @@ export function SiteShell({
                 {MODULES.filter((m) => workspace.modules[m.key]).map((m) => (
                   <Link
                     key={m.key}
-                    href={`/${account}/${workspace.slug}/${m.key}`}
+                    href={`/${account}${wsPath(workspace)}/${m.key}`}
                     aria-current={m.key === active ? "page" : undefined}
                     className={cn(
                       "rounded-md px-3 py-1.5 hover:bg-muted",
@@ -128,7 +131,7 @@ export function SiteShell({
             <p className="py-6 text-center text-sm text-muted-foreground">
               Embedding needs a paid plan.{" "}
               <a
-                href={`/${account}/${workspace.slug}/${active}`}
+                href={`/${account}${wsPath(workspace)}/${active}`}
                 target="_blank"
                 rel="noopener"
                 className="text-primary underline"

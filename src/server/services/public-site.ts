@@ -3,6 +3,7 @@ import {
   asc,
   eq,
   exists,
+  getTableColumns,
   ilike,
   inArray,
   isNull,
@@ -38,6 +39,7 @@ import {
 import { fileUrl } from "@/server/storage/url";
 import { likePattern } from "./cards";
 import type { PublicContext } from "./context";
+import { defaultWorkspaceSlug } from "./default-workspace";
 import { gateSettings, getAccountPlan } from "./plan-limits";
 import { byPosition } from "./positions";
 import {
@@ -72,6 +74,8 @@ export type PublicSite = {
   name: string;
   slug: string;
   logo: string | null;
+  /** Oldest workspace: its pages live at /<account>/<module> (doc 26 §11). */
+  defaultWorkspace: string | null;
 };
 
 /**
@@ -90,6 +94,7 @@ export async function resolveSite(
       name: organization.name,
       slug: organization.slug,
       logo: organization.logo,
+      defaultWorkspace: defaultWorkspaceSlug('"organization"."id"'),
     })
     .from(organization)
     .where(eq(organization.slug, s))
@@ -170,7 +175,10 @@ export async function getPublicWorkspaceById(
 
 async function publicWorkspace(db: Db, ctx: PublicContext, match: SQL) {
   const [ws] = await db
-    .select()
+    .select({
+      ...getTableColumns(workspaces),
+      defaultSlug: defaultWorkspaceSlug('"workspaces"."account_id"'),
+    })
     .from(workspaces)
     .where(and(eq(workspaces.accountId, ctx.accountId), match))
     .limit(1);
@@ -201,6 +209,8 @@ async function publicWorkspace(db: Db, ctx: PublicContext, match: SQL) {
     id: ws.id,
     name: ws.name,
     slug: ws.slug,
+    /** Lives at /<account>/<module>, without its slug (doc 26 §11). */
+    isDefault: ws.slug === ws.defaultSlug,
     logo: ws.logo,
     settings: await gateSettings(db, ctx.accountId, ws.settings),
     /** Plan features the public site checks (doc 26 P7). */
@@ -696,4 +706,15 @@ export async function publicPathStatus(
   if (!card) return "missing";
   const display = { ...defaultDisplay, ...card.display };
   return card.completedAt && !display.showCompleted ? "missing" : "ok";
+}
+
+/** Slug of the account's default (oldest) workspace (doc 26 §11). */
+export async function getDefaultWorkspace(db: Db, accountId: string) {
+  const [row] = await db
+    .select({ slug: workspaces.slug })
+    .from(workspaces)
+    .where(eq(workspaces.accountId, accountId))
+    .orderBy(asc(workspaces.createdAt), asc(workspaces.id))
+    .limit(1);
+  return row?.slug ?? null;
 }

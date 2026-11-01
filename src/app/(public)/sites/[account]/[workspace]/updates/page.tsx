@@ -4,6 +4,7 @@ import { Suspense } from "react";
 import { PageView } from "@/components/public/page-view";
 import { PublicUpdates } from "@/components/public/public-updates";
 import { Skeleton } from "@/components/ui/skeleton";
+import { wsPath } from "@/lib/public-path";
 import { loadSite, loadUpdates, loadWorkspace, siteUrl } from "../../data";
 import { SiteShell } from "../../site-shell";
 
@@ -49,9 +50,9 @@ export async function generateMetadata(props: Props): Promise<Metadata> {
     description: `What's new in ${ws.name}.`,
     robots: indexable ? undefined : { index: false, follow: false },
     alternates: {
-      canonical: `${origin}/${ws.slug}/updates`,
+      canonical: `${origin}${wsPath(ws)}/updates`,
       types: {
-        "application/rss+xml": `${origin}/${ws.slug}/updates/feed.xml`,
+        "application/rss+xml": `${origin}${wsPath(ws)}/updates/feed.xml`,
       },
     },
   };
@@ -84,14 +85,14 @@ async function Updates(props: Props) {
           <h1 className="text-3xl font-semibold tracking-tight">Updates</h1>
         )}
         <PublicUpdates
-          base={`/${site.slug}/${ws.slug}/updates`}
+          base={`/${site.slug}${wsPath(ws)}/updates`}
           posts={data.data.posts}
           categories={data.data.categories}
           query={q ?? ""}
           category={category ?? ""}
           embed={embed}
           roadmapBase={
-            ws.modules.roadmap ? `/${site.slug}/${ws.slug}/roadmap` : null
+            ws.modules.roadmap ? `/${site.slug}${wsPath(ws)}/roadmap` : null
           }
           justSubscribed={subscribed}
           reactions={ws.features.reactions}

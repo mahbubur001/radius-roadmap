@@ -6,6 +6,7 @@ import { Suspense } from "react";
 import { CardDetail } from "@/components/public/card-detail";
 import { PageView } from "@/components/public/page-view";
 import { Skeleton } from "@/components/ui/skeleton";
+import { wsPath } from "@/lib/public-path";
 import { loadCard, loadSite, loadWorkspace, siteUrl } from "../../../data";
 import { SiteShell } from "../../../site-shell";
 
@@ -40,7 +41,7 @@ export async function generateMetadata(props: Props): Promise<Metadata> {
     title: { absolute: `${card.title} · ${ws.name}` },
     description,
     robots: indexable ? undefined : { index: false, follow: false },
-    alternates: { canonical: `${origin}/${ws.slug}/roadmap/${card.slug}` },
+    alternates: { canonical: `${origin}${wsPath(ws)}/roadmap/${card.slug}` },
     openGraph: { title: card.title, description, type: "article" },
   };
 }
@@ -67,7 +68,7 @@ async function PublicCard(props: Props) {
       <PageView cardId={card.id} />
       <div className="mx-auto flex max-w-2xl flex-col gap-6">
         <Link
-          href={`/${site.slug}/${ws.slug}/roadmap${embed ? "?embed=1" : ""}`}
+          href={`/${site.slug}${wsPath(ws)}/roadmap${embed ? "?embed=1" : ""}`}
           className="flex items-center gap-1 text-sm text-muted-foreground hover:text-foreground"
         >
           <ArrowLeft className="size-4" />

@@ -7,6 +7,7 @@ import { PageView } from "@/components/public/page-view";
 import { PublicBoard } from "@/components/public/public-board";
 import { Input } from "@/components/ui/input";
 import { Skeleton } from "@/components/ui/skeleton";
+import { wsPath } from "@/lib/public-path";
 import { cn } from "@/lib/utils";
 import { loadRoadmap, loadSite, loadWorkspace, siteUrl } from "../../data";
 import { SiteShell } from "../../site-shell";
@@ -47,7 +48,7 @@ export async function generateMetadata(props: Props): Promise<Metadata> {
     title: { absolute: `${roadmap.title} · ${ws.name}` },
     description: roadmap.summary ?? `What ${ws.name} is working on next.`,
     robots: indexable ? undefined : { index: false, follow: false },
-    alternates: { canonical: `${origin}/${ws.slug}/roadmap` },
+    alternates: { canonical: `${origin}${wsPath(ws)}/roadmap` },
     openGraph: {
       title: `${roadmap.title} · ${ws.name}`,
       description: roadmap.summary ?? undefined,
@@ -68,7 +69,7 @@ async function PublicRoadmap(props: Props) {
   const data = await load(props);
   if (!data) notFound();
   const { site, ws, roadmap, q, embed } = data;
-  const base = `/${site.slug}/${ws.slug}/roadmap`;
+  const base = `/${site.slug}${wsPath(ws)}/roadmap`;
 
   return (
     <SiteShell

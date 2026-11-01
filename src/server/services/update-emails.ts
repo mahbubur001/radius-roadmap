@@ -1,5 +1,6 @@
 import { and, asc, eq, gt, isNull, notExists, sql } from "drizzle-orm";
 import { env } from "@/lib/env";
+import { wsSegment } from "@/lib/public-path";
 import { renderRichText } from "@/lib/rich-text";
 import type { Db } from "@/server/db/client";
 import {
@@ -13,6 +14,7 @@ import {
 import type { EmailJob } from "@/server/email/types";
 import { signLink } from "@/server/internal-signature";
 import { fileUrl } from "@/server/storage/url";
+import { defaultWorkspaceSlug } from "./default-workspace";
 
 // Emailing a published post to its workspace's subscribers (doc 23 step 5).
 // Runs in the worker: no server-only imports. Idempotent: the post is
@@ -66,6 +68,7 @@ export async function claimUpdateEmail(db: Db, updateId: string) {
       workspaceSlug: workspaces.slug,
       siteName: organization.name,
       siteSlug: organization.slug,
+      defaultWs: defaultWorkspaceSlug('"workspaces"."account_id"'),
     })
     .from(updates)
     .innerJoin(workspaces, eq(workspaces.id, updates.workspaceId))
@@ -141,7 +144,7 @@ export function updateEmail(
           ? `${origin()}${cover}`
           : cover
         : null,
-      url: `${origin()}/${post.siteSlug}/${post.workspaceSlug}/updates/${post.slug}`,
+      url: `${origin()}/${post.siteSlug}${wsSegment(post.workspaceSlug, post.defaultWs)}/updates/${post.slug}`,
       unsubscribeUrl: unsubscribe,
     },
     headers: {

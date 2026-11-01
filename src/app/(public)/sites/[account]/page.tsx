@@ -2,6 +2,7 @@ import type { Metadata } from "next";
 import Link from "next/link";
 import { notFound, redirect } from "next/navigation";
 import { Suspense } from "react";
+import { wsSegment } from "@/lib/public-path";
 import { loadSite, loadWorkspaces } from "./data";
 
 export const metadata: Metadata = { title: { absolute: "Roadmaps" } };
@@ -23,7 +24,9 @@ async function Home({ account }: { account: Promise<string> }) {
   const workspaces = await loadWorkspaces(site.accountId);
   const [only] = workspaces;
   if (workspaces.length === 1 && only)
-    redirect(`/${site.slug}/${only.slug}/roadmap`);
+    redirect(
+      `/${site.slug}${wsSegment(only.slug, site.defaultWorkspace)}/roadmap`,
+    );
   return (
     <main className="mx-auto flex max-w-xl flex-col gap-4 px-4 py-16">
       <h1 className="text-2xl font-semibold">{site.name}</h1>
@@ -32,7 +35,7 @@ async function Home({ account }: { account: Promise<string> }) {
           {workspaces.map((w) => (
             <li key={w.id}>
               <Link
-                href={`/${site.slug}/${w.slug}/roadmap`}
+                href={`/${site.slug}${wsSegment(w.slug, site.defaultWorkspace)}/roadmap`}
                 className="block px-4 py-3 hover:bg-muted"
               >
                 {w.name}

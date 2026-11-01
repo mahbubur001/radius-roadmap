@@ -1,3 +1,4 @@
+import { wsPath } from "@/lib/public-path";
 import { loadSite, loadUpdates, loadWorkspace, siteUrl } from "../../../data";
 
 function escapeXml(value: string) {
@@ -16,7 +17,7 @@ export async function GET(
     return new Response("Not found", { status: 404 });
   }
   const { posts } = await loadUpdates(site.accountId, ws.id, {});
-  const base = `${siteUrl(site.slug)}/${ws.slug}/updates`;
+  const base = `${siteUrl(site.slug)}${wsPath(ws)}/updates`;
   const items = posts
     .slice(0, 50)
     .map(

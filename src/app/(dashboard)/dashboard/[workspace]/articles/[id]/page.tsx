@@ -2,10 +2,11 @@ import type { Metadata } from "next";
 import { Suspense } from "react";
 import { Skeleton } from "@/components/ui/skeleton";
 import { db } from "@/server/db/client";
-import { appOrigin } from "@/server/public-url";
+import { publicSiteUrl } from "@/server/public-url";
 import { getAccount } from "@/server/services/accounts";
 import { listArticleCategories } from "@/server/services/article-categories";
 import { getArticleDetail } from "@/server/services/articles";
+import { getDefaultWorkspace } from "@/server/services/public-site";
 import { requireWorkspace } from "@/server/session";
 import { ArticleEditor } from "./article-editor";
 
@@ -28,10 +29,11 @@ async function Editor({
 }) {
   const { workspace, id } = await params;
   const ctx = await requireWorkspace(workspace);
-  const [article, categories, account] = await Promise.all([
+  const [article, categories, account, defaultWorkspace] = await Promise.all([
     getArticleDetail(db, ctx, id),
     listArticleCategories(db, ctx),
     getAccount(db, ctx),
+    getDefaultWorkspace(db, ctx.accountId),
   ]);
   return (
     <ArticleEditor
@@ -39,7 +41,7 @@ async function Editor({
       key={article.id}
       workspace={ctx.workspaceSlug}
       workspaceId={ctx.workspaceId}
-      publicBase={`${appOrigin()}/${account.slug}/${ctx.workspaceSlug}/articles`}
+      publicBase={`${publicSiteUrl(account.slug, ctx.workspaceSlug, defaultWorkspace)}/articles`}
       article={article}
       categories={categories.map((c) => ({
         id: c.id,

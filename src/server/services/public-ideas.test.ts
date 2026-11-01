@@ -53,7 +53,7 @@ beforeAll(async () => {
   users.push(oA, oB);
   const ctxA = await addTestMember(db, a, oA, "owner");
   const ctxB = await addTestMember(db, b, oB, "owner");
-  const w = await createWorkspace(db, ctxA, { name: "Ideas", slug: "ideas" });
+  const w = await createWorkspace(db, ctxA, { name: "Ideas", slug: "idea-ws" });
   const wB = await createWorkspace(db, ctxB, { name: "Bee", slug: "bee" });
   ws = { ...ctxA, workspaceId: w.id, workspaceSlug: w.slug };
   wsB = { ...ctxB, workspaceId: wB.id, workspaceSlug: wB.slug };
@@ -69,7 +69,7 @@ afterAll(() => cleanup(db, accounts, users));
 
 describe("public ideas", () => {
   it("shows the Ideas tab and only approved, public items", async () => {
-    expect((await getPublicWorkspace(db, pub, "ideas"))?.modules.ideas).toBe(
+    expect((await getPublicWorkspace(db, pub, "idea-ws"))?.modules.ideas).toBe(
       true,
     );
     const shown = await createFeedback(db, ws, {
@@ -163,13 +163,13 @@ describe("public ideas", () => {
       title: "Original",
     });
     await mergeFeedback(db, ws, source.id, target.id);
-    expect(await ideaPathStatus(db, pub, "ideas", source.slug)).toEqual({
-      redirect: `/ideas/ideas/${target.slug}`,
+    expect(await ideaPathStatus(db, pub, "idea-ws", source.slug)).toEqual({
+      redirect: `/idea-ws/ideas/${target.slug}`,
     });
-    expect(await publicPathStatus(db, pub, ["ideas", "ideas", "nope"])).toBe(
+    expect(await publicPathStatus(db, pub, ["idea-ws", "ideas", "nope"])).toBe(
       "missing",
     );
-    expect(await publicPathStatus(db, pub, ["ideas", "ideas"])).toBe("ok");
+    expect(await publicPathStatus(db, pub, ["idea-ws", "ideas"])).toBe("ok");
   });
 
   it("hides everything when Ideas is switched off or the board is private", async () => {
@@ -187,11 +187,13 @@ describe("public ideas", () => {
       termsUrl: "",
       privacyUrl: "",
     });
-    expect((await getPublicWorkspace(db, pub, "ideas"))?.modules.ideas).toBe(
+    expect((await getPublicWorkspace(db, pub, "idea-ws"))?.modules.ideas).toBe(
       false,
     );
     expect(await getVotableIdea(db, pub, item.id)).toBeNull();
-    expect(await publicPathStatus(db, pub, ["ideas", "ideas"])).toBe("missing");
+    expect(await publicPathStatus(db, pub, ["idea-ws", "ideas"])).toBe(
+      "missing",
+    );
     await expect(
       submitIdea(db, pub, {
         workspaceId: ws.workspaceId,

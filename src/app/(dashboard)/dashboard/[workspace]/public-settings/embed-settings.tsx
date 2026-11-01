@@ -41,22 +41,25 @@ function CopyBlock({ label, value }: { label: string; value: string }) {
 
 export function EmbedSettings({
   origin,
+  siteUrl,
   account,
   workspace,
   roadmaps,
 }: {
   origin: string;
+  /** The workspace's public site URL (short for the default workspace). */
+  siteUrl: string;
   account: string;
   workspace: string;
   roadmaps: { slug: string; title: string }[];
 }) {
   const [board, setBoard] = useState(roadmaps[0]?.slug ?? "");
   const isFirst = board === roadmaps[0]?.slug;
-  const publicUrl = `${origin}/${account}/${workspace}/roadmap${isFirst ? "" : `?board=${board}`}`;
+  const publicUrl = `${siteUrl}/roadmap${isFirst ? "" : `?board=${board}`}`;
   const snippet = `<script src="${origin}/embed.js" data-account="${account}" data-workspace="${workspace}"${
     isFirst ? "" : ` data-board="${board}"`
   } async></script>`;
-  const previewUrl = `${origin}/${account}/${workspace}/roadmap?embed=1${isFirst ? "" : `&board=${board}`}`;
+  const previewUrl = `${siteUrl}/roadmap?embed=1${isFirst ? "" : `&board=${board}`}`;
 
   if (!roadmaps.length) {
     return (

@@ -139,3 +139,22 @@ What exists today:
 - **Account deletion:** Settings → Account → **Delete account** (owner; type the account name). Cancels the Stripe subscription at once (no proration), deletes the organization (everything cascades), drops the public site cache, then a `delete-account-files` job removes `accounts/<id>/` from storage (`src/server/storage/purge.ts`, kept free of `server-only` because the worker imports it).
 - **Tests:** `src/server/services/billing.test.ts` (13: billing off, Free limits, gates, Stripe statuses, lookup by customer, unknown prices, once-per-event webhooks, overview + roles, notices, deletion, file purge). e2e `e2e/billing.spec.ts`: delete account (always runs); Free limits + upgrade toast + locked switches (runs only with `E2E_BILLING=1` against a dev server started with any `STRIPE_SECRET_KEY`). 220 unit, 28 e2e (+1 skipped).
 - **Not done yet (needs the owner's Stripe test account):** a real Checkout → webhook → Pro run. Setup: put the test keys in `.env.local`, `pnpm stripe:setup`, `stripe listen --forward-to localhost:3000/api/webhooks/stripe` (gives `STRIPE_WEBHOOK_SECRET`), and in the Stripe dashboard turn on the customer portal with plan switching between the six prices.
+
+## 11. Short public URLs for the default workspace (approved + built 2026-11-01)
+
+**Question (owner):** LoopedIn's public site is `app.loopedin.io/<account>#/roadmap` (`#/updates`, `#/ideas-board`, `#/kb`). Ours was `/<account>/<workspace>/roadmap`. Which is better?
+
+**Decision:** keep real paths, not `#/` hashes. A hash never reaches the server, so every tab would be one page to Google, link previews would all look the same, and there could be no real 404/308, sitemap entries, canonical URLs or server rendering per page. Take LoopedIn's good part instead: **no workspace segment for the account's default workspace.** `/ideas` and `/articles` stay (not `/ideas-board`, `/kb`).
+
+| URL | Result |
+|-----|--------|
+| `/<account>/roadmap`, `/updates`, `/ideas`, `/articles` (+ cards, posts, ideas, articles, `feed.xml`) | Default workspace |
+| `/<account>/<default-workspace>/…` | 308 to the short URL (query kept), so old links still work |
+| `/<account>/<other-workspace>/…` | Unchanged for every other workspace |
+| `/<account>` | 308 to the default workspace's home tab when it is the only public workspace; otherwise the workspace list |
+
+- **Default workspace** = the account's oldest workspace (`created_at`, then `id`). If it's deleted, the next oldest takes the short URLs.
+- Workspace slugs can't be `roadmap`, `updates`, `ideas` or `articles` (`workspaceSlugSchema`).
+- **Built:** `src/lib/public-path.ts` (`SITE_MODULES`, `wsSegment`, `wsPath`, `shortenPath`). `resolveSite` returns `defaultWorkspace`; the public workspace loader returns `isDefault`. `src/proxy.ts` rewrites `/<account>/<module>/…` to the default workspace, 308s its long URLs, and shortens the redirects that `publicPathStatus` returns. Every public link, canonical URL, sitemap entry, RSS link, email link (post emails, follow emails, subscribe confirmation) and dashboard link (View public roadmap, post/article public links, embed URLs) uses the short form. `embed.js` still builds the long URL; the iframe follows the 308. The SQL helper lives in `services/default-workspace.ts` because the worker imports it. `src/lib/paths.ts` (`publicPath`) was removed since nothing used it any more.
+- **Custom domains (6D)** will reuse this: `feedback.acme.com/roadmap`.
+- **Tests:** `src/lib/public-path.test.ts`; `public-site.test.ts` (default = oldest, per account; reserved slugs). 225 unit, 28 e2e.

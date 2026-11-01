@@ -1,3 +1,4 @@
+import { wsSegment } from "@/lib/public-path";
 import { db } from "@/server/db/client";
 import { listArticleSitemapEntries } from "@/server/services/public-articles";
 import { listIdeaSitemapEntries } from "@/server/services/public-ideas";
@@ -35,31 +36,34 @@ export async function GET(
       w
         ? (["roadmap", "updates", "ideas", "articles"] as const)
             .filter((m) => w.modules[m])
-            .map((m) => ({ loc: `${origin}/${w.slug}/${m}`, lastmod: null }))
+            .map((m) => ({
+              loc: `${origin}${wsSegment(w.slug, site.defaultWorkspace)}/${m}`,
+              lastmod: null,
+            }))
         : [],
     ),
     ...cards
       .filter((c) => c.indexable)
       .map((c) => ({
-        loc: `${origin}/${c.workspace}/roadmap/${c.card}`,
+        loc: `${origin}${wsSegment(c.workspace, site.defaultWorkspace)}/roadmap/${c.card}`,
         lastmod: c.updatedAt.toISOString(),
       })),
     ...posts
       .filter((p) => p.indexable)
       .map((p) => ({
-        loc: `${origin}/${p.workspace}/updates/${p.post}`,
+        loc: `${origin}${wsSegment(p.workspace, site.defaultWorkspace)}/updates/${p.post}`,
         lastmod: p.updatedAt.toISOString(),
       })),
     ...articles
       .filter((a) => a.indexable)
       .map((a) => ({
-        loc: `${origin}/${a.workspace}/articles/${a.article}`,
+        loc: `${origin}${wsSegment(a.workspace, site.defaultWorkspace)}/articles/${a.article}`,
         lastmod: a.updatedAt.toISOString(),
       })),
     ...ideas
       .filter((i) => i.indexable)
       .map((i) => ({
-        loc: `${origin}/${i.workspace}/ideas/${i.idea}`,
+        loc: `${origin}${wsSegment(i.workspace, site.defaultWorkspace)}/ideas/${i.idea}`,
         lastmod: i.updatedAt.toISOString(),
       })),
   ];

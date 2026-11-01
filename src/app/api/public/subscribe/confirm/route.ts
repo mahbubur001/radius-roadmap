@@ -1,4 +1,5 @@
 import { type NextRequest, NextResponse } from "next/server";
+import { wsSegment } from "@/lib/public-path";
 import { db } from "@/server/db/client";
 import { publicRequest, siteOrigin } from "@/server/public-request";
 import { notify } from "@/server/queue/notifications";
@@ -32,7 +33,7 @@ export async function GET(request: NextRequest) {
   }
   return NextResponse.redirect(
     new URL(
-      `/${req.site.slug}/${sub.workspaceSlug}/updates?subscribed=1`,
+      `/${req.site.slug}${wsSegment(sub.workspaceSlug, req.site.defaultWorkspace)}/updates?subscribed=1`,
       siteOrigin(request),
     ),
     303,

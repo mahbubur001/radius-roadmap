@@ -4,6 +4,7 @@ import { Suspense } from "react";
 import { PageView } from "@/components/public/page-view";
 import { PublicIdeas } from "@/components/public/public-ideas";
 import { Skeleton } from "@/components/ui/skeleton";
+import { wsPath } from "@/lib/public-path";
 import { IDEA_SORTS, type IdeaSort } from "@/server/services/public-ideas";
 import { loadIdeas, loadSite, loadWorkspace, siteUrl } from "../../data";
 import { SiteShell } from "../../site-shell";
@@ -53,7 +54,7 @@ export async function generateMetadata(props: Props): Promise<Metadata> {
     title: { absolute: `Ideas · ${ws.name}` },
     description: `Suggest and vote on ideas for ${ws.name}.`,
     robots: indexable ? undefined : { index: false, follow: false },
-    alternates: { canonical: `${origin}/${ws.slug}/ideas` },
+    alternates: { canonical: `${origin}${wsPath(ws)}/ideas` },
   };
 }
 
@@ -84,7 +85,7 @@ async function Ideas(props: Props) {
           </div>
         )}
         <PublicIdeas
-          base={`/${site.slug}/${ws.slug}/ideas`}
+          base={`/${site.slug}${wsPath(ws)}/ideas`}
           board={ideas.board}
           boards={ideas.boards}
           statuses={ideas.statuses}

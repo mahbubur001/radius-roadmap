@@ -9,6 +9,7 @@ import {
   sql,
 } from "drizzle-orm";
 import { env } from "@/lib/env";
+import { wsSegment } from "@/lib/public-path";
 import type { Db } from "@/server/db/client";
 import {
   cardFeedbackLinks,
@@ -25,6 +26,7 @@ import {
 } from "@/server/db/schema";
 import type { EmailJob } from "@/server/email/types";
 import { signLink } from "@/server/internal-signature";
+import { defaultWorkspaceSlug } from "./default-workspace";
 
 // Emails to people following an idea (doc 23 step 6, doc 20 D3): its status
 // changed, or a published post shipped it. Only verified addresses (guests
@@ -120,6 +122,7 @@ export async function statusSweep(
       wsSlug: workspaces.slug,
       siteName: organization.name,
       siteSlug: organization.slug,
+      defaultWs: defaultWorkspaceSlug('"workspaces"."account_id"'),
       followable: sql<boolean>`(${ideaIsFollowable})`,
     })
     .from(feedbackItems)
@@ -156,7 +159,7 @@ export async function statusSweep(
               siteName: idea.siteName,
               ideaTitle: idea.title,
               status: { name: idea.statusName, color: idea.statusColor },
-              url: `${origin()}/${idea.siteSlug}/${idea.wsSlug}/ideas/${idea.slug}`,
+              url: `${origin()}/${idea.siteSlug}${wsSegment(idea.wsSlug, idea.defaultWs)}/ideas/${idea.slug}`,
               unfollowUrl: unfollowUrl(
                 idea.siteSlug ?? "",
                 f.trackedUserId,
@@ -194,6 +197,7 @@ export async function shippedEmails(
       wsSlug: workspaces.slug,
       siteName: organization.name,
       siteSlug: organization.slug,
+      defaultWs: defaultWorkspaceSlug('"workspaces"."account_id"'),
     })
     .from(updates)
     .innerJoin(workspaces, eq(workspaces.id, updates.workspaceId))
@@ -232,7 +236,7 @@ export async function shippedEmails(
     first.accountId,
     ideas.map((i) => i.id),
   );
-  const postUrl = `${origin()}/${post.siteSlug}/${post.wsSlug}/updates/${post.slug}`;
+  const postUrl = `${origin()}/${post.siteSlug}${wsSegment(post.wsSlug, post.defaultWs)}/updates/${post.slug}`;
   return followers.map((f) => ({
     id: `shipped-${post.id}-${f.feedbackId}-${f.trackedUserId}`,
     email: {

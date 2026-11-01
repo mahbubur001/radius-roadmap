@@ -9,6 +9,7 @@ import {
   ArticleSearch,
 } from "@/components/public/public-articles";
 import { Skeleton } from "@/components/ui/skeleton";
+import { wsPath } from "@/lib/public-path";
 import {
   loadArticleCategory,
   loadSite,
@@ -50,7 +51,7 @@ export async function generateMetadata(props: Props): Promise<Metadata> {
       category.description || `${category.name} articles for ${ws.name}.`,
     robots: indexable ? undefined : { index: false, follow: false },
     alternates: {
-      canonical: `${origin}/${ws.slug}/articles/category/${category.slug}`,
+      canonical: `${origin}${wsPath(ws)}/articles/category/${category.slug}`,
     },
   };
 }
@@ -70,7 +71,7 @@ async function Category(props: Props) {
   if (!data) notFound();
   const { site, ws, embed } = data;
   const { category, categories, articles } = data.data;
-  const base = `/${site.slug}/${ws.slug}/articles`;
+  const base = `/${site.slug}${wsPath(ws)}/articles`;
   const suffix = embed ? "?embed=1" : "";
   return (
     <SiteShell

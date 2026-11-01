@@ -6,6 +6,7 @@ import { Suspense } from "react";
 import { PageView } from "@/components/public/page-view";
 import { UpdateDetail } from "@/components/public/update-detail";
 import { Skeleton } from "@/components/ui/skeleton";
+import { wsPath } from "@/lib/public-path";
 import { loadSite, loadUpdate, loadWorkspace, siteUrl } from "../../../data";
 import { SiteShell } from "../../../site-shell";
 
@@ -39,7 +40,7 @@ export async function generateMetadata(props: Props): Promise<Metadata> {
     title: { absolute: `${post.title} · ${ws.name}` },
     description,
     robots: indexable ? undefined : { index: false, follow: false },
-    alternates: { canonical: `${origin}/${ws.slug}/updates/${post.slug}` },
+    alternates: { canonical: `${origin}${wsPath(ws)}/updates/${post.slug}` },
     openGraph: {
       title: post.title,
       description,
@@ -73,7 +74,7 @@ async function Post(props: Props) {
       <PageView postId={post.id} />
       <div className="mx-auto flex max-w-3xl flex-col gap-6">
         <Link
-          href={`/${site.slug}/${ws.slug}/updates${suffix}`}
+          href={`/${site.slug}${wsPath(ws)}/updates${suffix}`}
           className="flex items-center gap-1 text-sm text-muted-foreground hover:text-foreground"
         >
           <ArrowLeft className="size-4" />
@@ -84,7 +85,7 @@ async function Post(props: Props) {
             post={post}
             reactions={ws.features.reactions}
             roadmapBase={
-              ws.modules.roadmap ? `/${site.slug}/${ws.slug}/roadmap` : null
+              ws.modules.roadmap ? `/${site.slug}${wsPath(ws)}/roadmap` : null
             }
           />
         </div>

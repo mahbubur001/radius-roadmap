@@ -1,4 +1,5 @@
 import { z } from "zod";
+import { isSiteModule } from "@/lib/public-path";
 
 // Top-level app routes. Account slugs are the first path segment of public
 // sites (/<account>/<workspace>), so they must not shadow these.
@@ -35,9 +36,15 @@ export const slugSchema = z
   .regex(/^[a-z0-9]+(?:-[a-z0-9]+)*$/, "Lowercase letters, numbers and dashes")
   .refine((s) => !RESERVED_SLUGS.has(s), "This name is reserved");
 
+/** Workspace slugs also can't be a public module name (/<account>/roadmap). */
+export const workspaceSlugSchema = slugSchema.refine(
+  (s) => !isSiteModule(s),
+  "This name is reserved",
+);
+
 export const createWorkspaceSchema = z.object({
   name: z.string().trim().min(2, "At least 2 characters").max(80),
-  slug: slugSchema,
+  slug: workspaceSlugSchema,
 });
 
 export type CreateWorkspaceInput = z.infer<typeof createWorkspaceSchema>;
@@ -100,7 +107,7 @@ export const onboardingSchema = z.object({
   accountName: z.string().trim().min(2, "At least 2 characters").max(80),
   accountSlug: slugSchema,
   workspaceName: z.string().trim().min(2, "At least 2 characters").max(80),
-  workspaceSlug: slugSchema,
+  workspaceSlug: workspaceSlugSchema,
 });
 
 export type OnboardingInput = z.infer<typeof onboardingSchema>;

@@ -6,6 +6,7 @@ import { Suspense } from "react";
 import { IdeaDetail } from "@/components/public/idea-detail";
 import { PageView } from "@/components/public/page-view";
 import { Skeleton } from "@/components/ui/skeleton";
+import { wsPath } from "@/lib/public-path";
 import { loadIdea, loadSite, loadWorkspace, siteUrl } from "../../../data";
 import { SiteShell } from "../../../site-shell";
 
@@ -39,7 +40,7 @@ export async function generateMetadata(props: Props): Promise<Metadata> {
     title: { absolute: `${idea.title} · ${ws.name}` },
     description,
     robots: indexable ? undefined : { index: false, follow: false },
-    alternates: { canonical: `${origin}/${ws.slug}/ideas/${idea.slug}` },
+    alternates: { canonical: `${origin}${wsPath(ws)}/ideas/${idea.slug}` },
     openGraph: { title: idea.title, description, type: "article" },
   };
 }
@@ -62,7 +63,7 @@ async function Idea(props: Props) {
       <PageView ideaId={idea.id} />
       <div className="mx-auto flex max-w-2xl flex-col gap-6">
         <Link
-          href={`/${site.slug}/${ws.slug}/ideas${suffix}`}
+          href={`/${site.slug}${wsPath(ws)}/ideas${suffix}`}
           className="flex items-center gap-1 text-sm text-muted-foreground hover:text-foreground"
         >
           <ArrowLeft className="size-4" />
@@ -76,7 +77,7 @@ async function Idea(props: Props) {
             tags={idea.tags}
             roadmapHref={
               idea.roadmapCard && ws.modules.roadmap
-                ? `/${site.slug}/${ws.slug}/roadmap/${idea.roadmapCard}${suffix}`
+                ? `/${site.slug}${wsPath(ws)}/roadmap/${idea.roadmapCard}${suffix}`
                 : null
             }
           />

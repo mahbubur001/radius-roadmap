@@ -3,10 +3,11 @@ import { Suspense } from "react";
 import { Skeleton } from "@/components/ui/skeleton";
 import { type Feature, PLANS, planFor } from "@/lib/plans";
 import { db } from "@/server/db/client";
-import { appOrigin } from "@/server/public-url";
+import { appOrigin, publicSiteUrl } from "@/server/public-url";
 import { getAccount } from "@/server/services/accounts";
 import { seesAllWorkspaces } from "@/server/services/context";
 import { hasFeature } from "@/server/services/plan-limits";
+import { getDefaultWorkspace } from "@/server/services/public-site";
 import { listRoadmaps } from "@/server/services/roadmaps";
 import { getWorkspaceBySlug } from "@/server/services/workspaces";
 import { requireWorkspace } from "@/server/session";
@@ -27,13 +28,15 @@ export default function PublicSettingsPage({
 
 async function PublicSettings({ slug }: { slug: Promise<string> }) {
   const ctx = await requireWorkspace(await slug);
-  const [account, roadmaps, ws, comments, follows] = await Promise.all([
-    getAccount(db, ctx),
-    listRoadmaps(db, ctx),
-    getWorkspaceBySlug(db, ctx, ctx.workspaceSlug),
-    hasFeature(db, ctx.accountId, "comments"),
-    hasFeature(db, ctx.accountId, "follows"),
-  ]);
+  const [account, roadmaps, ws, comments, follows, defaultWorkspace] =
+    await Promise.all([
+      getAccount(db, ctx),
+      listRoadmaps(db, ctx),
+      getWorkspaceBySlug(db, ctx, ctx.workspaceSlug),
+      hasFeature(db, ctx.accountId, "comments"),
+      hasFeature(db, ctx.accountId, "follows"),
+      getDefaultWorkspace(db, ctx.accountId),
+    ]);
   const needs = (feature: Feature) => PLANS[planFor(feature)].name;
   const { settings } = ws;
   return (
@@ -64,6 +67,11 @@ async function PublicSettings({ slug }: { slug: Promise<string> }) {
       />
       <EmbedSettings
         origin={appOrigin()}
+        siteUrl={publicSiteUrl(
+          account.slug,
+          ctx.workspaceSlug,
+          defaultWorkspace,
+        )}
         account={account.slug}
         workspace={ctx.workspaceSlug}
         roadmaps={roadmaps

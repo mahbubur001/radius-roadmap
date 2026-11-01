@@ -115,7 +115,10 @@ describe("post emails", () => {
     ).toBe(true);
     expect(email.props).toMatchObject({
       title: "Second release",
-      url: expect.stringContaining("/uem/updates/second-release"),
+      // The account's only workspace has the short URL (doc 26 §11).
+      url: expect.stringMatching(
+        /\/test-uem-a-[^/]+\/updates\/second-release$/,
+      ),
     });
   });
 

@@ -7,6 +7,7 @@ import { ArticleRating } from "@/components/public/article-rating";
 import { PageView } from "@/components/public/page-view";
 import { ArticleList, articleDate } from "@/components/public/public-articles";
 import { Skeleton } from "@/components/ui/skeleton";
+import { wsPath } from "@/lib/public-path";
 import { loadArticle, loadSite, loadWorkspace, siteUrl } from "../../../data";
 import { SiteShell } from "../../../site-shell";
 
@@ -40,7 +41,9 @@ export async function generateMetadata(props: Props): Promise<Metadata> {
     title: { absolute: `${article.title} · ${ws.name} help` },
     description,
     robots: indexable ? undefined : { index: false, follow: false },
-    alternates: { canonical: `${origin}/${ws.slug}/articles/${article.slug}` },
+    alternates: {
+      canonical: `${origin}${wsPath(ws)}/articles/${article.slug}`,
+    },
     openGraph: {
       title: article.title,
       description,
@@ -63,7 +66,7 @@ async function Article(props: Props) {
   const data = await load(props);
   if (!data) notFound();
   const { site, ws, article, embed } = data;
-  const base = `/${site.slug}/${ws.slug}/articles`;
+  const base = `/${site.slug}${wsPath(ws)}/articles`;
   const suffix = embed ? "?embed=1" : "";
   return (
     <SiteShell

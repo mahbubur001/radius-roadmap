@@ -13,9 +13,11 @@ import {
   type WorkspaceContext,
 } from "./context";
 import {
+  getDefaultWorkspace,
   getPublicWorkspace,
   listPublicWorkspaces,
   publicPathStatus,
+  resolveSite,
 } from "./public-site";
 import { createWorkspace, updatePublicSite } from "./workspaces";
 
@@ -130,5 +132,26 @@ describe("public site modules", () => {
     await expect(
       updatePublicSite(db, { ...other, workspaceId: owner.workspaceId }, ON),
     ).rejects.toBeInstanceOf(NotFoundError);
+  });
+});
+
+describe("default workspace (doc 26 §11)", () => {
+  it("is the oldest workspace of each account", async () => {
+    await createWorkspace(db, owner, { name: "Second", slug: "second" });
+    expect(await getDefaultWorkspace(db, owner.accountId)).toBe("mod");
+    expect(await getDefaultWorkspace(db, other.accountId)).toBe("other");
+    expect((await resolveSite(db, owner.accountId))?.defaultWorkspace).toBe(
+      "mod",
+    );
+    expect((await getPublicWorkspace(db, pub, "mod"))?.isDefault).toBe(true);
+    expect((await getPublicWorkspace(db, pub, "second"))?.isDefault).toBe(
+      false,
+    );
+  });
+
+  it("module names can't be workspace slugs", async () => {
+    await expect(
+      createWorkspace(db, owner, { name: "Roadmap", slug: "roadmap" }),
+    ).rejects.toThrow();
   });
 });

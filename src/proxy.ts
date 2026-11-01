@@ -1,4 +1,5 @@
 import { type NextRequest, NextResponse } from "next/server";
+import { isSiteModule, shortenPath } from "@/lib/public-path";
 import { LAST_WORKSPACE_COOKIE, RESERVED_SLUGS } from "@/lib/schemas/workspace";
 import { db } from "@/server/db/client";
 import { publicPathStatus, resolveSite } from "@/server/services/public-site";
@@ -24,6 +25,9 @@ const secure =
  * before they render. So the proxy checks that the path exists first: a
  * missing page gets a real 404, and `/<account>` and `/<account>/<workspace>`
  * real redirects.
+ *
+ * The account's default workspace has short URLs: /<account>/roadmap is
+ * /<account>/<default-workspace>/roadmap (doc 26 §11).
  */
 export async function proxy(request: NextRequest) {
   const { pathname, searchParams } = request.nextUrl;
@@ -36,23 +40,38 @@ export async function proxy(request: NextRequest) {
   }
 
   const site = await resolveSite(db, first);
+  const home = site?.defaultWorkspace ?? null;
+  const [rawFirst, ...rawRest] = pathname.split("/").filter(Boolean);
+
+  // The default workspace lives at /<account>/<module> (doc 26 §11); its
+  // long /<account>/<workspace>/<module> URLs move there.
+  if (home && rest[0] === home && isSiteModule(rest[1])) {
+    const target = request.nextUrl.clone();
+    target.pathname = `/${rawFirst}/${rawRest.slice(1).join("/")}`;
+    return NextResponse.redirect(target, 308);
+  }
+  const short = !!home && isSiteModule(rest[0]);
+  const sitePath = short && home ? [home, ...rest] : rest;
+
   const status = site
     ? await publicPathStatus(
         db,
         { accountId: site.accountId },
-        rest,
+        sitePath,
         searchParams.get("board") ?? undefined,
       )
     : "missing";
   if (status === "missing") return notFoundPage(site?.slug);
   if (status !== "ok") {
     const target = request.nextUrl.clone();
-    target.pathname = `/${first}${status.redirect}`;
+    target.pathname = `/${first}${shortenPath(status.redirect, home)}`;
     return NextResponse.redirect(target, 308);
   }
 
   const url = request.nextUrl.clone();
-  url.pathname = `/sites/${pathname.slice(1)}`;
+  url.pathname = short
+    ? `/sites/${rawFirst}/${encodeURIComponent(home ?? "")}/${rawRest.join("/")}`
+    : `/sites/${pathname.slice(1)}`;
   const response = NextResponse.rewrite(url);
 
   // Give every public visitor a signed anonymous id (dedupes votes, counts

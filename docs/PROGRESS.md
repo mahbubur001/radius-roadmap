@@ -72,6 +72,7 @@ Resume here. On a new session say: *"Read docs/PROGRESS.md and continue from Nex
 4. Open follow-ups: a strict Content-Security-Policy on public pages (they now share the dashboard's origin, doc 19 "D1 revised"); optional redirect from old dashboard URLs `/<workspace>/…` to `/dashboard/<workspace>/…`.
 
 ## Decisions (approved)
+- **2026-11-01, owner: short public URLs (doc 26 §11).** Real paths, not LoopedIn's `#/` hashes (SEO, previews, 404s). The account's default (oldest) workspace lives at `/<account>/roadmap|updates|ideas|articles`; its long URLs 308 there; other workspaces keep `/<account>/<workspace>/…`. Module names are reserved workspace slugs.
 - **2026-10-29, owner: Phase 5 per doc 25 A1–A7** (one knowledge base per workspace, `/articles/<slug>` URLs, draft/published only, 3-face ratings, emoji category icons, Postgres search, video embeds). Video is our own small Tiptap node instead of `@tiptap/extension-youtube` (no new dependency).
 - **2026-10-29, owner: Edit roadmap per doc 24 R1–R7.** Workspace-wide settings (logo, comments, follows, embed, tab names) stay in Public site settings; card completion emails go to team card followers only (idea followers already get the status-change email).
 - **2026-10-28, owner: public pages on the app domain, LoopedIn-style** (`<app>/<account>/<workspace>`), dashboard under `/dashboard/<workspace>`, account subdomains removed. Replaces doc 19 D1; details in doc 19 "D1 revised".
@@ -151,3 +152,4 @@ Resume here. On a new session say: *"Read docs/PROGRESS.md and continue from Nex
 | 2026-10-29 | radiustheme (Mac 2) | Phase 5 Articles (doc 25, approved): schema 0010, admin list + categories + editor, public Articles tab (search, featured, recent, categories, pages), ratings, views, Home tiles, video embeds. **Phase 5 done.** 207 unit + 27 e2e | Phase 6 plan |
 | 2026-11-01 | radiustheme (Mac 2) | Phase 6 plan written (doc 26): sub-phases 6A billing, 6B widget, 6C branding, 6D custom domain; decisions P1–P12 | Owner approves doc 26 + picks the first sub-phase → build it |
 | 2026-11-01 | radiustheme (Mac 2) | Doc 26 approved; Phase 6A Billing built: plans/limits/gates, Stripe checkout/portal/webhook, Settings → Billing, upgrade toasts, account deletion (migration 0011). 220 unit + 28 e2e | 6B Widget; owner sets up Stripe test mode |
+| 2026-11-01 | radiustheme (Mac 2) | Short public URLs for the default workspace (doc 26 §11): `/<account>/roadmap` etc., long URLs 308, links/sitemap/emails/canonicals updated. 225 unit + 28 e2e | 6B Widget |

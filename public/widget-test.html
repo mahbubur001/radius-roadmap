@@ -5,18 +5,27 @@
     <meta name="viewport" content="width=device-width, initial-scale=1" />
     <title>Widget test page</title>
     <style>
-      body { font-family: Georgia, serif; padding: 40px; }
-      button { font-size: 18px; }
+      body { font-family: Georgia, serif; padding: 40px; max-width: 720px; }
+      button { font-size: 16px; }
     </style>
   </head>
   <body>
-    <h1>Host site</h1>
-    <p>Local test page for the embeddable widget (pnpm build:widget first).</p>
-    <button id="custom-launcher" type="button">Open via custom selector</button>
+    <h1>Your website</h1>
+    <p>
+      A stand-in for a customer's site, to try the widget (Settings → Widget →
+      “Try it on a test page”). Add <code>?site=&lt;account&gt;</code> and
+      optionally <code>&amp;workspace=&lt;slug&gt;</code> to the URL.
+    </p>
+    <button id="whats-new" type="button">What's new? (custom launcher)</button>
 
     <script>
-      window.radiusRoadmapConfig = { workspaceId: "demo-workspace" };
+      var q = new URLSearchParams(location.search);
+      window.radiusRoadmapConfig = {
+        site: q.get("site") || "",
+        workspace: q.get("workspace") || undefined,
+        selector: "#whats-new",
+      };
     </script>
-    <script src="/widget.js" defer></script>
+    <script src="/widget.js" async></script>
   </body>
 </html>

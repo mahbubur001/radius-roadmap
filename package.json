@@ -14,7 +14,7 @@
     "build": "pnpm build:widget && pnpm build:web && pnpm build:worker",
     "build:web": "next build",
     "build:worker": "tsup worker.ts --format esm --target node22 --out-dir dist --clean",
-    "build:widget": "vite build --config widget/vite.config.ts",
+    "build:widget": "vite build --config widget/vite.config.ts && node scripts/check-widget-size.mjs",
     "start": "next start",
     "start:worker": "node --env-file-if-exists=.env.local dist/worker.js",
     "check": "biome check --write",

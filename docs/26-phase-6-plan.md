@@ -1,6 +1,6 @@
 # 26 — Phase 6 plan: Billing, widget, custom domains, white-label
 
-Status: **APPROVED 2026-11-01** (P1–P12 as recommended; order 6A → 6B → 6C → 6D; custom SMTP later). **6A built 2026-11-01** (see "As built"); 6B next.
+Status: **APPROVED 2026-11-01** (P1–P12 as recommended; order 6A → 6B → 6C → 6D; custom SMTP later). **6A and 6B built 2026-11-01** (see "As built"); 6C next.
 
 Phase 6 turns the product into something we can sell: paid plans with limits, the JavaScript widget, a customer's own domain, and branding. It is too large for one pass, so it is split into four sub-phases that can ship (and be committed) independently.
 
@@ -118,7 +118,7 @@ What exists today:
 4. Account deletion.
 5. e2e + docs ("As built"), PROGRESS.
 
-6B (being built, 2026-11-01):
+6B (built 2026-11-01):
 1. **Schema + settings:** migration `0012` (`widget_keys` per account; `widget` added to the feedback/vote sources, `widget_view` event). Widget settings in the workspace `settings` jsonb (`widget`: layout, position, colours, reactions, feedback). **Settings → Widget** page: install snippet, options, signing key (show/rotate). Plan gate `widget`.
 2. **Widget API** (`/api/widget/*`, CORS `*`, no cookies; visitor id in `x-rr-visitor`, identity token in `x-rr-token`): `GET config` (workspace, settings, latest posts, own reactions), `GET posts/<slug>` (body), `POST reactions`, `POST feedback` (to the triage inbox unless the token is verified), `POST view`. Services + tenant tests.
 3. **Bundle** `public/widget.js`: Preact in Shadow DOM, sidebar + popover, launcher (bell / custom selector), unread badge (`localStorage`), post list → post view, reactions, "Send feedback" form, JS API `RadiusRoadmap.init/show/hide/toggle`, < 15 KB gz check.
@@ -165,3 +165,16 @@ What exists today:
 - **Built:** `src/lib/public-path.ts` (`SITE_MODULES`, `wsSegment`, `wsPath`, `shortenPath`). `resolveSite` returns `defaultWorkspace`; the public workspace loader returns `isDefault`. `src/proxy.ts` rewrites `/<account>/<module>/…` to the default workspace, 308s its long URLs, and shortens the redirects that `publicPathStatus` returns. Every public link, canonical URL, sitemap entry, RSS link, email link (post emails, follow emails, subscribe confirmation) and dashboard link (View public roadmap, post/article public links, embed URLs) uses the short form. `embed.js` still builds the long URL; the iframe follows the 308. The SQL helper lives in `services/default-workspace.ts` because the worker imports it. `src/lib/paths.ts` (`publicPath`) was removed since nothing used it any more.
 - **Custom domains (6D)** will reuse this: `feedback.acme.com/roadmap`.
 - **Tests:** `src/lib/public-path.test.ts`; `public-site.test.ts` (default = oldest, per account; reserved slugs). 225 unit, 28 e2e.
+
+## 12. As built: 6B Widget (2026-11-01)
+
+- **Install:** `<script>window.radiusRoadmapConfig = { site: "<account>" };</script><script src="<app>/widget.js" async></script>`. Optional: `workspace` (any workspace other than the default), `selector` (open from the customer's own element), `token` (signed identity), `user: { name, email }` (prefills the feedback form, unverified), `autoInit: false` + `RadiusRoadmap.init()`. JS API: `RadiusRoadmap.show() / hide() / toggle()`; calls made before it loads run once it's ready. (The doc 26 §4 draft used `rrWidget` / `type`; the global is `radiusRoadmapConfig`, and layout lives in the settings page.)
+- **Schema (`0012_widget`):** `widget_keys` (one signing key per account), `widget` value in `feedback_source` and `vote_source`, `widget_view` event. Widget settings in the workspace `settings.widget` (layout sidebar/popover, position, launcher bell/none, colour, title, reactions, feedback).
+- **Settings → Widget** (sidebar link, owners/admins): install snippet (copy), "Try it on a test page" (`/widget-test.html?site=…`), look and content form, **Identify your users** (signing key fetched on demand, rotate with confirmation, Node example). Shows a plan notice when the plan has no widget (Startup+).
+- **API `/api/widget/*`** (`src/server/widget-request.ts`): CORS `*`, no cookies; the visitor id is kept in the host site's `localStorage` and sent as `x-rr-visitor`; identity token as `x-rr-token`. `GET config` (settings, 10 latest posts, own reactions, emoji list, site URL, user), `GET posts/<slug>` (body HTML), `POST reactions`, `POST feedback`, `POST view`. Data cached with the public site's tags (`src/server/widget-cache.ts`), so post, setting, reaction and plan changes show at once.
+- **Identity (P10):** HS256 JWT signed with the account key; needs `sub` and `exp`, at most 24 h; `email` and `name` optional. A valid token makes a verified `tracked_user` (`kind: sso`, `external_id = sub`); otherwise the form's name + email make an unverified `widget` user.
+- **Feedback:** goes to the workspace's first public ideas board. Unverified people always land in the **triage inbox** (no Turnstile inside the widget, so review is the spam guard; plus the idea submit rate limits); verified ones follow the board's auto-publish setting. Team gets the usual "new idea" alert.
+- **Bundle (`widget/`):** Preact in Shadow DOM, 9.9 KB gzipped; `pnpm build:widget` fails above 15 KB (`scripts/check-widget-size.mjs`). Launcher bell with unread badge (newest post date seen, in `localStorage`), sidebar or popover, post list → post view (server-sanitized HTML, cover, reactions, open on site), "Send feedback" form, Escape closes, "Powered by" link. Colour from settings (default indigo).
+- **Home:** "Widget opens" tile (`widget_view`, rate-limited per visitor).
+- **Tests:** `src/server/services/widget.test.ts` (settings, keys + rotation, tokens: other account's key, expired, too long, missing `sub`; identity; site data; plan gate; inbox review). e2e `e2e/widget.spec.ts` (publish → test page → badge → post → reaction → badge cleared → feedback → inbox). 232 unit, 29 e2e (+1 skipped).
+- **Not done:** user segmentation (`segment`, Enterprise), ideas list / article search in the widget (P9: later), dark mode for the widget.

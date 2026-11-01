@@ -1,72 +1,41 @@
 import { render } from "preact";
-import { useState } from "preact/hooks";
+import { type Api, createApi, type WidgetConfig } from "./api";
+import { App, type Controls } from "./app";
 import { styles } from "./styles";
 
-export type WidgetConfig = {
-  workspaceId: string;
-  user?: { name?: string; email?: string };
-  segment?: Record<string, string>;
-  /** CSS selector of a custom launcher; hides the default button. */
-  selector?: string;
-};
+// Entry of public/widget.js (doc 26 6B). The page sets
+// window.radiusRoadmapConfig = { site: "<account>" } and loads this file.
 
-type Controls = { show(): void; hide(): void; toggle(): void };
+// The app's origin, taken from this script's own URL.
+const script = document.currentScript as HTMLScriptElement | null;
+const base = new URL(
+  script?.src ??
+    document.querySelector<HTMLScriptElement>('script[src*="widget.js"]')
+      ?.src ??
+    location.href,
+).origin;
 
 let controls: Controls | null = null;
+let pending: "show" | "hide" | "toggle" | null = null;
+let started = false;
 
-function Widget({
-  config,
-  onReady,
-}: {
-  config: WidgetConfig;
-  onReady: (c: Controls) => void;
-}) {
-  const [open, setOpen] = useState(false);
-  onReady({
-    show: () => setOpen(true),
-    hide: () => setOpen(false),
-    toggle: () => setOpen((o) => !o),
-  });
+async function init(config = window.radiusRoadmapConfig) {
+  if (started) return;
+  if (!config?.site) {
+    console.warn("[RadiusRoadmap] window.radiusRoadmapConfig.site is required");
+    return;
+  }
+  started = true;
+  const api: Api = createApi(base, config);
+  let site: Awaited<ReturnType<Api["config"]>>;
+  try {
+    site = await api.config();
+  } catch {
+    // Unknown site, nothing public, or the plan has no widget: stay hidden.
+    started = false;
+    return;
+  }
 
-  return (
-    <>
-      {config.selector ? null : (
-        <button
-          type="button"
-          class="launcher"
-          aria-label="What's new"
-          onClick={() => setOpen((o) => !o)}
-        >
-          ★
-        </button>
-      )}
-      {open ? (
-        <div class="panel" role="dialog" aria-label="Radius Roadmap">
-          <header>
-            <strong>What's new</strong>
-            <button
-              type="button"
-              class="close"
-              aria-label="Close"
-              onClick={() => setOpen(false)}
-            >
-              ×
-            </button>
-          </header>
-          <p>Hello from Radius Roadmap 👋</p>
-          <p class="muted">Workspace: {config.workspaceId}</p>
-        </div>
-      ) : null}
-    </>
-  );
-}
-
-function init(config: WidgetConfig) {
-  if (controls) return controls;
-  if (!config?.workspaceId)
-    throw new Error("[RadiusRoadmap] workspaceId is required");
-
-  // Shadow DOM keeps host-site CSS out and ours in.
   const host = document.createElement("div");
   host.id = "radius-roadmap-widget";
   document.body.appendChild(host);
@@ -78,31 +47,41 @@ function init(config: WidgetConfig) {
   shadow.appendChild(mount);
 
   render(
-    <Widget
+    <App
+      api={api}
       config={config}
+      site={site}
       onReady={(c) => {
         controls = c;
+        if (pending) c[pending]();
+        pending = null;
       }}
     />,
     mount,
   );
 
   if (config.selector) {
-    document.querySelectorAll(config.selector).forEach((el) => {
-      el.addEventListener("click", (e) => {
+    document.addEventListener("click", (e) => {
+      const target = e.target as Element | null;
+      if (config.selector && target?.closest(config.selector)) {
         e.preventDefault();
         controls?.toggle();
-      });
+      }
     });
   }
-  return controls;
+}
+
+/** Calls made before the widget loaded run once it's ready. */
+function call(action: "show" | "hide" | "toggle") {
+  if (controls) controls[action]();
+  else pending = action;
 }
 
 const api = {
-  init,
-  show: () => controls?.show(),
-  hide: () => controls?.hide(),
-  toggle: () => controls?.toggle(),
+  init: (config?: WidgetConfig) => void init(config),
+  show: () => call("show"),
+  hide: () => call("hide"),
+  toggle: () => call("toggle"),
 };
 
 declare global {
@@ -113,4 +92,10 @@ declare global {
 }
 
 window.RadiusRoadmap = api;
-if (window.radiusRoadmapConfig) init(window.radiusRoadmapConfig);
+if (
+  window.radiusRoadmapConfig &&
+  window.radiusRoadmapConfig.autoInit !== false
+) {
+  if (document.body) void init();
+  else document.addEventListener("DOMContentLoaded", () => void init());
+}

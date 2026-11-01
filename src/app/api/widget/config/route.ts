@@ -1,5 +1,6 @@
 import type { NextRequest } from "next/server";
 import { wsSegment } from "@/lib/public-path";
+import { REACTIONS } from "@/lib/reactions";
 import { db } from "@/server/db/client";
 import { appOrigin } from "@/server/public-url";
 import { myReactions } from "@/server/services/reactions";
@@ -27,6 +28,12 @@ export async function GET(request: NextRequest) {
     ...site,
     siteUrl: `${appOrigin()}/${req.site.slug}${wsSegment(site.workspace.slug, req.site.defaultWorkspace)}`,
     mine,
+    /** The widget has no copy of the emoji list. */
+    emoji: REACTIONS.map((r) => ({
+      key: r.key,
+      emoji: r.emoji,
+      label: r.label,
+    })),
     user: req.identity
       ? {
           name: req.identity.user.name,

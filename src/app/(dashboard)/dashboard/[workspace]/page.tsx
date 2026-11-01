@@ -101,6 +101,7 @@ async function Home({
         <Stat label="Reactions" value={totals.reactions} />
         <Stat label="Article views" value={totals.articleViews} />
         <Stat label="Published articles" value={kb.published} />
+        <Stat label="Widget opens" value={totals.widgetViews} />
         <div className="flex flex-col gap-1 rounded-lg border p-4">
           <span className="text-sm text-muted-foreground">
             Articles rated helpful

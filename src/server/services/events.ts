@@ -163,6 +163,8 @@ export async function summary(db: Db, ctx: WorkspaceContext, range: Range) {
         reactions: sql<number>`count(*) filter (where ${events.type} = 'reaction')::int`,
         // Phase 5 (doc 25).
         articleViews: sql<number>`count(*) filter (where ${events.type} = 'article_view')::int`,
+        // Phase 6B (doc 26): times the widget was opened.
+        widgetViews: sql<number>`count(*) filter (where ${events.type} = 'widget_view')::int`,
       })
       .from(events)
       .where(
@@ -191,6 +193,7 @@ export async function summary(db: Db, ctx: WorkspaceContext, range: Range) {
     postViews: updateRow?.postViews ?? 0,
     reactions: updateRow?.reactions ?? 0,
     articleViews: updateRow?.articleViews ?? 0,
+    widgetViews: updateRow?.widgetViews ?? 0,
     subscribers: subs?.n ?? 0,
   };
 }

@@ -19,7 +19,10 @@ export function IdeaDetail({
   followsEnabled,
   tags,
   roadmapHref,
+  initialTab = "details",
 }: {
+  /** Open on Comments when the visitor clicked an idea's comment count. */
+  initialTab?: "details" | "comments";
   idea: PublicIdea;
   commentsEnabled: boolean;
   followsEnabled: boolean;
@@ -42,7 +45,10 @@ export function IdeaDetail({
           {followsEnabled ? <FollowButton feedbackId={idea.id} /> : null}
         </div>
       </header>
-      <Tabs defaultValue="details" className="gap-0">
+      <Tabs
+        defaultValue={commentsEnabled ? initialTab : "details"}
+        className="gap-0"
+      >
         <TabsList
           variant="line"
           className="mx-6 mt-8 h-auto! w-auto justify-start gap-6 rounded-none border-b p-0"

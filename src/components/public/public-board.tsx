@@ -40,6 +40,7 @@ export function PublicBoard({
   commentsEnabled: boolean;
 }) {
   const [open, setOpen] = useState<PublicCard | null>(null);
+  const [tab, setTab] = useState<"details" | "comments">("details");
 
   // Back button closes the drawer.
   useEffect(() => {
@@ -52,8 +53,9 @@ export function PublicBoard({
     return `${cardHref}/${card.slug}${embed ? "?embed=1" : ""}`;
   }
 
-  function openCard(card: PublicCard) {
+  function openCard(card: PublicCard, on: "details" | "comments" = "details") {
     setOpen(card);
+    setTab(on);
     window.history.pushState({ card: card.id }, "", href(card));
   }
 
@@ -153,14 +155,19 @@ export function PublicBoard({
                           <>
                             <span className="h-4 w-px bg-border" />
                             <Hint label="Comments">
-                              <span
-                                // biome-ignore lint/a11y/noNoninteractiveTabindex: focusable so keyboard users get the tooltip
-                                tabIndex={0}
-                                className="flex items-center gap-1.5 rounded-md outline-none focus-visible:ring-2 focus-visible:ring-ring"
+                              <button
+                                type="button"
+                                aria-label={`Comments (${card.comments})`}
+                                onClick={(e) => {
+                                  e.preventDefault();
+                                  e.stopPropagation();
+                                  openCard(card, "comments");
+                                }}
+                                className="-mx-1.5 flex h-7 items-center gap-1.5 rounded-md px-1.5 transition-colors hover:bg-muted hover:text-foreground focus-visible:ring-2 focus-visible:ring-ring focus-visible:outline-none"
                               >
                                 <MessagesSquare className="size-4" />
                                 {card.comments}
-                              </span>
+                              </button>
                             </Hint>
                           </>
                         ) : null}
@@ -201,6 +208,8 @@ export function PublicBoard({
           </SheetHeader>
           {open ? (
             <CardDetail
+              key={`${open.id}-${tab}`}
+              initialTab={tab}
               card={open}
               columnName={
                 columns.find((c) => c.id === open.columnId)?.name ?? ""

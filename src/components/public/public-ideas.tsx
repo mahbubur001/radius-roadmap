@@ -69,6 +69,7 @@ export function PublicIdeas({
 }) {
   const { pendingIdeas } = useVoter();
   const [open, setOpen] = useState<PublicIdea | null>(null);
+  const [tab, setTab] = useState<"details" | "comments">("details");
   const [formOpen, setFormOpen] = useState(false);
   const mine = pendingIdeas.filter((i) => i.boardId === board.id);
   const embedParam = embed ? "embed=1" : "";
@@ -83,8 +84,9 @@ export function PublicIdeas({
     return `${base}/${idea.slug}${embed ? "?embed=1" : ""}`;
   }
 
-  function openIdea(idea: PublicIdea) {
+  function openIdea(idea: PublicIdea, on: "details" | "comments" = "details") {
     setOpen(idea);
+    setTab(on);
     window.history.pushState({ idea: idea.id }, "", href(idea));
   }
 
@@ -254,14 +256,19 @@ export function PublicIdeas({
                     ) : null}
                     {commentsEnabled ? (
                       <Hint label="Comments">
-                        <span
-                          // biome-ignore lint/a11y/noNoninteractiveTabindex: focusable so keyboard users get the tooltip
-                          tabIndex={0}
-                          className="relative z-10 flex items-center gap-1 rounded-md outline-none focus-visible:ring-2 focus-visible:ring-ring"
+                        <button
+                          type="button"
+                          aria-label={`Comments (${idea.comments})`}
+                          onClick={(e) => {
+                            e.preventDefault();
+                            e.stopPropagation();
+                            openIdea(idea, "comments");
+                          }}
+                          className="relative z-10 -mx-1 flex items-center gap-1 rounded-md px-1 transition-colors hover:bg-muted hover:text-foreground focus-visible:ring-2 focus-visible:ring-ring focus-visible:outline-none"
                         >
                           <MessagesSquare className="size-3.5" />
                           {idea.comments}
-                        </span>
+                        </button>
                       </Hint>
                     ) : null}
                   </div>
@@ -310,6 +317,8 @@ export function PublicIdeas({
           </SheetHeader>
           {open ? (
             <IdeaDetail
+              key={`${open.id}-${tab}`}
+              initialTab={tab}
               idea={open}
               commentsEnabled={commentsEnabled}
               followsEnabled={followsEnabled}

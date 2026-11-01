@@ -16,10 +16,13 @@ export function CardDetail({
   card,
   columnName,
   commentsEnabled,
+  initialTab = "details",
 }: {
   card: PublicCard;
   columnName: string;
   commentsEnabled: boolean;
+  /** Open on Comments when the visitor clicked a card's comment count. */
+  initialTab?: "details" | "comments";
 }) {
   const features = card.features ?? [];
   const progress = card.progress;
@@ -44,7 +47,10 @@ export function CardDetail({
         <VoteButton cardId={card.id} votes={card.votes} variant="plain" />
       </header>
 
-      <Tabs defaultValue="details" className="gap-0">
+      <Tabs
+        defaultValue={commentsEnabled ? initialTab : "details"}
+        className="gap-0"
+      >
         <TabsList
           variant="line"
           className="mx-6 mt-8 h-auto! w-auto justify-start gap-6 rounded-none border-b p-0"

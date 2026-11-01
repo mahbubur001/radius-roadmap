@@ -9,6 +9,7 @@ import {
   trackedUsers,
   user,
 } from "@/server/db/schema";
+import { emitEvent } from "@/server/queue/webhooks";
 import { getCard } from "./cards";
 import {
   ForbiddenError,
@@ -115,22 +116,27 @@ export async function addPublicComment(
     holdForApproval: boolean;
   },
 ) {
-  return db.transaction(async (tx) => {
-    const [row] = await tx
-      .insert(comments)
-      .values({
-        accountId: ctx.accountId,
-        workspaceId: input.workspaceId,
-        ...input.target,
-        body: input.body,
-        authorTrackedUserId: input.trackedUserId,
-        review: input.holdForApproval ? "pending" : "approved",
-      })
-      .returning();
-    if (!row) throw new Error("Failed to add the comment.");
-    await recount(tx, row.feedbackId);
-    return row;
-  });
+  return db
+    .transaction(async (tx) => {
+      const [row] = await tx
+        .insert(comments)
+        .values({
+          accountId: ctx.accountId,
+          workspaceId: input.workspaceId,
+          ...input.target,
+          body: input.body,
+          authorTrackedUserId: input.trackedUserId,
+          review: input.holdForApproval ? "pending" : "approved",
+        })
+        .returning();
+      if (!row) throw new Error("Failed to add the comment.");
+      await recount(tx, row.feedbackId);
+      return row;
+    })
+    .then(async (row) => {
+      await emitEvent(row.accountId, "comment.created", row.id);
+      return row;
+    });
 }
 
 // ── Team (dashboard) ───────────────────────────────────────────────────
@@ -192,22 +198,27 @@ export async function addTeamComment(
   input: { target: CommentTarget; body: string; internal: boolean },
 ) {
   await ownTarget(db, ctx, input.target);
-  return db.transaction(async (tx) => {
-    const [row] = await tx
-      .insert(comments)
-      .values({
-        accountId: ctx.accountId,
-        workspaceId: ctx.workspaceId,
-        ...input.target,
-        body: input.body,
-        authorUserId: ctx.userId,
-        isInternal: input.internal,
-      })
-      .returning();
-    if (!row) throw new Error("Failed to add the comment.");
-    await recount(tx, row.feedbackId);
-    return row;
-  });
+  return db
+    .transaction(async (tx) => {
+      const [row] = await tx
+        .insert(comments)
+        .values({
+          accountId: ctx.accountId,
+          workspaceId: ctx.workspaceId,
+          ...input.target,
+          body: input.body,
+          authorUserId: ctx.userId,
+          isInternal: input.internal,
+        })
+        .returning();
+      if (!row) throw new Error("Failed to add the comment.");
+      await recount(tx, row.feedbackId);
+      return row;
+    })
+    .then(async (row) => {
+      await emitEvent(row.accountId, "comment.created", row.id);
+      return row;
+    });
 }
 
 async function liveComment(db: Db, ctx: WorkspaceContext, id: string) {

@@ -2,6 +2,7 @@ import { and, eq, ilike } from "drizzle-orm";
 import { slugify } from "@/lib/schemas/workspace";
 import type { Db, DbOrTx } from "@/server/db/client";
 import { updates } from "@/server/db/schema";
+import { emitEvent } from "@/server/queue/webhooks";
 import { NotFoundError } from "./context";
 
 // Publishing, without request context (doc 23 step 3). Imported by the
@@ -48,6 +49,7 @@ export async function publishNow(
     .where(eq(updates.id, post.id))
     .returning();
   if (!row) throw new NotFoundError("Post not found.");
+  await emitEvent(row.accountId, "update.published", row.id);
   return row;
 }
 

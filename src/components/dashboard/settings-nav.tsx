@@ -12,6 +12,8 @@ const items = [
   { href: "branding", label: "Branding" },
   { href: "domain", label: "Domain" },
   { href: "team", label: "Team" },
+  { href: "api", label: "API" },
+  { href: "webhooks", label: "Webhooks" },
 ];
 
 export function SettingsNav({ billing }: { billing: boolean }) {

@@ -6,6 +6,7 @@ import {
   updateSubscribers,
   workspaces,
 } from "@/server/db/schema";
+import { emitEvent } from "@/server/queue/webhooks";
 import { likePattern } from "./cards";
 import {
   NotFoundError,
@@ -116,6 +117,9 @@ export async function subscribe(
         })
         .returning({ id: updateSubscribers.id });
   if (!row) throw new Error("Failed to subscribe.");
+  if (status === "active") {
+    await emitEvent(ctx.accountId, "subscriber.added", row.id);
+  }
   return status === "active"
     ? { status: "active", id: row.id, activated: true }
     : { status: "pending", id: row.id, token };
@@ -165,6 +169,7 @@ export async function confirmSubscription(
       .update(updateSubscribers)
       .set({ status: "active", confirmedAt: new Date() })
       .where(eq(updateSubscribers.id, sub.id));
+    await emitEvent(ctx.accountId, "subscriber.added", sub.id);
   }
   return { ...sub, activated };
 }
@@ -197,6 +202,9 @@ export async function unsubscribe(
     .update(updateSubscribers)
     .set({ status: "unsubscribed", unsubscribedAt: new Date() })
     .where(eq(updateSubscribers.id, sub.id));
+  if (sub.status !== "unsubscribed") {
+    await emitEvent(ctx.accountId, "subscriber.removed", sub.id);
+  }
   if (everything) await suppress(db, ctx, sub.email, "unsubscribed_all");
   return sub;
 }
@@ -285,6 +293,10 @@ export async function removeSubscriber(
     )
     .returning({ id: updateSubscribers.id });
   if (!row) throw new NotFoundError("Subscriber not found.");
+  await emitEvent(ctx.accountId, "subscriber.removed", id, {
+    id,
+    workspace_id: ctx.workspaceId,
+  });
 }
 
 /** CSV of the workspace's subscribers (formula cells neutralised). */

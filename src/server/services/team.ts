@@ -1,6 +1,7 @@
 import { and, asc, count, eq, ne } from "drizzle-orm";
 import type { Db, DbOrTx } from "@/server/db/client";
 import { member, user, workspaceMembers } from "@/server/db/schema";
+import { revokeKeysOf } from "./api-keys";
 import {
   type AccountContext,
   assertRole,
@@ -136,6 +137,7 @@ export async function removeMember(
   if (target.role === "owner") assertRole(ctx, "owner");
   await db.transaction(async (tx) => {
     await dropWorkspaceAccess(tx, ctx, target.userId);
+    await revokeKeysOf(tx, ctx.accountId, target.userId);
     await tx.delete(member).where(eq(member.id, memberId));
   });
 }
@@ -162,6 +164,7 @@ export async function leaveAccount(db: Db, ctx: AccountContext) {
   }
   await db.transaction(async (tx) => {
     await dropWorkspaceAccess(tx, ctx, ctx.userId);
+    await revokeKeysOf(tx, ctx.accountId, ctx.userId);
     await tx.delete(member).where(eq(member.id, self.id));
   });
 }

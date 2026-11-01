@@ -18,6 +18,7 @@ import {
   type VoteSource,
   votes,
 } from "@/server/db/schema";
+import { emitEvent } from "@/server/queue/webhooks";
 import { getCard } from "./cards";
 import {
   NotFoundError,
@@ -86,7 +87,7 @@ export async function toggleVote(
   voter: Voter,
   meta: VoteMeta,
 ): Promise<{ voted: boolean; total: number }> {
-  return db.transaction(async (tx) => {
+  const result = await db.transaction(async (tx) => {
     const [removed] = await tx
       .delete(votes)
       .where(
@@ -112,6 +113,12 @@ export async function toggleVote(
       .returning({ id: votes.id });
     return { voted: true, total: await bump(tx, card.id, added ? 1 : 0) };
   });
+  await emitEvent(
+    ctx.accountId,
+    result.voted ? "roadmap_card.vote_added" : "roadmap_card.vote_removed",
+    card.id,
+  );
+  return result;
 }
 
 /**
@@ -125,7 +132,7 @@ export async function toggleFeedbackVote(
   voter: Voter,
   meta: VoteMeta,
 ): Promise<{ voted: boolean; total: number }> {
-  return db.transaction(async (tx) => {
+  const result = await db.transaction(async (tx) => {
     const [removed] = await tx
       .delete(votes)
       .where(
@@ -155,6 +162,12 @@ export async function toggleFeedbackVote(
       total: await bumpFeedback(tx, item.id, added ? 1 : 0),
     };
   });
+  await emitEvent(
+    ctx.accountId,
+    result.voted ? "feedback.vote_added" : "feedback.vote_removed",
+    item.id,
+  );
+  return result;
 }
 
 /** Card and idea ids in a workspace this voter has voted for. */

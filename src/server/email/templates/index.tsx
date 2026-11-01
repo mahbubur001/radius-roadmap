@@ -391,6 +391,25 @@ export const templates: { [T in EmailTemplate]: TemplateDef<T> } = {
       </EmailLayout>
     ),
   },
+  "webhook-disabled": {
+    subject: () => "A webhook was switched off",
+    render: ({ accountName, url, reason, settingsUrl }) => (
+      <EmailLayout
+        preview={`Deliveries to ${url} kept failing`}
+        heading="A webhook was switched off"
+        action={{ label: "Webhook settings", url: settingsUrl }}
+      >
+        <Text>
+          Deliveries from <strong>{accountName}</strong> to <code>{url}</code>{" "}
+          failed for three days. {reason}
+        </Text>
+        <Text>
+          Fix the receiving end, then switch the webhook back on. Missed events
+          can be sent again from the delivery log.
+        </Text>
+      </EmailLayout>
+    ),
+  },
   "domain-active": {
     subject: ({ hostname }) => `${hostname} is live`,
     render: ({ accountName, hostname, url }) => (

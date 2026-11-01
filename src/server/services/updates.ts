@@ -28,6 +28,7 @@ import {
   updates,
   user,
 } from "@/server/db/schema";
+import { emitEvent } from "@/server/queue/webhooks";
 import { deleteFile, prefixes } from "@/server/storage";
 import { keyHasPrefix } from "@/server/storage/keys";
 import { likePattern } from "./cards";
@@ -418,5 +419,6 @@ export async function unpublishUpdate(
     .where(and(inWorkspace(updates, ctx), eq(updates.id, id)))
     .returning();
   if (!row) throw new NotFoundError("Post not found.");
+  await emitEvent(ctx.accountId, "update.unpublished", row.id);
   return row;
 }

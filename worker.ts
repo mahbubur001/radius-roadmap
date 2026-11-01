@@ -1,9 +1,11 @@
 import { Worker } from "bullmq";
 import { notifyJob } from "@/jobs/notify";
 import { sendEmailJob } from "@/jobs/send-email";
+import { webhookJob } from "@/jobs/webhooks";
 import { createRedisConnection } from "@/server/queue/connection";
 import { EMAIL_QUEUE } from "@/server/queue/email";
 import { NOTIFY_QUEUE, notifyQueue } from "@/server/queue/notifications";
+import { WEBHOOK_QUEUE } from "@/server/queue/webhooks";
 
 const workers = [
   new Worker(EMAIL_QUEUE, sendEmailJob, {
@@ -15,6 +17,11 @@ const workers = [
   new Worker(NOTIFY_QUEUE, notifyJob, {
     connection: createRedisConnection(),
     concurrency: 2,
+  }),
+  // Outgoing webhooks (doc 27): slow receivers mustn't hold up the rest.
+  new Worker(WEBHOOK_QUEUE, webhookJob, {
+    connection: createRedisConnection(),
+    concurrency: 10,
   }),
 ];
 

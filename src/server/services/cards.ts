@@ -36,6 +36,7 @@ import {
   roadmapCards,
   user,
 } from "@/server/db/schema";
+import { emitEvent } from "@/server/queue/webhooks";
 import { deleteFile, fileUrl, prefixes } from "@/server/storage";
 import { keyHasPrefix } from "@/server/storage/keys";
 import {
@@ -116,6 +117,7 @@ export async function insertCard(
         .values({ ...values, slug })
         .returning();
       if (!row) throw new Error("Failed to create card.");
+      await emitEvent(row.accountId, "roadmap_card.created", row.id);
       return row;
     } catch (error) {
       if (attempt < 2 && isUniqueViolation(error)) continue;
@@ -216,6 +218,7 @@ export async function updateCard(
   ) {
     await deleteFile(current.headerImageKey);
   }
+  await emitEvent(ctx.accountId, "roadmap_card.updated", id);
   return saved;
 }
 
@@ -265,6 +268,7 @@ export async function moveCard(
       to.isDone ? "completed" : "reopened",
     );
   }
+  await emitCardChange(ctx, card.id, !card.completedAt && !!completedAt);
   return row;
 }
 
@@ -281,7 +285,18 @@ export async function setCardCompleted(
     .returning();
   if (!row) throw new NotFoundError("Card not found.");
   await syncCardFeedback(db, ctx, id, completed ? "completed" : "reopened");
+  await emitCardChange(ctx, id, completed);
   return row;
+}
+
+/** `roadmap_card.updated`, plus `.completed` when it just got done (doc 27 A8). */
+async function emitCardChange(
+  ctx: WorkspaceContext,
+  id: string,
+  completed: boolean,
+) {
+  await emitEvent(ctx.accountId, "roadmap_card.updated", id);
+  if (completed) await emitEvent(ctx.accountId, "roadmap_card.completed", id);
 }
 
 export async function setCardArchived(
@@ -312,6 +327,10 @@ export async function deleteCard(db: Db, ctx: WorkspaceContext, id: string) {
     .where(and(inWorkspace(roadmapCards, ctx), eq(roadmapCards.id, id)))
     .returning({ id: roadmapCards.id });
   if (!row) throw new NotFoundError("Card not found.");
+  await emitEvent(ctx.accountId, "roadmap_card.deleted", id, {
+    id,
+    workspace_id: ctx.workspaceId,
+  });
   // Attachment rows cascade; their files are removed here.
   await Promise.all(
     [...files.map((f) => f.key), headerImageKey].map((key) =>

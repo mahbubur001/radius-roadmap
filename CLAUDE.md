@@ -94,6 +94,11 @@ Keep this list in sync with `package.json`. Deploy files: `ecosystem.config.cjs`
 - Use `src/server/storage` only: `createUpload` (signed POST form), `fileUrl`, `deleteFile`. Keys always sit under a tenant prefix (`prefixes.*`); check them with `keyHasPrefix` before saving.
 - `STORAGE_DRIVER=local` keeps files in `.uploads/` (dev); `s3` is for production.
 
+### Public REST API and webhooks (doc 27)
+- `/api/v1/*` routes are thin: wrap them in `apiRoute()` (`src/server/api/handler.ts`, does key auth, write permission, rate limit, errors, snake_case). Reads go in `services/api-read.ts` (account-scoped, cursor pages), writes in `src/server/api/writes.ts` through the normal services. Every request/response shape is a Zod schema with `.meta({ id })` in `src/server/api/schemas.ts` / `write-schemas.ts`; `openapi.json` is generated from them, so add new endpoints there too.
+- A service that changes something a webhook event covers calls `emitEvent(accountId, event, id)` from `src/server/queue/webhooks.ts` right after the write (it never throws). New events go in `WEBHOOK_EVENTS` (`src/lib/schemas/webhooks.ts`) and `eventData()`.
+- Outgoing HTTP to customer URLs only through `postJson()` in `services/webhooks.ts` (SSRF guard, no redirects, no pooled sockets).
+
 ### Two kinds of user
 - **Team members** (dashboard) use Better Auth. Organization = Account; check roles (owner/admin/member) on every mutation.
 - **End users** (voters and commenters on public pages and the widget) are `tracked_users`, scoped per account: guest, anonymous, social, or customer SSO JWT (HS256, verified with `jose`). Never mix the two in Better Auth's user table.

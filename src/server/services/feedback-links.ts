@@ -9,6 +9,7 @@ import {
   roadmapColumns,
   roadmaps,
 } from "@/server/db/schema";
+import { emitEvent } from "@/server/queue/webhooks";
 import { getCard, insertCard, likePattern } from "./cards";
 import type { WorkspaceContext } from "./context";
 import { getFeedback } from "./feedback";
@@ -49,46 +50,51 @@ export async function pushToRoadmap(
     getFeedback(db, ctx, input.feedbackId),
     getColumn(db, ctx, input.columnId),
   ]);
-  return db.transaction(async (tx) => {
-    const [last] = await tx
-      .select({ position: roadmapCards.position })
-      .from(roadmapCards)
-      .where(
-        and(
-          inWorkspace(roadmapCards, ctx),
-          eq(roadmapCards.columnId, column.id),
-        ),
-      )
-      .orderBy(sql`${byPosition(roadmapCards.position)} desc`)
-      .limit(1);
-    const card = await insertCard(tx, {
-      accountId: ctx.accountId,
-      workspaceId: ctx.workspaceId,
-      roadmapId: column.roadmapId,
-      columnId: column.id,
-      title: input.title,
-      summaryJson: item.summaryJson,
-      summaryText: item.summaryText,
-      objectiveId: item.objectiveId,
-      position: keyAfter(last?.position),
-      completedAt: column.isDone ? new Date() : null,
-      createdBy: ctx.userId,
+  return db
+    .transaction(async (tx) => {
+      const [last] = await tx
+        .select({ position: roadmapCards.position })
+        .from(roadmapCards)
+        .where(
+          and(
+            inWorkspace(roadmapCards, ctx),
+            eq(roadmapCards.columnId, column.id),
+          ),
+        )
+        .orderBy(sql`${byPosition(roadmapCards.position)} desc`)
+        .limit(1);
+      const card = await insertCard(tx, {
+        accountId: ctx.accountId,
+        workspaceId: ctx.workspaceId,
+        roadmapId: column.roadmapId,
+        columnId: column.id,
+        title: input.title,
+        summaryJson: item.summaryJson,
+        summaryText: item.summaryText,
+        objectiveId: item.objectiveId,
+        position: keyAfter(last?.position),
+        completedAt: column.isDone ? new Date() : null,
+        createdBy: ctx.userId,
+      });
+      await tx.insert(cardFeedbackLinks).values({
+        accountId: ctx.accountId,
+        workspaceId: ctx.workspaceId,
+        cardId: card.id,
+        feedbackId: item.id,
+        createdBy: ctx.userId,
+      });
+      await syncFeedbackStatus(
+        tx,
+        ctx,
+        [item.id],
+        column.isDone ? "completed" : "planned",
+      );
+      return card;
+    })
+    .then(async (card) => {
+      await emitEvent(ctx.accountId, "feedback.pushed_to_roadmap", item.id);
+      return card;
     });
-    await tx.insert(cardFeedbackLinks).values({
-      accountId: ctx.accountId,
-      workspaceId: ctx.workspaceId,
-      cardId: card.id,
-      feedbackId: item.id,
-      createdBy: ctx.userId,
-    });
-    await syncFeedbackStatus(
-      tx,
-      ctx,
-      [item.id],
-      column.isDone ? "completed" : "planned",
-    );
-    return card;
-  });
 }
 
 /** Link to an existing card. Linking twice is a no-op. */
@@ -120,6 +126,8 @@ export async function linkCard(
       card.completedAt ? "completed" : "planned",
     );
   });
+  // Linking to an existing card counts as pushing it to the roadmap.
+  await emitEvent(ctx.accountId, "feedback.pushed_to_roadmap", item.id);
 }
 
 export async function unlinkCard(

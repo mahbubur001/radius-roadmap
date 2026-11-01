@@ -124,6 +124,13 @@ export type EmailTemplateProps = {
   };
   /** To account owners: the subscription ended; the account is on Free. */
   "billing-canceled": { accountName: string; planName: string; url: string };
+  /** To account owners: a webhook was switched off after failing (doc 27 A10). */
+  "webhook-disabled": {
+    accountName: string;
+    url: string;
+    reason: string;
+    settingsUrl: string;
+  };
   /** To account owners: their custom domain is live (doc 26 6D). */
   "domain-active": { accountName: string; hostname: string; url: string };
   /** To account owners: their custom domain stopped pointing at us. */

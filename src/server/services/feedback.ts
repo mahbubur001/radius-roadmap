@@ -44,6 +44,7 @@ import {
   user,
   votes,
 } from "@/server/db/schema";
+import { emitEvent } from "@/server/queue/webhooks";
 import { likePattern } from "./cards";
 import {
   ConflictError,
@@ -162,6 +163,7 @@ export async function insertFeedback(
         .values({ ...values, slug, notifiedStatusId: values.statusId })
         .returning();
       if (!row) throw new Error("Failed to create feedback.");
+      await emitEvent(row.accountId, "feedback.created", row.id);
       return row;
     } catch (error) {
       if (attempt < 2 && isUniqueViolation(error)) continue;
@@ -202,7 +204,7 @@ export async function updateFeedback(
 ) {
   const { id, tagIds, summaryJson, objectiveId, boardId, statusId, ...rest } =
     updateFeedbackSchema.parse(input);
-  await getFeedback(db, ctx, id);
+  const before = await getFeedback(db, ctx, id);
 
   const set: Partial<typeof feedbackItems.$inferInsert> = {
     ...rest,
@@ -233,7 +235,7 @@ export async function updateFeedback(
     set.objectiveId = objectiveId;
   }
 
-  return db.transaction(async (tx) => {
+  const saved = await db.transaction(async (tx) => {
     const [row] = await tx
       .update(feedbackItems)
       .set(set)
@@ -251,6 +253,21 @@ export async function updateFeedback(
     }
     return row;
   });
+  await emitFeedbackChange(ctx, id, before.statusId, saved.statusId);
+  return saved;
+}
+
+/** `feedback.updated`, plus `feedback.status_changed` when it moved (doc 27 A8). */
+async function emitFeedbackChange(
+  ctx: WorkspaceContext,
+  id: string,
+  before: string | null,
+  after: string | null,
+) {
+  await emitEvent(ctx.accountId, "feedback.updated", id);
+  if (before !== after) {
+    await emitEvent(ctx.accountId, "feedback.status_changed", id);
+  }
 }
 
 /** Complete → first `done` status; reopen → first `open` status. */
@@ -260,7 +277,7 @@ export async function setFeedbackCompleted(
   id: string,
   completed: boolean,
 ) {
-  await getFeedback(db, ctx, id);
+  const before = await getFeedback(db, ctx, id);
   const status = await firstStatusOfKind(db, ctx, completed ? "done" : "open");
   const [row] = await db
     .update(feedbackItems)
@@ -271,6 +288,7 @@ export async function setFeedbackCompleted(
     .where(and(inWorkspace(feedbackItems, ctx), eq(feedbackItems.id, id)))
     .returning();
   if (!row) throw new NotFoundError("Feedback not found.");
+  await emitFeedbackChange(ctx, id, before.statusId, row.statusId);
   return row;
 }
 
@@ -286,6 +304,7 @@ export async function setFeedbackArchived(
     .where(and(inWorkspace(feedbackItems, ctx), eq(feedbackItems.id, id)))
     .returning();
   if (!row) throw new NotFoundError("Feedback not found.");
+  await emitEvent(ctx.accountId, "feedback.updated", id);
   return row;
 }
 
@@ -299,6 +318,10 @@ export async function deleteFeedback(
     .where(and(inWorkspace(feedbackItems, ctx), eq(feedbackItems.id, id)))
     .returning({ id: feedbackItems.id });
   if (!row) throw new NotFoundError("Feedback not found.");
+  await emitEvent(ctx.accountId, "feedback.deleted", id, {
+    id,
+    workspace_id: ctx.workspaceId,
+  });
 }
 
 // ── Merge and duplicate (doc 20 §1, doc 16 §8 #13) ───────────────────────
@@ -530,6 +553,9 @@ export async function reviewFeedback(
     .set({ ...set, updatedAt: new Date() })
     .where(and(inWorkspace(feedbackItems, ctx), inArray(feedbackItems.id, ids)))
     .returning({ id: feedbackItems.id });
+  for (const r of rows) {
+    await emitEvent(ctx.accountId, "feedback.updated", r.id);
+  }
   return rows.length;
 }
 
@@ -570,30 +596,40 @@ export async function bulkUpdateFeedback(
     }
     set.objectiveId = input.objectiveId;
   }
-  return db.transaction(async (tx) => {
-    const rows = await tx
-      .update(feedbackItems)
-      .set(set)
-      .where(
-        and(
-          inWorkspace(feedbackItems, ctx),
-          inArray(feedbackItems.id, input.ids),
-        ),
-      )
-      .returning({ id: feedbackItems.id });
-    const tagIds = await ownTagIds(tx, ctx, input.addTagIds ?? []);
-    if (rows.length && tagIds.length) {
-      await tx
-        .insert(feedbackTags)
-        .values(
-          rows.flatMap((r) =>
-            tagIds.map((tagId) => ({ feedbackId: r.id, tagId })),
+  return db
+    .transaction(async (tx) => {
+      const rows = await tx
+        .update(feedbackItems)
+        .set(set)
+        .where(
+          and(
+            inWorkspace(feedbackItems, ctx),
+            inArray(feedbackItems.id, input.ids),
           ),
         )
-        .onConflictDoNothing();
-    }
-    return rows.length;
-  });
+        .returning({ id: feedbackItems.id });
+      const tagIds = await ownTagIds(tx, ctx, input.addTagIds ?? []);
+      if (rows.length && tagIds.length) {
+        await tx
+          .insert(feedbackTags)
+          .values(
+            rows.flatMap((r) =>
+              tagIds.map((tagId) => ({ feedbackId: r.id, tagId })),
+            ),
+          )
+          .onConflictDoNothing();
+      }
+      return rows;
+    })
+    .then(async (rows) => {
+      for (const r of rows) {
+        await emitEvent(ctx.accountId, "feedback.updated", r.id);
+        if (input.statusId) {
+          await emitEvent(ctx.accountId, "feedback.status_changed", r.id);
+        }
+      }
+      return rows.length;
+    });
 }
 
 // ── Admin list ──────────────────────────────────────────────────────────

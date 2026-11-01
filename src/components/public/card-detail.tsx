@@ -6,7 +6,7 @@ import { PublicComments } from "./public-comments";
 import { VoteButton } from "./vote-button";
 
 const TAB =
-  "-mb-px h-auto flex-none rounded-none border-0 border-b-2 border-transparent px-1 pt-1 pb-3 text-muted-foreground after:hidden hover:text-foreground data-[state=active]:border-primary data-[state=active]:text-primary";
+  "-mb-px h-auto! flex-none rounded-none border-0 border-b-2 border-transparent px-1 pt-1 pb-4 text-muted-foreground after:hidden hover:text-foreground data-[state=active]:border-primary data-[state=active]:text-primary";
 
 /**
  * Full card view, shared by the card page and the board's drawer (doc 22
@@ -37,13 +37,13 @@ export function CardDetail({
         <h1 className="pr-8 text-xl font-semibold tracking-tight">
           {card.title}
         </h1>
-        <VoteButton cardId={card.id} votes={card.votes} variant="pill" />
+        <VoteButton cardId={card.id} votes={card.votes} variant="plain" />
       </header>
 
       <Tabs defaultValue="details" className="gap-0">
         <TabsList
           variant="line"
-          className="mx-6 mt-5 h-auto w-auto justify-start gap-6 rounded-none border-b p-0"
+          className="mx-6 mt-8 h-auto! w-auto justify-start gap-6 rounded-none border-b p-0"
         >
           <TabsTrigger value="details" className={TAB}>
             Details
@@ -55,7 +55,10 @@ export function CardDetail({
           ) : null}
         </TabsList>
 
-        <TabsContent value="details" className="flex flex-col gap-5 px-6 py-5">
+        <TabsContent
+          value="details"
+          className="flex flex-col gap-5 px-6 pt-6 pb-5"
+        >
           <Field label="Status">
             <Badge variant="secondary">
               {card.completed ? "Done" : columnName}
@@ -182,7 +185,7 @@ export function CardDetail({
         </TabsContent>
 
         {commentsEnabled ? (
-          <TabsContent value="comments" className="px-6 py-5">
+          <TabsContent value="comments" className="px-6 pt-7 pb-5">
             <PublicComments target={{ cardId: card.id }} />
           </TabsContent>
         ) : null}

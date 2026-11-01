@@ -7,7 +7,8 @@ import { useVoter, type VoteKind } from "./voter-provider";
 /**
  * Upvote toggle (↑ everywhere, doc 22 P5). `votes` is null when the roadmap
  * hides counts. `inline` sits in a card's footer; `pill` is the bordered
- * button at the top of the card drawer and page.
+ * box in the ideas list; `plain` (accent icon, no border) heads the card and
+ * idea drawers and pages.
  */
 export function VoteButton({
   cardId,
@@ -18,7 +19,7 @@ export function VoteButton({
   /** The card's or idea's id. */
   cardId: string;
   votes: number | null;
-  variant?: "inline" | "pill";
+  variant?: "inline" | "pill" | "plain";
   kind?: VoteKind;
 }) {
   const { voted, totals, toggleVote } = useVoter();
@@ -39,14 +40,23 @@ export function VoteButton({
         "flex shrink-0 items-center gap-1.5 rounded-md font-medium transition-colors focus-visible:ring-2 focus-visible:ring-ring focus-visible:outline-none",
         variant === "pill"
           ? "h-9 border px-3 text-sm"
-          : "-ml-1.5 h-7 px-1.5 text-sm",
-        active
-          ? "text-primary"
-          : "text-muted-foreground hover:bg-muted hover:text-foreground",
+          : variant === "plain"
+            ? "-ml-2 h-9 gap-2 px-2 text-sm text-foreground hover:bg-primary/10"
+            : "-ml-1.5 h-7 px-1.5 text-sm",
+        variant !== "plain" &&
+          (active
+            ? "text-primary"
+            : "text-muted-foreground hover:bg-muted hover:text-foreground"),
         active && variant === "pill" && "border-primary bg-primary/10",
+        active && variant === "plain" && "bg-primary/10 text-primary",
       )}
     >
-      <ArrowUp className={cn("size-4", active && "stroke-[2.5]")} />
+      <ArrowUp
+        className={cn(
+          variant === "plain" ? "size-5 text-primary" : "size-4",
+          active && "stroke-[2.5]",
+        )}
+      />
       {total !== null ? <span data-testid="vote-count">{total}</span> : null}
     </button>
   );

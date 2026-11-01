@@ -117,6 +117,36 @@
   --sidebar-ring: oklch(0.6 0.15 268);
 }
 
+/*
+ * Public sites (LoopedIn look): blue accent and slate greys. On :root so
+ * drawers and dialogs, which portal to <body>, get it too. The account's
+ * brand colour will override --primary here (doc 26 6C).
+ */
+:root:has([data-site-theme]) {
+  --foreground: oklch(0.208 0.042 265.755);
+  --card-foreground: oklch(0.208 0.042 265.755);
+  --popover-foreground: oklch(0.208 0.042 265.755);
+  --primary: oklch(0.511 0.262 276.966);
+  --primary-foreground: oklch(0.985 0 0);
+  --secondary: oklch(0.968 0.007 247.896);
+  --secondary-foreground: oklch(0.208 0.042 265.755);
+  --muted: oklch(0.968 0.007 247.896);
+  --muted-foreground: oklch(0.554 0.046 257.417);
+  --accent: oklch(0.968 0.007 247.896);
+  --accent-foreground: oklch(0.208 0.042 265.755);
+  --border: oklch(0.929 0.013 255.508);
+  --input: oklch(0.929 0.013 255.508);
+  --ring: oklch(0.585 0.233 277.117);
+}
+
+/* The public site's dark mode is a class on its root element. */
+[data-site-theme].dark,
+:root:has([data-site-theme].dark) {
+  --primary: oklch(0.673 0.182 276.935);
+  --primary-foreground: oklch(0.208 0.042 265.755);
+  --muted-foreground: oklch(0.704 0.04 256.788);
+}
+
 @layer base {
   * {
     @apply border-border outline-ring/50;

@@ -5,9 +5,6 @@ import type { PublicCard } from "@/server/services/public-site";
 import { PublicComments } from "./public-comments";
 import { VoteButton } from "./vote-button";
 
-const TAB =
-  "-mb-px h-auto! flex-none rounded-none border-0 border-b-2 border-transparent px-1 pt-1 pb-4 text-muted-foreground after:hidden hover:text-foreground data-[state=active]:border-primary! data-[state=active]:text-primary!";
-
 /**
  * Full card view, shared by the card page and the board's drawer (doc 22
  * step 3): title and vote on top, then Details / Comments tabs.
@@ -51,15 +48,10 @@ export function CardDetail({
         defaultValue={commentsEnabled ? initialTab : "details"}
         className="gap-0"
       >
-        <TabsList
-          variant="line"
-          className="mx-6 mt-8 h-auto! w-auto justify-start gap-6 rounded-none border-b p-0"
-        >
-          <TabsTrigger value="details" className={TAB}>
-            Details
-          </TabsTrigger>
+        <TabsList variant="line" className="mx-6 mt-8 [&>[role=tab]]:pb-4">
+          <TabsTrigger value="details">Details</TabsTrigger>
           {commentsEnabled ? (
-            <TabsTrigger value="comments" className={TAB}>
+            <TabsTrigger value="comments">
               Comments ({card.comments})
             </TabsTrigger>
           ) : null}

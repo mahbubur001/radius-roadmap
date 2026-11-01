@@ -27,7 +27,7 @@ export default function WorkspaceLayout({
   const slug = params.then((p) => p.workspace);
 
   return (
-    <div className="flex min-h-svh">
+    <div data-dashboard="" className="flex min-h-svh">
       <Sidebar>
         <Suspense fallback={<Skeleton className="size-9 rounded-md" />}>
           <Switcher slug={slug} />

@@ -163,6 +163,14 @@
   --ring: oklch(0.585 0.233 277.117);
 }
 
+/* Underline tabs: the dashboard uses its blue (the sidebar colour). */
+:root:has([data-dashboard]) {
+  --tab-accent: var(--sidebar);
+}
+.dark:has([data-dashboard]) {
+  --tab-accent: var(--sidebar-primary);
+}
+
 @layer base {
   * {
     @apply border-border outline-ring/50;

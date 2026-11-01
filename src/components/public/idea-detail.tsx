@@ -6,9 +6,6 @@ import { FollowButton } from "./follow-button";
 import { PublicComments } from "./public-comments";
 import { VoteButton } from "./vote-button";
 
-const TAB =
-  "-mb-px h-auto! flex-none rounded-none border-0 border-b-2 border-transparent px-1 pt-1 pb-4 text-muted-foreground after:hidden hover:text-foreground data-[state=active]:border-primary! data-[state=active]:text-primary!";
-
 /**
  * One idea, shared by the Ideas drawer and the idea page. `tags` and
  * `roadmapHref` are only known on the full page.
@@ -49,15 +46,10 @@ export function IdeaDetail({
         defaultValue={commentsEnabled ? initialTab : "details"}
         className="gap-0"
       >
-        <TabsList
-          variant="line"
-          className="mx-6 mt-8 h-auto! w-auto justify-start gap-6 rounded-none border-b p-0"
-        >
-          <TabsTrigger value="details" className={TAB}>
-            Details
-          </TabsTrigger>
+        <TabsList variant="line" className="mx-6 mt-8 [&>[role=tab]]:pb-4">
+          <TabsTrigger value="details">Details</TabsTrigger>
           {commentsEnabled ? (
-            <TabsTrigger value="comments" className={TAB}>
+            <TabsTrigger value="comments">
               Comments ({idea.comments})
             </TabsTrigger>
           ) : null}

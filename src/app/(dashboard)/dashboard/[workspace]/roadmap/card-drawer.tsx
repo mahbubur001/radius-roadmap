@@ -376,15 +376,10 @@ function CardEditor({
           </SheetHeader>
 
           <Tabs defaultValue="general" className="gap-0">
-            <TabsList
-              variant="line"
-              className="h-auto w-full justify-start gap-4 rounded-none border-b px-8"
-            >
-              <TabsTrigger value="general" className={TAB}>
-                General
-              </TabsTrigger>
+            <TabsList variant="line" className="mx-8 gap-5">
+              <TabsTrigger value="general">General</TabsTrigger>
               {display.showFeatures ? (
-                <TabsTrigger value="features" className={TAB}>
+                <TabsTrigger value="features">
                   Features (
                   {features.length
                     ? `${doneCount}/${features.length}`
@@ -392,20 +387,18 @@ function CardEditor({
                   )
                 </TabsTrigger>
               ) : null}
-              <TabsTrigger value="feedback" className={TAB}>
+              <TabsTrigger value="feedback">
                 Linked feedback ({detail.feedback.length})
               </TabsTrigger>
               {display.showAttachments ? (
-                <TabsTrigger value="attachments" className={TAB}>
+                <TabsTrigger value="attachments">
                   Attachments ({attachments.length})
                 </TabsTrigger>
               ) : null}
               {display.showVotes ? (
-                <TabsTrigger value="votes" className={TAB}>
-                  Votes ({votes})
-                </TabsTrigger>
+                <TabsTrigger value="votes">Votes ({votes})</TabsTrigger>
               ) : null}
-              <TabsTrigger value="comments" className={TAB}>
+              <TabsTrigger value="comments">
                 Comments ({comments.length})
               </TabsTrigger>
             </TabsList>
@@ -758,8 +751,6 @@ function CardEditor({
 }
 
 /** Underlined tab in the drawer, like LoopedIn. */
-const TAB =
-  "-mb-px flex-none rounded-none border-0 border-b-2 border-transparent px-1 pt-2 pb-2.5 after:hidden data-active:border-foreground";
 
 function RailButton(props: React.ComponentProps<typeof Button>) {
   return <Button variant="secondary" className="w-full" {...props} />;

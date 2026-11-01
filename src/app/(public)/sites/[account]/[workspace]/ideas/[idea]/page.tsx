@@ -7,7 +7,7 @@ import { IdeaDetail } from "@/components/public/idea-detail";
 import { PageView } from "@/components/public/page-view";
 import { Skeleton } from "@/components/ui/skeleton";
 import { wsPath } from "@/lib/public-path";
-import { loadIdea, loadSite, loadWorkspace, siteUrl } from "../../../data";
+import { loadIdea, loadSiteForRequest, loadWorkspace } from "../../../data";
 import { SiteShell } from "../../../site-shell";
 
 type Props = PageProps<"/sites/[account]/[workspace]/ideas/[idea]">;
@@ -15,14 +15,14 @@ type Props = PageProps<"/sites/[account]/[workspace]/ideas/[idea]">;
 async function load(props: Props) {
   const { account, workspace, idea } = await props.params;
   const query = await props.searchParams;
-  const site = await loadSite(decodeURIComponent(account));
+  const site = await loadSiteForRequest(decodeURIComponent(account));
   if (!site) return null;
   const ws = await loadWorkspace(site.accountId, workspace);
   if (!ws?.modules.ideas) return null;
   const found = await loadIdea(site.accountId, ws.id, idea);
   if (!found) return null;
   return {
-    origin: siteUrl(site.slug),
+    origin: site.publicBase,
     site,
     ws,
     idea: found,
@@ -63,7 +63,7 @@ async function Idea(props: Props) {
       <PageView ideaId={idea.id} />
       <div className="mx-auto flex max-w-2xl flex-col gap-6">
         <Link
-          href={`/${site.slug}${wsPath(ws)}/ideas${suffix}`}
+          href={`${site.prefix}${wsPath(ws)}/ideas${suffix}`}
           className="flex items-center gap-1 text-sm text-muted-foreground hover:text-foreground"
         >
           <ArrowLeft className="size-4" />
@@ -77,7 +77,7 @@ async function Idea(props: Props) {
             tags={idea.tags}
             roadmapHref={
               idea.roadmapCard && ws.modules.roadmap
-                ? `/${site.slug}${wsPath(ws)}/roadmap/${idea.roadmapCard}${suffix}`
+                ? `${site.prefix}${wsPath(ws)}/roadmap/${idea.roadmapCard}${suffix}`
                 : null
             }
           />

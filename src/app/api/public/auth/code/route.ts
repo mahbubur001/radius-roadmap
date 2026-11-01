@@ -3,7 +3,12 @@ import { z } from "zod";
 import { safeNext } from "@/lib/safe-next";
 import { startCodeSchema } from "@/lib/schemas/voting";
 import { db } from "@/server/db/client";
-import { notFound, publicRequest, siteOrigin } from "@/server/public-request";
+import {
+  notFound,
+  publicRequest,
+  siteOrigin,
+  sitePathPrefix,
+} from "@/server/public-request";
 import { enqueueEmail } from "@/server/queue/email";
 import { hit, VOTE_LIMITS } from "@/server/rate-limit";
 import { getEmailBrand } from "@/server/services/branding";
@@ -45,7 +50,7 @@ export async function POST(request: NextRequest) {
   link.searchParams.set("token", token);
   link.searchParams.set(
     "next",
-    safeNext(parsed.data.next, `/${req.site.slug}`),
+    safeNext(parsed.data.next, sitePathPrefix(request, req.site.slug) || "/"),
   );
   await enqueueEmail({
     template: "voter-code",

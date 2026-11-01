@@ -1,7 +1,11 @@
 import { type NextRequest, NextResponse } from "next/server";
 import { wsSegment } from "@/lib/public-path";
 import { db } from "@/server/db/client";
-import { publicRequest, siteOrigin } from "@/server/public-request";
+import {
+  publicRequest,
+  siteOrigin,
+  sitePathPrefix,
+} from "@/server/public-request";
 import { notify } from "@/server/queue/notifications";
 import { trackEvent } from "@/server/services/events";
 import { confirmSubscription } from "@/server/services/subscribers";
@@ -33,7 +37,7 @@ export async function GET(request: NextRequest) {
   }
   return NextResponse.redirect(
     new URL(
-      `/${req.site.slug}${wsSegment(sub.workspaceSlug, req.site.defaultWorkspace)}/updates?subscribed=1`,
+      `${sitePathPrefix(request, req.site.slug)}${wsSegment(sub.workspaceSlug, req.site.defaultWorkspace)}/updates?subscribed=1`,
       siteOrigin(request),
     ),
     303,

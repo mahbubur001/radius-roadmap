@@ -2,6 +2,7 @@ import "server-only";
 import { cacheLife, cacheTag } from "next/cache";
 import { db } from "@/server/db/client";
 import { publicTag, siteTag } from "@/server/public-cache";
+import { activeHostname } from "@/server/services/custom-domains";
 import { getPublicUpdate } from "@/server/services/public-updates";
 import { widgetSite } from "@/server/services/widget";
 import { fileUrl } from "@/server/storage";
@@ -18,6 +19,8 @@ export async function loadWidgetSite(accountId: string, workspace: string) {
   cacheTag(publicTag(site.workspace.id));
   return {
     ...site,
+    /** The account's live custom domain, for links (doc 26 D5). */
+    customHost: await activeHostname(db, accountId),
     workspace: { ...site.workspace, logo: fileUrl(site.workspace.logo) },
     posts: site.posts.map((p) => ({ ...p, cover: fileUrl(p.cover) })),
   };

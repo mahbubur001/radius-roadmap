@@ -12,9 +12,8 @@ import { Skeleton } from "@/components/ui/skeleton";
 import { wsPath } from "@/lib/public-path";
 import {
   loadArticleCategory,
-  loadSite,
+  loadSiteForRequest,
   loadWorkspace,
-  siteUrl,
 } from "../../../../data";
 import { SiteShell } from "../../../../site-shell";
 
@@ -24,14 +23,14 @@ type Props =
 async function load(props: Props) {
   const { account, workspace, category } = await props.params;
   const query = await props.searchParams;
-  const site = await loadSite(decodeURIComponent(account));
+  const site = await loadSiteForRequest(decodeURIComponent(account));
   if (!site) return null;
   const ws = await loadWorkspace(site.accountId, workspace);
   if (!ws?.modules.articles) return null;
   const found = await loadArticleCategory(site.accountId, ws.id, category);
   if (!found) return null;
   return {
-    origin: siteUrl(site.slug),
+    origin: site.publicBase,
     site,
     ws,
     data: found,
@@ -71,7 +70,7 @@ async function Category(props: Props) {
   if (!data) notFound();
   const { site, ws, embed } = data;
   const { category, categories, articles } = data.data;
-  const base = `/${site.slug}${wsPath(ws)}/articles`;
+  const base = `${site.prefix}${wsPath(ws)}/articles`;
   const suffix = embed ? "?embed=1" : "";
   return (
     <SiteShell

@@ -7,7 +7,7 @@ import { CardDetail } from "@/components/public/card-detail";
 import { PageView } from "@/components/public/page-view";
 import { Skeleton } from "@/components/ui/skeleton";
 import { wsPath } from "@/lib/public-path";
-import { loadCard, loadSite, loadWorkspace, siteUrl } from "../../../data";
+import { loadCard, loadSiteForRequest, loadWorkspace } from "../../../data";
 import { SiteShell } from "../../../site-shell";
 
 type Props = PageProps<"/sites/[account]/[workspace]/roadmap/[card]">;
@@ -15,14 +15,14 @@ type Props = PageProps<"/sites/[account]/[workspace]/roadmap/[card]">;
 async function load(props: Props) {
   const { account, workspace, card } = await props.params;
   const query = await props.searchParams;
-  const site = await loadSite(decodeURIComponent(account));
+  const site = await loadSiteForRequest(decodeURIComponent(account));
   if (!site) return null;
   const ws = await loadWorkspace(site.accountId, workspace);
   if (!ws) return null;
   const found = await loadCard(site.accountId, ws.id, card);
   if (!found) return null;
   return {
-    origin: siteUrl(site.slug),
+    origin: site.publicBase,
     site,
     ws,
     ...found,
@@ -68,7 +68,7 @@ async function PublicCard(props: Props) {
       <PageView cardId={card.id} />
       <div className="mx-auto flex max-w-2xl flex-col gap-6">
         <Link
-          href={`/${site.slug}${wsPath(ws)}/roadmap${embed ? "?embed=1" : ""}`}
+          href={`${site.prefix}${wsPath(ws)}/roadmap${embed ? "?embed=1" : ""}`}
           className="flex items-center gap-1 text-sm text-muted-foreground hover:text-foreground"
         >
           <ArrowLeft className="size-4" />

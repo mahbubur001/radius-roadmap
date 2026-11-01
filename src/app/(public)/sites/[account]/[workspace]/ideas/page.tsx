@@ -6,7 +6,7 @@ import { PublicIdeas } from "@/components/public/public-ideas";
 import { Skeleton } from "@/components/ui/skeleton";
 import { wsPath } from "@/lib/public-path";
 import { IDEA_SORTS, type IdeaSort } from "@/server/services/public-ideas";
-import { loadIdeas, loadSite, loadWorkspace, siteUrl } from "../../data";
+import { loadIdeas, loadSiteForRequest, loadWorkspace } from "../../data";
 import { SiteShell } from "../../site-shell";
 
 type Props = PageProps<"/sites/[account]/[workspace]/ideas">;
@@ -18,7 +18,7 @@ function first(value: string | string[] | undefined) {
 async function load(props: Props) {
   const { account, workspace } = await props.params;
   const query = await props.searchParams;
-  const site = await loadSite(decodeURIComponent(account));
+  const site = await loadSiteForRequest(decodeURIComponent(account));
   if (!site) return null;
   const ws = await loadWorkspace(site.accountId, workspace);
   if (!ws?.modules.ideas) return null;
@@ -35,7 +35,7 @@ async function load(props: Props) {
   });
   if (!ideas) return null;
   return {
-    origin: siteUrl(site.slug),
+    origin: site.publicBase,
     site,
     ws,
     ideas,
@@ -85,7 +85,7 @@ async function Ideas(props: Props) {
           </div>
         )}
         <PublicIdeas
-          base={`/${site.slug}${wsPath(ws)}/ideas`}
+          base={`${site.prefix}${wsPath(ws)}/ideas`}
           board={ideas.board}
           boards={ideas.boards}
           statuses={ideas.statuses}

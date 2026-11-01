@@ -1,9 +1,10 @@
 import "server-only";
 import { cacheLife, cacheTag } from "next/cache";
-import { env } from "@/lib/env";
+import { headers } from "next/headers";
 import { db } from "@/server/db/client";
 import { publicTag, siteTag } from "@/server/public-cache";
 import { getEffectiveBranding } from "@/server/services/branding";
+import { publicSiteBase } from "@/server/services/custom-domains";
 import {
   getPublicArticle,
   getPublicArticleCategory,
@@ -39,12 +40,36 @@ export async function loadSite(account: string) {
   if (!site) return null;
   cacheTag(siteTag(site.accountId));
   // Plan changes drop the site tag too, so gated branding stays current.
-  const brand = await getEffectiveBranding(db, site.accountId);
+  const [brand, publicBase] = await Promise.all([
+    getEffectiveBranding(db, site.accountId),
+    publicSiteBase(db, site.accountId, site.slug),
+  ]);
   return {
     ...site,
     logoUrl: fileUrl(site.logo),
     brand: { ...brand, faviconUrl: fileUrl(brand.favicon) },
+    /**
+     * Absolute base of the site: its custom domain when live (doc 26 D5),
+     * else <app>/<account>. For canonical URLs, sitemaps, feeds.
+     */
+    publicBase,
   };
+}
+
+/**
+ * How links on this request start: "" on the account's custom domain,
+ * `/<account>` on the app domain. Set by src/proxy.ts (which overwrites
+ * anything a visitor sends); only those two values are ever returned.
+ */
+export async function sitePrefix(account: string) {
+  const prefix = (await headers()).get("x-rr-site-prefix");
+  return prefix === "" ? "" : `/${account}`;
+}
+
+/** loadSite plus this request's link prefix. */
+export async function loadSiteForRequest(account: string) {
+  const site = await loadSite(account);
+  return site ? { ...site, prefix: await sitePrefix(site.slug) } : null;
 }
 
 export async function loadWorkspaces(accountId: string) {
@@ -180,9 +205,4 @@ export async function loadArticleSearch(
   cacheLife("hours");
   cacheTag(publicTag(workspaceId));
   return searchPublicArticles(db, { accountId }, workspaceId, q);
-}
-
-/** Absolute base URL of a public site (<app>/<account>), for canonical URLs and sitemaps. */
-export function siteUrl(account: string) {
-  return `${new URL(env.NEXT_PUBLIC_APP_URL).origin}/${account}`;
 }

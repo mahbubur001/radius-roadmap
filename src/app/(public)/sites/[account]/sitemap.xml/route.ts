@@ -4,7 +4,7 @@ import { listArticleSitemapEntries } from "@/server/services/public-articles";
 import { listIdeaSitemapEntries } from "@/server/services/public-ideas";
 import { listSitemapEntries } from "@/server/services/public-site";
 import { listUpdateSitemapEntries } from "@/server/services/public-updates";
-import { loadSite, loadWorkspace, loadWorkspaces, siteUrl } from "../data";
+import { loadSite, loadWorkspace, loadWorkspaces } from "../data";
 
 function escapeXml(value: string) {
   return value.replace(/[<>&'"]/g, (c) => `&#${c.charCodeAt(0)};`);
@@ -17,7 +17,7 @@ export async function GET(
 ) {
   const site = await loadSite(decodeURIComponent((await ctx.params).account));
   if (!site) return new Response("Not found", { status: 404 });
-  const origin = siteUrl(site.slug);
+  const origin = site.publicBase;
   const scope = { accountId: site.accountId };
   const [workspaces, cards, ideas, posts, articles] = await Promise.all([
     loadWorkspaces(site.accountId),

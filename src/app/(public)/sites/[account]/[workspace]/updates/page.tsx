@@ -5,7 +5,7 @@ import { PageView } from "@/components/public/page-view";
 import { PublicUpdates } from "@/components/public/public-updates";
 import { Skeleton } from "@/components/ui/skeleton";
 import { wsPath } from "@/lib/public-path";
-import { loadSite, loadUpdates, loadWorkspace, siteUrl } from "../../data";
+import { loadSiteForRequest, loadUpdates, loadWorkspace } from "../../data";
 import { SiteShell } from "../../site-shell";
 
 type Props = PageProps<"/sites/[account]/[workspace]/updates">;
@@ -17,7 +17,7 @@ function first(value: string | string[] | undefined) {
 async function load(props: Props) {
   const { account, workspace } = await props.params;
   const query = await props.searchParams;
-  const site = await loadSite(decodeURIComponent(account));
+  const site = await loadSiteForRequest(decodeURIComponent(account));
   if (!site) return null;
   const ws = await loadWorkspace(site.accountId, workspace);
   if (!ws?.modules.updates) return null;
@@ -29,7 +29,7 @@ async function load(props: Props) {
       category && /^[0-9a-f-]{36}$/.test(category) ? category : undefined,
   });
   return {
-    origin: siteUrl(site.slug),
+    origin: site.publicBase,
     site,
     ws,
     data,
@@ -85,14 +85,14 @@ async function Updates(props: Props) {
           <h1 className="text-3xl font-semibold tracking-tight">Updates</h1>
         )}
         <PublicUpdates
-          base={`/${site.slug}${wsPath(ws)}/updates`}
+          base={`${site.prefix}${wsPath(ws)}/updates`}
           posts={data.data.posts}
           categories={data.data.categories}
           query={q ?? ""}
           category={category ?? ""}
           embed={embed}
           roadmapBase={
-            ws.modules.roadmap ? `/${site.slug}${wsPath(ws)}/roadmap` : null
+            ws.modules.roadmap ? `${site.prefix}${wsPath(ws)}/roadmap` : null
           }
           justSubscribed={subscribed}
           reactions={ws.features.reactions}

@@ -391,6 +391,37 @@ export const templates: { [T in EmailTemplate]: TemplateDef<T> } = {
       </EmailLayout>
     ),
   },
+  "domain-active": {
+    subject: ({ hostname }) => `${hostname} is live`,
+    render: ({ accountName, hostname, url }) => (
+      <EmailLayout
+        preview={`Your public site now lives at ${hostname}`}
+        heading="Your domain is live"
+        action={{ label: "Domain settings", url }}
+      >
+        <Text>
+          <strong>{accountName}</strong>'s public site now lives at{" "}
+          <strong>{hostname}</strong>. Links to the old address redirect there.
+        </Text>
+      </EmailLayout>
+    ),
+  },
+  "domain-failed": {
+    subject: ({ hostname }) => `${hostname} stopped working`,
+    render: ({ accountName, hostname, error, url }) => (
+      <EmailLayout
+        preview={`Check the DNS records for ${hostname}`}
+        heading="Your domain stopped working"
+        action={{ label: "Check the DNS records", url }}
+      >
+        <Text>
+          We couldn't reach <strong>{hostname}</strong> for {accountName} for
+          three days in a row: {error} Your public site is back on its Radius
+          Roadmap address until the DNS records are fixed.
+        </Text>
+      </EmailLayout>
+    ),
+  },
 };
 
 function count(n: number, noun: string) {

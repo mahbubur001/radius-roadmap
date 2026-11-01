@@ -27,6 +27,7 @@ import {
 import type { EmailBrand, EmailJob } from "@/server/email/types";
 import { signLink } from "@/server/internal-signature";
 import { getEmailBrand } from "./branding";
+import { publicSiteBase } from "./custom-domains";
 import { defaultWorkspaceSlug } from "./default-workspace";
 
 // Emails to people following an idea (doc 23 step 6, doc 20 D3): its status
@@ -148,11 +149,15 @@ export async function statusSweep(
   const out: FollowEmail[] = [];
   // One workspace, so one account: its branding is looked up once.
   let brand: EmailBrand | undefined;
+  let siteBase = "";
   for (const idea of moved) {
     // Unknown previous status (e.g. it was deleted): record silently.
     if (idea.notifiedStatusId && idea.followable) {
       const followers = await followersOf(db, idea.accountId, [idea.id]);
-      if (followers.length) brand ??= await getEmailBrand(db, idea.accountId);
+      if (followers.length && !siteBase) {
+        brand = await getEmailBrand(db, idea.accountId);
+        siteBase = await publicSiteBase(db, idea.accountId, idea.siteSlug);
+      }
       for (const f of followers) {
         out.push({
           id: `status-${idea.id}-${idea.statusId}-${f.trackedUserId}`,
@@ -163,7 +168,7 @@ export async function statusSweep(
               siteName: idea.siteName,
               ideaTitle: idea.title,
               status: { name: idea.statusName, color: idea.statusColor },
-              url: `${origin()}/${idea.siteSlug}${wsSegment(idea.wsSlug, idea.defaultWs)}/ideas/${idea.slug}`,
+              url: `${siteBase}${wsSegment(idea.wsSlug, idea.defaultWs)}/ideas/${idea.slug}`,
               unfollowUrl: unfollowUrl(
                 idea.siteSlug ?? "",
                 f.trackedUserId,
@@ -244,7 +249,8 @@ export async function shippedEmails(
   const brand = followers.length
     ? await getEmailBrand(db, first.accountId)
     : undefined;
-  const postUrl = `${origin()}/${post.siteSlug}${wsSegment(post.wsSlug, post.defaultWs)}/updates/${post.slug}`;
+  const siteBase = await publicSiteBase(db, first.accountId, post.siteSlug);
+  const postUrl = `${siteBase}${wsSegment(post.wsSlug, post.defaultWs)}/updates/${post.slug}`;
   return followers.map((f) => ({
     id: `shipped-${post.id}-${f.feedbackId}-${f.trackedUserId}`,
     email: {

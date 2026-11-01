@@ -9,7 +9,7 @@ import { Input } from "@/components/ui/input";
 import { Skeleton } from "@/components/ui/skeleton";
 import { wsPath } from "@/lib/public-path";
 import { cn } from "@/lib/utils";
-import { loadRoadmap, loadSite, loadWorkspace, siteUrl } from "../../data";
+import { loadRoadmap, loadSiteForRequest, loadWorkspace } from "../../data";
 import { SiteShell } from "../../site-shell";
 
 type Props = PageProps<"/sites/[account]/[workspace]/roadmap">;
@@ -21,7 +21,7 @@ function first(value: string | string[] | undefined) {
 async function load(props: Props) {
   const { account, workspace } = await props.params;
   const query = await props.searchParams;
-  const site = await loadSite(decodeURIComponent(account));
+  const site = await loadSiteForRequest(decodeURIComponent(account));
   if (!site) return null;
   const ws = await loadWorkspace(site.accountId, workspace);
   if (!ws) return null;
@@ -30,7 +30,7 @@ async function load(props: Props) {
   const roadmap = await loadRoadmap(site.accountId, ws.id, board, q);
   if (!roadmap) return null;
   return {
-    origin: siteUrl(site.slug),
+    origin: site.publicBase,
     site,
     ws,
     roadmap,
@@ -69,7 +69,7 @@ async function PublicRoadmap(props: Props) {
   const data = await load(props);
   if (!data) notFound();
   const { site, ws, roadmap, q, embed } = data;
-  const base = `/${site.slug}${wsPath(ws)}/roadmap`;
+  const base = `${site.prefix}${wsPath(ws)}/roadmap`;
 
   return (
     <SiteShell

@@ -14,6 +14,7 @@ import {
 import type { EmailBrand, EmailJob } from "@/server/email/types";
 import { signLink } from "@/server/internal-signature";
 import { fileUrl } from "@/server/storage/url";
+import { publicSiteBase } from "./custom-domains";
 import { defaultWorkspaceSlug } from "./default-workspace";
 
 // Emailing a published post to its workspace's subscribers (doc 23 step 5).
@@ -76,7 +77,10 @@ export async function claimUpdateEmail(db: Db, updateId: string) {
     .leftJoin(updateCategories, eq(updateCategories.id, updates.categoryId))
     .where(eq(updates.id, updateId))
     .limit(1);
-  return post ?? null;
+  if (!post) return null;
+  // The custom domain when live (doc 26 D5), else <app>/<account>.
+  const siteBase = await publicSiteBase(db, post.accountId, post.siteSlug);
+  return { ...post, siteBase };
 }
 
 export type ClaimedPost = NonNullable<
@@ -145,7 +149,7 @@ export function updateEmail(
           ? `${origin()}${cover}`
           : cover
         : null,
-      url: `${origin()}/${post.siteSlug}${wsSegment(post.workspaceSlug, post.defaultWs)}/updates/${post.slug}`,
+      url: `${post.siteBase}${wsSegment(post.workspaceSlug, post.defaultWs)}/updates/${post.slug}`,
       unsubscribeUrl: unsubscribe,
       brand,
     },

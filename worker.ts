@@ -25,6 +25,13 @@ await notifyQueue.upsertJobScheduler(
   { name: "digest", data: { type: "digest" } },
 );
 
+// Custom domain DNS checks (doc 26 D4): pending ones, and active ones daily.
+await notifyQueue.upsertJobScheduler(
+  "verify-domains",
+  { every: 10 * 60 * 1000 },
+  { name: "verify-domains", data: { type: "verify-domains" } },
+);
+
 for (const worker of workers) {
   worker.on("failed", (job, err) => {
     console.error(`[worker] ${worker.name} job ${job?.id} failed:`, err);

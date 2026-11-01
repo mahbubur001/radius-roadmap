@@ -1,15 +1,18 @@
 import { env } from "@/lib/env";
 import { signInternal } from "./internal-signature";
 
-/** Worker side: ask the web app to refresh a workspace's public pages. */
+/**
+ * Worker side: ask the web app to refresh a workspace's public pages, or
+ * only the account's site data (no workspace: e.g. its domain changed).
+ */
 export async function revalidateFromWorker(
   accountId: string,
-  workspaceId: string,
+  workspaceId?: string,
 ) {
   const ts = Date.now();
   const signature = signInternal(
     env.BETTER_AUTH_SECRET,
-    `${accountId}:${workspaceId}`,
+    `${accountId}:${workspaceId ?? ""}`,
     ts,
   );
   try {

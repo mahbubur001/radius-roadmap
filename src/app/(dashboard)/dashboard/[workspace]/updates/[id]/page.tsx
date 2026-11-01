@@ -4,6 +4,7 @@ import { Skeleton } from "@/components/ui/skeleton";
 import { db } from "@/server/db/client";
 import { publicSiteUrl } from "@/server/public-url";
 import { getAccount } from "@/server/services/accounts";
+import { activeHostname } from "@/server/services/custom-domains";
 import { getDefaultWorkspace } from "@/server/services/public-site";
 import { listUpdateCategories } from "@/server/services/update-categories";
 import { getUpdateDetail } from "@/server/services/updates";
@@ -30,19 +31,21 @@ async function Editor({
 }) {
   const { workspace, id } = await params;
   const ctx = await requireWorkspace(workspace);
-  const [post, categories, account, defaultWorkspace] = await Promise.all([
-    getUpdateDetail(db, ctx, id),
-    listUpdateCategories(db, ctx),
-    getAccount(db, ctx),
-    getDefaultWorkspace(db, ctx.accountId),
-  ]);
+  const [post, categories, account, defaultWorkspace, customHost] =
+    await Promise.all([
+      getUpdateDetail(db, ctx, id),
+      listUpdateCategories(db, ctx),
+      getAccount(db, ctx),
+      getDefaultWorkspace(db, ctx.accountId),
+      activeHostname(db, ctx.accountId),
+    ]);
   return (
     <UpdateEditor
       // Remount when navigating between posts (e.g. after Duplicate).
       key={post.id}
       workspace={ctx.workspaceSlug}
       workspaceId={ctx.workspaceId}
-      publicBase={`${publicSiteUrl(account.slug, ctx.workspaceSlug, defaultWorkspace)}/updates`}
+      publicBase={`${publicSiteUrl(account.slug, ctx.workspaceSlug, defaultWorkspace, customHost)}/updates`}
       post={{ ...post, coverUrl: fileUrl(post.cover) }}
       categories={categories.map((c) => ({
         id: c.id,

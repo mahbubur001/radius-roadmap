@@ -121,6 +121,18 @@ export function notFound() {
   return NextResponse.json({ error: "Not found." }, { status: 404 });
 }
 
+/**
+ * How the site's paths start on this request's host: "" on the account's
+ * custom domain (doc 26 6D; src/proxy.ts only lets that account's site
+ * through there), `/<account>` on the app domain.
+ */
+export function sitePathPrefix(request: NextRequest, accountSlug: string) {
+  const host = (request.headers.get("host") ?? "").replace(/:\d+$/, "");
+  return host.toLowerCase() === new URL(env.NEXT_PUBLIC_APP_URL).hostname
+    ? `/${accountSlug}`
+    : "";
+}
+
 /** The app origin as the visitor sees it (Host header + app scheme; Caddy proxies). */
 export function siteOrigin(request: NextRequest) {
   return `${secure ? "https:" : "http:"}//${request.headers.get("host")}`;

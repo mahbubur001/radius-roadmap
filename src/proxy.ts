@@ -2,6 +2,12 @@ import { type NextRequest, NextResponse } from "next/server";
 import { isSiteModule, shortenPath } from "@/lib/public-path";
 import { LAST_WORKSPACE_COOKIE, RESERVED_SLUGS } from "@/lib/schemas/workspace";
 import { db } from "@/server/db/client";
+import {
+  activeHostname,
+  hostOrigin,
+  inactiveDomainSite,
+  siteForHost,
+} from "@/server/services/custom-domains";
 import { publicPathStatus, resolveSite } from "@/server/services/public-site";
 import {
   newVisitorToken,
@@ -10,27 +16,45 @@ import {
   visitorCookieOptions,
 } from "@/server/visitor";
 
-const secure =
-  new URL(process.env.NEXT_PUBLIC_APP_URL ?? "http://localhost:3000")
-    .protocol === "https:";
+const appUrl = new URL(
+  process.env.NEXT_PUBLIC_APP_URL ?? "http://localhost:3000",
+);
+const secure = appUrl.protocol === "https:";
+
+/** Tells public pages how their links start: "" on a custom domain. */
+const PREFIX_HEADER = "x-rr-site-prefix";
 
 /**
- * Path → tenant routing (doc 19, D1 revised).
+ * Host + path → tenant routing.
+ *
+ * On the app domain (doc 19, D1 revised):
  * - `/`, `/dashboard/<workspace>/…` and the app's own routes (sign-in, …,
  *   all in RESERVED_SLUGS): the dashboard. Never framed.
  * - Any other first segment is an account slug: its public site, rewritten
- *   to /sites/<account>/<rest>. Direct requests to /sites/… are 404s.
+ *   to /sites/<account>/<rest>. Direct requests to /sites/… are 404s. If the
+ *   account has a live custom domain, the page 308s there (doc 26 D5).
+ *
+ * On a customer's own domain (doc 26 6D): the whole path is the account's
+ * public site (`/roadmap`, `/<workspace>/roadmap`); nothing of the app is
+ * served there (D7).
  *
  * Public pages stream (Cache Components), which fixes their status at 200
  * before they render. So the proxy checks that the path exists first: a
- * missing page gets a real 404, and `/<account>` and `/<account>/<workspace>`
- * real redirects.
+ * missing page gets a real 404, and site roots real redirects.
  *
  * The account's default workspace has short URLs: /<account>/roadmap is
  * /<account>/<default-workspace>/roadmap (doc 26 §11).
  */
 export async function proxy(request: NextRequest) {
-  const { pathname, searchParams } = request.nextUrl;
+  if (request.nextUrl.pathname.startsWith("/_next/"))
+    return NextResponse.next();
+  const host = (request.headers.get("host") ?? "").toLowerCase();
+  if (hostname(host) !== appUrl.hostname) return customHost(request, host);
+
+  const { pathname } = request.nextUrl;
+  if (pathname === "/api" || pathname.startsWith("/api/")) {
+    return NextResponse.next();
+  }
   const segments = pathname.split("/").filter(Boolean).map(decodeSegment);
   const [first, ...rest] = segments;
 
@@ -40,39 +64,128 @@ export async function proxy(request: NextRequest) {
   }
 
   const site = await resolveSite(db, first);
-  const home = site?.defaultWorkspace ?? null;
-  const [rawFirst, ...rawRest] = pathname.split("/").filter(Boolean);
+  if (!site) return notFoundPage();
+  const [rawFirst = "", ...rawRest] = pathname.split("/").filter(Boolean);
 
-  // The default workspace lives at /<account>/<module> (doc 26 §11); its
-  // long /<account>/<workspace>/<module> URLs move there.
+  // A live custom domain is the site's only address (D5); embeds stay here.
+  if (request.nextUrl.searchParams.get("embed") !== "1") {
+    const domain = await cached(`domain:${site.accountId}`, () =>
+      activeHostname(db, site.accountId),
+    );
+    if (domain) {
+      const target = new URL(
+        `${rawRest.length ? `/${rawRest.join("/")}` : "/"}${request.nextUrl.search}`,
+        hostOrigin(domain),
+      );
+      return domainRedirect(target);
+    }
+  }
+
+  return publicSite(
+    request,
+    site,
+    rest,
+    rawRest,
+    `/${rawFirst}`,
+    appUrl.origin,
+  );
+}
+
+/** A request on a customer's own domain (doc 26 6D). */
+async function customHost(request: NextRequest, host: string) {
+  const { pathname } = request.nextUrl;
+  const name = hostname(host);
+
+  // Caddy's certificate check (D3) must answer on any host it asks with.
+  if (pathname === "/api/domain-check") return NextResponse.next();
+
+  const site = await cached(`host:${name}`, () => siteForHost(db, name));
+  if (!site) {
+    // A domain that was live but is switched off (downgrade, DNS gone):
+    // send visitors to the app-domain address (D6).
+    const old = await cached(`old:${name}`, () => inactiveDomainSite(db, name));
+    if (!old) return notFoundPage();
+    const target = new URL(
+      `/${old.slug}${pathname === "/" ? "" : pathname}${request.nextUrl.search}`,
+      appUrl.origin,
+    );
+    return domainRedirect(target);
+  }
+
+  // Only the public site, its API and files (D7). No app pages, no auth,
+  // no server actions.
+  if (pathname.startsWith("/api/")) {
+    return pathname.startsWith("/api/public/") ||
+      pathname.startsWith("/api/files/")
+      ? NextResponse.next()
+      : NextResponse.json({ error: "Not found." }, { status: 404 });
+  }
+  if (request.headers.has("next-action")) return notFoundPage();
+  if (pathname === "/robots.txt") {
+    return new NextResponse(
+      `User-agent: *\nAllow: /\nDisallow: /api/\nSitemap: ${hostOrigin(name)}/sitemap.xml\n`,
+      { headers: { "content-type": "text/plain; charset=utf-8" } },
+    );
+  }
+
+  const segments = pathname.split("/").filter(Boolean).map(decodeSegment);
+  const raw = pathname.split("/").filter(Boolean);
+  if (segments[0] === "sites") return notFoundPage();
+  const resolved = await resolveSite(db, site.slug);
+  if (!resolved) return notFoundPage();
+  return publicSite(request, resolved, segments, raw, "", hostOrigin(name));
+}
+
+/**
+ * The account's public site for `rest` (path after the account, or the whole
+ * path on a custom domain). `prefix` is what links start with; `origin` is
+ * where redirects go (request.nextUrl has the server's host, not the
+ * visitor's).
+ */
+async function publicSite(
+  request: NextRequest,
+  site: NonNullable<Awaited<ReturnType<typeof resolveSite>>>,
+  rest: string[],
+  rawRest: string[],
+  prefix: string,
+  origin: string,
+) {
+  const redirect = (path: string) =>
+    NextResponse.redirect(
+      new URL(`${path || "/"}${request.nextUrl.search}`, origin),
+      308,
+    );
+  const { searchParams } = request.nextUrl;
+  const home = site.defaultWorkspace;
+
+  // The default workspace lives at /<module> (doc 26 §11); its long
+  // /<workspace>/<module> URLs move there.
   if (home && rest[0] === home && isSiteModule(rest[1])) {
-    const target = request.nextUrl.clone();
-    target.pathname = `/${rawFirst}/${rawRest.slice(1).join("/")}`;
-    return NextResponse.redirect(target, 308);
+    return redirect(`${prefix}/${rawRest.slice(1).join("/")}`);
   }
   const short = !!home && isSiteModule(rest[0]);
   const sitePath = short && home ? [home, ...rest] : rest;
 
-  const status = site
-    ? await publicPathStatus(
-        db,
-        { accountId: site.accountId },
-        sitePath,
-        searchParams.get("board") ?? undefined,
-      )
-    : "missing";
-  if (status === "missing") return notFoundPage(site?.slug);
+  const status = await publicPathStatus(
+    db,
+    { accountId: site.accountId },
+    sitePath,
+    searchParams.get("board") ?? undefined,
+  );
+  if (status === "missing") return notFoundPage(prefix || "/");
   if (status !== "ok") {
-    const target = request.nextUrl.clone();
-    target.pathname = `/${first}${shortenPath(status.redirect, home)}`;
-    return NextResponse.redirect(target, 308);
+    return redirect(`${prefix}${shortenPath(status.redirect, home)}`);
   }
 
   const url = request.nextUrl.clone();
+  const account = encodeURIComponent(site.slug);
   url.pathname = short
-    ? `/sites/${rawFirst}/${encodeURIComponent(home ?? "")}/${rawRest.join("/")}`
-    : `/sites/${pathname.slice(1)}`;
-  const response = NextResponse.rewrite(url);
+    ? `/sites/${account}/${encodeURIComponent(home ?? "")}/${rawRest.join("/")}`
+    : `/sites/${account}${rawRest.length ? `/${rawRest.join("/")}` : ""}`;
+  // Always set here, so a visitor can't send their own.
+  const headers = new Headers(request.headers);
+  headers.set(PREFIX_HEADER, prefix);
+  const response = NextResponse.rewrite(url, { request: { headers } });
 
   // Give every public visitor a signed anonymous id (dedupes votes, counts
   // views). Embeds are third-party, so their cookie is partitioned.
@@ -88,6 +201,38 @@ export async function proxy(request: NextRequest) {
   return response;
 }
 
+/**
+ * 308 between the app domain and a custom domain. Browsers keep permanent
+ * redirects forever unless told otherwise, and a domain can be removed or
+ * switched off again (D6): an hour is enough.
+ */
+function domainRedirect(target: URL) {
+  const response = NextResponse.redirect(target, 308);
+  response.headers.set("Cache-Control", "public, max-age=3600");
+  return response;
+}
+
+/** "feedback.acme.com:443" → "feedback.acme.com". */
+function hostname(host: string) {
+  return host.replace(/:\d+$/, "");
+}
+
+// Custom domain lookups run on every public request: in production they're
+// kept for a minute (each web process has its own copy), so domain changes
+// show up within that time. Not cached in development and e2e.
+const TTL_MS = process.env.NODE_ENV === "production" ? 60_000 : 0;
+const cache = new Map<string, { value: unknown; expires: number }>();
+
+async function cached<T>(key: string, load: () => Promise<T>): Promise<T> {
+  const now = Date.now();
+  const hit = cache.get(key);
+  if (hit && hit.expires > now) return hit.value as T;
+  const value = await load();
+  if (cache.size > 5000) cache.clear();
+  cache.set(key, { value, expires: now + TTL_MS });
+  return value;
+}
+
 function decodeSegment(segment: string) {
   try {
     return decodeURIComponent(segment);
@@ -97,12 +242,10 @@ function decodeSegment(segment: string) {
 }
 
 /** Plain 404 for public sites (rendered here, so the status is real). */
-function notFoundPage(account?: string) {
-  const home = account
-    ? `<p><a href="/${account}">Go to the roadmap</a></p>`
-    : "";
+function notFoundPage(home?: string) {
+  const link = home ? `<p><a href="${home}">Go to the roadmap</a></p>` : "";
   return new NextResponse(
-    `<!doctype html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><meta name="robots" content="noindex"><title>Page not found</title><style>body{font:16px/1.5 system-ui,sans-serif;margin:0;min-height:100vh;display:grid;place-items:center;color:#18181b;background:#fff}@media(prefers-color-scheme:dark){body{color:#fafafa;background:#09090b}a{color:#a1a1aa}}main{text-align:center;padding:24px}h1{font-size:20px;margin:0 0 8px}a{color:#52525b}</style></head><body><main><h1>Page not found</h1><p>This page doesn't exist or isn't public.</p>${home}</main></body></html>`,
+    `<!doctype html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><meta name="robots" content="noindex"><title>Page not found</title><style>body{font:16px/1.5 system-ui,sans-serif;margin:0;min-height:100vh;display:grid;place-items:center;color:#18181b;background:#fff}@media(prefers-color-scheme:dark){body{color:#fafafa;background:#09090b}a{color:#a1a1aa}}main{text-align:center;padding:24px}h1{font-size:20px;margin:0 0 8px}a{color:#52525b}</style></head><body><main><h1>Page not found</h1><p>This page doesn't exist or isn't public.</p>${link}</main></body></html>`,
     {
       status: 404,
       headers: { "content-type": "text/html; charset=utf-8" },
@@ -131,7 +274,5 @@ function dashboard(workspace: string | undefined) {
 }
 
 export const config = {
-  matcher: [
-    "/((?!api|_next/static|_next/image|favicon.ico|widget.js|embed.js).*)",
-  ],
+  matcher: ["/((?!_next/static|_next/image|favicon.ico|widget.js|embed.js).*)"],
 };

@@ -6,6 +6,11 @@ import { type NotifyJob, notify } from "@/server/queue/notifications";
 import { revalidateFromWorker } from "@/server/revalidate-from-worker";
 import { getEmailBrand } from "@/server/services/branding";
 import { completionSweep } from "@/server/services/card-completion-emails";
+import {
+  domainNotice,
+  domainsDue,
+  verifyDomain,
+} from "@/server/services/custom-domains";
 import { shippedEmails, statusSweep } from "@/server/services/follow-emails";
 import {
   digestEmails,
@@ -33,6 +38,46 @@ export async function notifyJob(job: Job<NotifyJob>) {
   if (data.type === "delete-account-files") {
     await deletePrefix(prefixes.account(data.accountId));
     return { deleted: true };
+  }
+
+  if (data.type === "verify-domains") {
+    let changed = 0;
+    for (const id of await domainsDue(db)) {
+      const result = await verifyDomain(db, id);
+      if (!result?.changed) continue;
+      changed++;
+      const notice = await domainNotice(db, id);
+      if (!notice) continue;
+      // The site cache holds canonical URLs and links built from the domain.
+      const accountId = notice.accountId;
+      await revalidateFromWorker(accountId);
+      for (const to of notice.owners) {
+        await enqueueEmail(
+          result.changed === "active"
+            ? {
+                template: "domain-active",
+                to,
+                props: {
+                  accountName: notice.accountName,
+                  hostname: notice.hostname,
+                  url: notice.settingsUrl,
+                },
+              }
+            : {
+                template: "domain-failed",
+                to,
+                props: {
+                  accountName: notice.accountName,
+                  hostname: notice.hostname,
+                  error: result.error ?? "",
+                  url: notice.settingsUrl,
+                },
+              },
+          `domain-${id}-${result.changed}-${result.checkedAt}-${to}`,
+        );
+      }
+    }
+    return { changed };
   }
 
   if (data.type === "publish-update") {

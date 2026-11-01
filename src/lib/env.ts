@@ -44,6 +44,10 @@ export const env = createEnv({
     // Stripe billing (doc 26 6A). Unset = billing off, every account unlimited.
     STRIPE_SECRET_KEY: z.string().optional(),
     STRIPE_WEBHOOK_SECRET: z.string().optional(),
+
+    // Custom domains (doc 26 6D): the hostname customers CNAME to, e.g.
+    // domains.app.example.com. Unset = custom domains off (dev: *.localhost only).
+    CUSTOM_DOMAIN_TARGET: z.string().optional(),
   },
   client: {
     NEXT_PUBLIC_APP_URL: z.url(),
@@ -73,6 +77,7 @@ export const env = createEnv({
     TRUST_CLOUDFLARE: process.env.TRUST_CLOUDFLARE,
     STRIPE_SECRET_KEY: process.env.STRIPE_SECRET_KEY,
     STRIPE_WEBHOOK_SECRET: process.env.STRIPE_WEBHOOK_SECRET,
+    CUSTOM_DOMAIN_TARGET: process.env.CUSTOM_DOMAIN_TARGET,
     NEXT_PUBLIC_APP_URL: process.env.NEXT_PUBLIC_APP_URL,
     NEXT_PUBLIC_TURNSTILE_SITE_KEY: process.env.NEXT_PUBLIC_TURNSTILE_SITE_KEY,
   },

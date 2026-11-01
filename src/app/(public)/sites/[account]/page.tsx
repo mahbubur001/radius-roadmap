@@ -3,7 +3,7 @@ import Link from "next/link";
 import { notFound, redirect } from "next/navigation";
 import { Suspense } from "react";
 import { wsSegment } from "@/lib/public-path";
-import { loadSite, loadWorkspaces } from "./data";
+import { loadSiteForRequest, loadWorkspaces } from "./data";
 
 export const metadata: Metadata = { title: { absolute: "Roadmaps" } };
 
@@ -19,13 +19,13 @@ export default function PublicSiteHome({
 }
 
 async function Home({ account }: { account: Promise<string> }) {
-  const site = await loadSite(await account);
+  const site = await loadSiteForRequest(await account);
   if (!site) notFound();
   const workspaces = await loadWorkspaces(site.accountId);
   const [only] = workspaces;
   if (workspaces.length === 1 && only)
     redirect(
-      `/${site.slug}${wsSegment(only.slug, site.defaultWorkspace)}/roadmap`,
+      `${site.prefix}${wsSegment(only.slug, site.defaultWorkspace)}/roadmap`,
     );
   return (
     <main className="mx-auto flex max-w-xl flex-col gap-4 px-4 py-16">
@@ -35,7 +35,7 @@ async function Home({ account }: { account: Promise<string> }) {
           {workspaces.map((w) => (
             <li key={w.id}>
               <Link
-                href={`/${site.slug}${wsSegment(w.slug, site.defaultWorkspace)}/roadmap`}
+                href={`${site.prefix}${wsSegment(w.slug, site.defaultWorkspace)}/roadmap`}
                 className="block px-4 py-3 hover:bg-muted"
               >
                 {w.name}

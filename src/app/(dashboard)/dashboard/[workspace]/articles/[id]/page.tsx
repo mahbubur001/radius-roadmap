@@ -6,6 +6,7 @@ import { publicSiteUrl } from "@/server/public-url";
 import { getAccount } from "@/server/services/accounts";
 import { listArticleCategories } from "@/server/services/article-categories";
 import { getArticleDetail } from "@/server/services/articles";
+import { activeHostname } from "@/server/services/custom-domains";
 import { getDefaultWorkspace } from "@/server/services/public-site";
 import { requireWorkspace } from "@/server/session";
 import { ArticleEditor } from "./article-editor";
@@ -29,19 +30,21 @@ async function Editor({
 }) {
   const { workspace, id } = await params;
   const ctx = await requireWorkspace(workspace);
-  const [article, categories, account, defaultWorkspace] = await Promise.all([
-    getArticleDetail(db, ctx, id),
-    listArticleCategories(db, ctx),
-    getAccount(db, ctx),
-    getDefaultWorkspace(db, ctx.accountId),
-  ]);
+  const [article, categories, account, defaultWorkspace, customHost] =
+    await Promise.all([
+      getArticleDetail(db, ctx, id),
+      listArticleCategories(db, ctx),
+      getAccount(db, ctx),
+      getDefaultWorkspace(db, ctx.accountId),
+      activeHostname(db, ctx.accountId),
+    ]);
   return (
     <ArticleEditor
       // Remount when navigating between articles (e.g. after Duplicate).
       key={article.id}
       workspace={ctx.workspaceSlug}
       workspaceId={ctx.workspaceId}
-      publicBase={`${publicSiteUrl(account.slug, ctx.workspaceSlug, defaultWorkspace)}/articles`}
+      publicBase={`${publicSiteUrl(account.slug, ctx.workspaceSlug, defaultWorkspace, customHost)}/articles`}
       article={article}
       categories={categories.map((c) => ({
         id: c.id,

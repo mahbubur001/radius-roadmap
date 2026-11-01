@@ -1,8 +1,7 @@
 import type { NextRequest } from "next/server";
-import { wsSegment } from "@/lib/public-path";
 import { REACTIONS } from "@/lib/reactions";
 import { db } from "@/server/db/client";
-import { appOrigin } from "@/server/public-url";
+import { publicSiteUrl } from "@/server/public-url";
 import { myReactions } from "@/server/services/reactions";
 import { loadWidgetSite } from "@/server/widget-cache";
 import { preflight, widgetError, widgetRequest } from "@/server/widget-request";
@@ -21,12 +20,18 @@ export async function GET(request: NextRequest) {
     request.nextUrl.searchParams.get("workspace") ??
     req.site.defaultWorkspace ??
     "";
-  const site = await loadWidgetSite(req.ctx.accountId, slug);
-  if (!site) return widgetError("Not found.", 404);
+  const loaded = await loadWidgetSite(req.ctx.accountId, slug);
+  if (!loaded) return widgetError("Not found.", 404);
+  const { customHost, ...site } = loaded;
   const mine = await myReactions(db, req.ctx, site.workspace.id, req.voter);
   return req.respond({
     ...site,
-    siteUrl: `${appOrigin()}/${req.site.slug}${wsSegment(site.workspace.slug, req.site.defaultWorkspace)}`,
+    siteUrl: publicSiteUrl(
+      req.site.slug,
+      site.workspace.slug,
+      req.site.defaultWorkspace,
+      customHost,
+    ),
     mine,
     /** The widget has no copy of the emoji list. */
     emoji: REACTIONS.map((r) => ({

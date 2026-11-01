@@ -5,14 +5,15 @@ import { invalidatePublic, invalidateSite } from "@/server/public-cache";
 
 const schema = z.object({
   accountId: z.string().min(1).max(100),
-  workspaceId: z.uuid(),
+  workspaceId: z.uuid().optional(),
   ts: z.number().int(),
   signature: z.string().max(200),
 });
 
 /**
- * The worker asks the web app to drop a workspace's public cache (it can't
- * do it itself: the cache lives in this process). Signed, short-lived.
+ * The worker asks the web app to drop a workspace's public cache, or just the
+ * account's site cache (it can't do it itself: the cache lives in this
+ * process). Signed, short-lived.
  */
 export async function POST(request: Request) {
   const parsed = schema.safeParse(await request.json().catch(() => null));
@@ -21,14 +22,14 @@ export async function POST(request: Request) {
   if (
     !verifyInternal(
       env.BETTER_AUTH_SECRET,
-      `${accountId}:${workspaceId}`,
+      `${accountId}:${workspaceId ?? ""}`,
       ts,
       signature,
     )
   ) {
     return new Response("Forbidden", { status: 403 });
   }
-  invalidatePublic(workspaceId);
+  if (workspaceId) invalidatePublic(workspaceId);
   invalidateSite(accountId);
   return new Response(null, { status: 204 });
 }

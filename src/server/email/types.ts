@@ -124,6 +124,15 @@ export type EmailTemplateProps = {
   };
   /** To account owners: the subscription ended; the account is on Free. */
   "billing-canceled": { accountName: string; planName: string; url: string };
+  /** To account owners: their custom domain is live (doc 26 6D). */
+  "domain-active": { accountName: string; hostname: string; url: string };
+  /** To account owners: their custom domain stopped pointing at us. */
+  "domain-failed": {
+    accountName: string;
+    hostname: string;
+    error: string;
+    url: string;
+  };
 };
 
 export type EmailTemplate = keyof EmailTemplateProps;

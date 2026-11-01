@@ -10,7 +10,7 @@ import { wsPath } from "@/lib/public-path";
 import { siteTheme } from "@/lib/schemas/workspace";
 import { cn } from "@/lib/utils";
 import type { WorkspaceSettings } from "@/server/db/schema";
-import { loadSite } from "./data";
+import { loadSite, sitePrefix } from "./data";
 
 /**
  * Chrome around every public page of a workspace. In embed mode (inside the
@@ -64,7 +64,10 @@ export async function SiteShell({
   children: ReactNode;
 }) {
   const home = MODULES.find((m) => workspace.modules[m.key])?.key ?? active;
-  const site = await loadSite(account);
+  const [site, prefix] = await Promise.all([
+    loadSite(account),
+    sitePrefix(account),
+  ]);
   const brand = site?.brand;
   // Workspace logo, else the account's (both need the plan's logo feature).
   const logoUrl = workspace.features.logo
@@ -93,7 +96,7 @@ export async function SiteShell({
           <header className="border-b">
             <div className="mx-auto flex h-16 max-w-7xl items-center gap-6 px-4">
               <Link
-                href={`/${account}${wsPath(workspace)}/${home}`}
+                href={`${prefix}${wsPath(workspace)}/${home}`}
                 className="flex items-center gap-2 font-semibold"
               >
                 {workspace.settings.showLogo !== false ? (
@@ -113,7 +116,7 @@ export async function SiteShell({
                 {MODULES.filter((m) => workspace.modules[m.key]).map((m) => (
                   <Link
                     key={m.key}
-                    href={`/${account}${wsPath(workspace)}/${m.key}`}
+                    href={`${prefix}${wsPath(workspace)}/${m.key}`}
                     aria-current={m.key === active ? "page" : undefined}
                     className={cn(
                       "rounded-md px-3 py-1.5 hover:bg-muted",
@@ -140,7 +143,7 @@ export async function SiteShell({
             <p className="py-6 text-center text-sm text-muted-foreground">
               Embedding needs a paid plan.{" "}
               <a
-                href={`/${account}${wsPath(workspace)}/${active}`}
+                href={`${prefix}${wsPath(workspace)}/${active}`}
                 target="_blank"
                 rel="noopener"
                 className="text-primary underline"

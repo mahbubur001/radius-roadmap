@@ -8,6 +8,7 @@ import { publicSiteUrl } from "@/server/public-url";
 import { getAccount } from "@/server/services/accounts";
 import { listBoardCards } from "@/server/services/cards";
 import { seesAllWorkspaces } from "@/server/services/context";
+import { activeHostname } from "@/server/services/custom-domains";
 import { getDefaultWorkspace } from "@/server/services/public-site";
 import {
   listColumns,
@@ -56,16 +57,25 @@ async function Roadmap({
     return <NoRoadmap workspace={ctx.workspaceSlug} canManage={canManage} />;
   }
 
-  const [columns, cards, objectives, tags, account, ws, defaultWorkspace] =
-    await Promise.all([
-      listColumns(db, ctx, roadmap.id),
-      listBoardCards(db, ctx, roadmap.id),
-      listObjectives(db, ctx),
-      listTags(db, ctx),
-      getAccount(db, ctx),
-      getWorkspaceBySlug(db, ctx, ctx.workspaceSlug),
-      getDefaultWorkspace(db, ctx.accountId),
-    ]);
+  const [
+    columns,
+    cards,
+    objectives,
+    tags,
+    account,
+    ws,
+    defaultWorkspace,
+    customHost,
+  ] = await Promise.all([
+    listColumns(db, ctx, roadmap.id),
+    listBoardCards(db, ctx, roadmap.id),
+    listObjectives(db, ctx),
+    listTags(db, ctx),
+    getAccount(db, ctx),
+    getWorkspaceBySlug(db, ctx, ctx.workspaceSlug),
+    getDefaultWorkspace(db, ctx.accountId),
+    activeHostname(db, ctx.accountId),
+  ]);
 
   return (
     <RoadmapView
@@ -77,7 +87,7 @@ async function Roadmap({
         workspaceId: ctx.workspaceId,
         canManage,
         publicComments: !!ws.settings.commentsEnabled,
-        publicUrl: `${publicSiteUrl(account.slug, ctx.workspaceSlug, defaultWorkspace)}/roadmap`,
+        publicUrl: `${publicSiteUrl(account.slug, ctx.workspaceSlug, defaultWorkspace, customHost)}/roadmap`,
         roadmaps: roadmaps.map((r) => ({
           id: r.id,
           slug: r.slug,

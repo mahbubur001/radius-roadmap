@@ -1,7 +1,12 @@
 import { type NextRequest, NextResponse } from "next/server";
 import { safeNext } from "@/lib/safe-next";
 import { db } from "@/server/db/client";
-import { notFound, publicRequest, siteOrigin } from "@/server/public-request";
+import {
+  notFound,
+  publicRequest,
+  siteOrigin,
+  sitePathPrefix,
+} from "@/server/public-request";
 import { ForbiddenError } from "@/server/services/context";
 import { verifyEmailLink } from "@/server/services/voter-auth";
 import { completeSignIn } from "@/server/voter-session";
@@ -12,7 +17,7 @@ export async function GET(request: NextRequest) {
   if (!req) return notFound();
   const next = safeNext(
     request.nextUrl.searchParams.get("next"),
-    `/${req.site.slug}`,
+    sitePathPrefix(request, req.site.slug) || "/",
   );
   const target = new URL(next, siteOrigin(request));
   try {

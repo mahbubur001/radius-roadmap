@@ -7,7 +7,7 @@ import { PageView } from "@/components/public/page-view";
 import { UpdateDetail } from "@/components/public/update-detail";
 import { Skeleton } from "@/components/ui/skeleton";
 import { wsPath } from "@/lib/public-path";
-import { loadSite, loadUpdate, loadWorkspace, siteUrl } from "../../../data";
+import { loadSiteForRequest, loadUpdate, loadWorkspace } from "../../../data";
 import { SiteShell } from "../../../site-shell";
 
 type Props = PageProps<"/sites/[account]/[workspace]/updates/[post]">;
@@ -15,14 +15,14 @@ type Props = PageProps<"/sites/[account]/[workspace]/updates/[post]">;
 async function load(props: Props) {
   const { account, workspace, post } = await props.params;
   const query = await props.searchParams;
-  const site = await loadSite(decodeURIComponent(account));
+  const site = await loadSiteForRequest(decodeURIComponent(account));
   if (!site) return null;
   const ws = await loadWorkspace(site.accountId, workspace);
   if (!ws?.modules.updates) return null;
   const found = await loadUpdate(site.accountId, ws.id, post);
   if (!found) return null;
   return {
-    origin: siteUrl(site.slug),
+    origin: site.publicBase,
     site,
     ws,
     post: found,
@@ -74,7 +74,7 @@ async function Post(props: Props) {
       <PageView postId={post.id} />
       <div className="mx-auto flex max-w-3xl flex-col gap-6">
         <Link
-          href={`/${site.slug}${wsPath(ws)}/updates${suffix}`}
+          href={`${site.prefix}${wsPath(ws)}/updates${suffix}`}
           className="flex items-center gap-1 text-sm text-muted-foreground hover:text-foreground"
         >
           <ArrowLeft className="size-4" />
@@ -85,7 +85,7 @@ async function Post(props: Props) {
             post={post}
             reactions={ws.features.reactions}
             roadmapBase={
-              ws.modules.roadmap ? `/${site.slug}${wsPath(ws)}/roadmap` : null
+              ws.modules.roadmap ? `${site.prefix}${wsPath(ws)}/roadmap` : null
             }
           />
         </div>

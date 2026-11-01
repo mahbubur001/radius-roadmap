@@ -1,6 +1,6 @@
 # 26 — Phase 6 plan: Billing, widget, custom domains, white-label
 
-Status: **APPROVED 2026-11-01** (P1–P12 as recommended; order 6A → 6B → 6C → 6D; custom SMTP later). **6A and 6B built 2026-11-01** (see "As built"); **6C built 2026-11-01** (B1–B7 approved; see §13); 6D custom domain next.
+Status: **APPROVED 2026-11-01** (P1–P12 as recommended; order 6A → 6B → 6C → 6D; custom SMTP later). **6A and 6B built 2026-11-01** (see "As built"); **6C built 2026-11-01** (B1–B7 approved; see §13); **6D built 2026-11-01** (D1–D9 approved; see §14). **Phase 6 done.**
 
 Phase 6 turns the product into something we can sell: paid plans with limits, the JavaScript widget, a customer's own domain, and branding. It is too large for one pass, so it is split into four sub-phases that can ship (and be committed) independently.
 
@@ -118,6 +118,23 @@ What exists today:
 - `deploy/Caddyfile`: `on_demand_tls { ask http://localhost:3000/api/internal/domain-check }` + a catch-all `https://` site block; rate limits on issuance.
 - Tests: hostname mapping, domain-check (inactive, downgraded, other account), 308 from the app-domain path when a domain is active. Local e2e via `/etc/hosts`-free approach: Playwright sends a `Host` header override against the dev server.
 
+### 6D decisions — **approved 2026-11-01** (D1 = option 1: customer-owned domains; D2–D9 as recommended)
+
+| # | Question | Recommendation | Alternative |
+|---|----------|----------------|-------------|
+| D1 | Which domains | **The customer's own domain**, a host under a domain they own (`feedback.acme.com`), pointed at us with a CNAME to `CUSTOM_DOMAIN_TARGET`. **Never subdomains of our app domain** (account subdomains stay removed, doc 19 "D1 revised"). Root domains (`acme.com`) can't have a CNAME: later, with an A record | Root domains too, from day one |
+| D2 | Proving ownership | **TXT record + CNAME.** The customer adds `_radius-roadmap.<host>` TXT = a token unique to the account and domain. A CNAME alone isn't proof: once Acme points `feedback.acme.com` at us, any other account could claim it first | CNAME only (LoopedIn) |
+| D3 | `domain-check` for Caddy | **Public `GET /api/domain-check?domain=`**, answers only 200/404, rate-limited. Whether a domain points at us is public in DNS anyway, and it avoids trusting "localhost" behind a proxy | Shared secret / localhost only |
+| D4 | Verification timing | "Verify now" button checks DNS once (5 s timeout). A worker job re-checks pending domains every 10 min for 48 h (then `failed`, can retry), and active ones daily: 3 failed days in a row → `failed`. Owners get an email when the domain goes live and when it stops working | Manual only |
+| D5 | Canonical URL | Once active, **the custom domain is the only public URL**: app-domain public pages 308 to it (query kept). Embeds (`?embed=1`), the widget and `/api/*` stay on the app domain | Serve both, canonical tag only |
+| D6 | Downgrade / removal (P6) | The domain row is kept but inactive: the custom host 308s back to the app-domain URL (old links keep working while the certificate lasts), `domain-check` says no, app domain stops redirecting | Show an error page on the custom host |
+| D7 | What a custom host serves | Only the public site, `/api/public/*`, `/api/files/*` and Next assets. Dashboard, auth, `/api/auth`, other API routes and server actions → 404, so no app session cookie can be set on a customer's domain | Everything |
+| D8 | Voter sign-in | Per domain (cookies are host-only, as today). Someone signed in on the app domain signs in again on the custom domain; fine because D5 sends everyone to one domain | Cross-domain session handoff |
+| D9 | Switching it on | Off unless `CUSTOM_DOMAIN_TARGET` is set (like Stripe). In development, `*.localhost` hosts verify without DNS (Chrome resolves them to 127.0.0.1), which also drives the e2e test; never in production | Always on |
+
+### 6D data
+- Migration `0014`: `custom_domains` (id, account_id unique → organization cascade, hostname unique lowercased, status `pending | active | failed`, verify_token, verified_at, last_checked_at, failures int, error text, created_at).
+
 ---
 
 ## 7. Not in Phase 6
@@ -147,6 +164,13 @@ What exists today:
 3. **Public sites + embeds:** `loadSite` returns effective branding; site root sets `--primary`, `--primary-foreground`, `--ring` (light + dark) inline; font `<link>` + `font-family` on the site root; favicon via `icons` in the public layout metadata; header logo = workspace logo → account logo → initials; footer hidden when "Powered by" is off; `next-themes` default from `theme`.
 4. **Widget + emails:** widget config gets `brand { color, font, poweredBy }` (widget colours default to the brand colour); widget footer obeys it; bundle size check still < 15 KB gz. `EmailLayout` takes an optional `brand { name, logoUrl, color, poweredBy }`; end-user emails (B4) pass the account's effective branding.
 5. **e2e + docs:** Playwright: Pro account sets colour + font + hides "Powered by" → public page shows them (computed style), downgrade → defaults return; Free sees locks. "As built", PROGRESS.
+
+6D (approved + built 2026-11-01, §14):
+1. **Schema + service:** migration `0014`, env `CUSTOM_DOMAIN_TARGET` (optional), `src/lib/schemas/domain.ts` (hostname: lowercase FQDN, ≥ 3 labels, not an IP, not the app domain or its subdomains, no `localhost` in production), `src/server/services/custom-domains.ts`: `getDomain`, `setDomain` (owners/admins, Pro gate, new token), `removeDomain`, `verifyDomain` (DNS resolver injected for tests: TXT token + CNAME target), `activeDomainForHost` (plan-gated), `publicOrigin(accountId)` (custom domain if active, else app domain; worker-safe). Tests: tenant isolation, hostname rules, unique across accounts, TXT/CNAME outcomes, gate + downgrade.
+2. **Settings → Domain** (account section): enter hostname → the two DNS records with copy buttons → status badge (pending / active / failed + reason) → Verify now / Remove. Worker job `verify-domains` on a 10-minute scheduler (D4) + owner emails (`domain-active`, `domain-failed`).
+3. **Routing:** proxy matcher also covers `/api`; app host + `/api` → straight through. Custom host → `activeDomainForHost` (60 s in-process cache) → D7 allow-list, `/<module>` + `/<workspace>/<module>` rewritten to `sites/<account>/…` (default-workspace short URLs work the same), `/` → site root; inactive → 308 to the app-domain URL (D6). App-domain public pages 308 to the active custom domain (D5). Request header `x-rr-site-prefix` (`""` on a custom host, `/<account>` on the app domain) tells pages how to build links. `GET /api/domain-check` (D3).
+4. **Links:** public pages build links from `sitePrefix()` instead of `/${site.slug}`; canonical, sitemap, RSS and Open Graph from `publicOrigin`; dashboard "View public site" links, widget `siteUrl`, voter sign-in / subscribe-confirm redirects, and end-user email links (posts, follow, unsubscribe) on the custom domain.
+5. **Deploy + tests + docs:** `deploy/Caddyfile` `on_demand_tls { ask http://localhost:3000/api/domain-check }` + catch-all `https://` block; setup notes (DNS record for `CUSTOM_DOMAIN_TARGET`). e2e with `acme-<id>.localhost:3000`: add → verify → public pages + links on the custom host, app-domain 308, dashboard 404 on the custom host, remove → back. "As built", PROGRESS.
 
 ## 9. Done when (6A)
 - [x] An owner can upgrade, change interval, downgrade and cancel through Stripe; the app follows within one webhook. *(Code + unit tests with a mocked Stripe; not yet tried against Stripe test mode, waiting for keys.)*
@@ -214,3 +238,17 @@ What exists today:
 - **Changes from the plan:** favicons are PNG/JPEG/WebP only (SVG can carry scripts on our origin; ICO isn't in the upload pipeline). "Default" font = the app's font (Geist), not Inter, so existing sites don't change.
 - **Tests:** `branding.test.ts` (colour maths, font URL, roles, tenant isolation, favicon kept on save, validation, gates per field, downgrade fallback, Free, email brand vs team email), `widget.test.ts` (brand fallback, widget colour wins), `keys.test.ts` (favicon cap), e2e `e2e/branding.spec.ts` (colour, font, favicon, dark theme, Powered by → public page computed style + widget config). 243 unit, 30 e2e (+1 skipped).
 - **Not done:** custom SMTP per account (later, §7); fonts in emails (web-safe stack on purpose).
+
+## 14. As built: 6D Custom domain (2026-11-01)
+
+- **Decisions:** D1 = the customer's own domain (`feedback.acme.com`, CNAME), never subdomains of our app domain; D2–D9 as recommended.
+- **Schema (`0014_custom_domains`):** `custom_domains` (one per account; hostname not unique overall, only among `active` rows via a partial unique index, so a pending claim can't block the real owner); `domain_status` enum.
+- **Env:** `CUSTOM_DOMAIN_TARGET` (optional). Unset in production = feature off (Settings → Domain says so). In development the target defaults to `localhost` and `*.localhost` hosts verify without DNS.
+- **Service** `src/server/services/custom-domains.ts` (worker-safe): `setDomain` (owners/admins, Pro gate, never our domain or its subdomains, new token, replaces the old one), `removeDomain`, `dnsRecords`, `checkDns` (TXT `_radius-roadmap.<host>` = `radius-roadmap-verify=<token>`, then CNAME → target; resolver injected for tests, 5 s timeout), `verifyDomain` (pending → active; pending > 48 h → failed; active fails after 3 bad checks; "already used" if another account is live on it), `domainsDue`, `siteForHost` / `activeHostname(s)` (plan-gated, D6), `inactiveDomainSite`, `hostOrigin`, `publicSiteBase`, `domainNotice`.
+- **Settings → Domain** (new nav item): add (accepts pasted URLs), status badge (Waiting for DNS / Live / Not working + reason), both DNS records with copy buttons, Check now, Remove (type the hostname). Worker scheduler `verify-domains` every 10 min; owners get `domain-active` / `domain-failed` emails; the web app's site cache is dropped via `/api/internal/revalidate` (workspace id now optional).
+- **Routing (`src/proxy.ts`):** matcher now includes `/api` (app host passes it straight through). Custom host → `siteForHost` → whole path is the site (`/roadmap`, `/<workspace>/roadmap`, `/` = site root, `/sitemap.xml`, its own `/robots.txt`); only `/api/public/*`, `/api/files/*` and `/api/domain-check` pass; dashboard/auth pages, other APIs and server actions (`next-action` header) → 404. Inactive (downgraded / failed) domain → 308 to the app-domain URL. App-domain public pages → 308 to the live custom domain, except `?embed=1`. Domain redirects carry `Cache-Control: max-age=3600` (browsers keep 308s forever otherwise, which would break removal). Redirects are built from an explicit origin (`request.nextUrl` has the server's host). Host lookups cached 60 s per process in production, not cached in development.
+- **Links:** the proxy sets `x-rr-site-prefix` (always overwritten); pages use `loadSiteForRequest()` → `site.prefix` ("" on the custom host, `/<account>` otherwise; only those two values) and `site.publicBase` (cached with the site tag) for canonical URLs, Open Graph, sitemap and RSS. API redirects use `sitePathPrefix(request, slug)`. Dashboard "View public …" links and the widget's site link take `activeHostname`; embed URLs stay on the app domain. Worker emails (posts, follow emails) use `publicSiteBase`.
+- **`GET /api/domain-check?domain=`:** 200/404, 30 asks per domain per minute (all asks come from Caddy's one address).
+- **Deploy:** `deploy/Caddyfile` has `on_demand_tls { ask http://localhost:3000/api/domain-check }` and a catch-all `https://` block with `tls { on_demand }`. Production setup: an A record for the `CUSTOM_DOMAIN_TARGET` hostname pointing at the server, then set the env var.
+- **Not done / limits:** root domains (`acme.com`, needs an A record; later); a removed domain's row is gone, so its host 404s instead of redirecting (only switched-off domains redirect); voter sign-in doesn't carry over between the app domain and the custom domain (D8).
+- **Tests:** `custom-domains.test.ts` (hostname rules, not our domain, dev hosts, roles, Pro gate, replace, per-account, TXT required, the second claimant can't activate, wrong CNAME, 48 h expiry, 3 failures, scheduling, host mapping, links, downgrade, owner notice). e2e `e2e/domain.spec.ts` (add → verify → dashboard link → app-domain 308 → links/canonical on the domain → app routes 404 there → embed stays → remove). 256 unit, 31 e2e (+1 skipped).

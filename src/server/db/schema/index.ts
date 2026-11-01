@@ -2,6 +2,7 @@ export * from "./account-settings";
 export * from "./articles";
 export * from "./auth";
 export * from "./billing";
+export * from "./custom-domains";
 export * from "./feedback";
 export * from "./roadmaps";
 export * from "./tracked-users";

@@ -12,9 +12,8 @@ import { wsPath } from "@/lib/public-path";
 import {
   loadArticleSearch,
   loadKnowledgeBase,
-  loadSite,
+  loadSiteForRequest,
   loadWorkspace,
-  siteUrl,
 } from "../../data";
 import { SiteShell } from "../../site-shell";
 
@@ -27,7 +26,7 @@ function first(value: string | string[] | undefined) {
 async function load(props: Props) {
   const { account, workspace } = await props.params;
   const query = await props.searchParams;
-  const site = await loadSite(decodeURIComponent(account));
+  const site = await loadSiteForRequest(decodeURIComponent(account));
   if (!site) return null;
   const ws = await loadWorkspace(site.accountId, workspace);
   if (!ws?.modules.articles) return null;
@@ -37,7 +36,7 @@ async function load(props: Props) {
     q ? loadArticleSearch(site.accountId, ws.id, q) : null,
   ]);
   return {
-    origin: siteUrl(site.slug),
+    origin: site.publicBase,
     site,
     ws,
     kb,
@@ -74,7 +73,7 @@ async function Articles(props: Props) {
   const data = await load(props);
   if (!data) notFound();
   const { site, ws, kb, results, q, embed } = data;
-  const base = `/${site.slug}${wsPath(ws)}/articles`;
+  const base = `${site.prefix}${wsPath(ws)}/articles`;
   const suffix = embed ? "?embed=1" : "";
   return (
     <SiteShell

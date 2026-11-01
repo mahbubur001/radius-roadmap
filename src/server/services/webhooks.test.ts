@@ -12,11 +12,7 @@ import {
   vi,
 } from "vitest";
 import { db } from "@/server/db/client";
-import {
-  accountBilling,
-  webhookDeliveries,
-  webhookEndpoints,
-} from "@/server/db/schema";
+import { webhookDeliveries, webhookEndpoints } from "@/server/db/schema";
 import {
   addTestMember,
   cleanup,
@@ -25,7 +21,7 @@ import {
 } from "@/test/factories";
 import { type AccountContext, ConflictError, ForbiddenError } from "./context";
 import { createFeedback, listBoards } from "./feedback";
-import { billing, PlanLimitError } from "./plan-limits";
+import { billing } from "./plan-limits";
 import {
   assertPublicUrl,
   createDeliveries,
@@ -220,7 +216,7 @@ describe("endpoints", () => {
     await expect(revealSecret(db, other, id)).rejects.toThrow();
   });
 
-  it("refuse private URLs and need Pro when billing is on", async () => {
+  it("refuse private URLs; work on the Free plan (doc 29)", async () => {
     await expect(
       createEndpoint(db, owner, {
         url: "https://10.0.0.5/hook",
@@ -228,18 +224,14 @@ describe("endpoints", () => {
         events: ["feedback.created"],
       }),
     ).rejects.toThrow(/private/);
-    vi.spyOn(billing, "enabled").mockReturnValue(true);
-    await db
-      .insert(accountBilling)
-      .values({ accountId: other.accountId, plan: "startup", status: "active" })
-      .onConflictDoNothing();
+    vi.spyOn(billing, "enabled").mockReturnValue(true); // B is on Free
     await expect(
       createEndpoint(db, other, {
         url: URL_OK,
         description: "",
         events: ["feedback.created"],
       }),
-    ).rejects.toBeInstanceOf(PlanLimitError);
+    ).resolves.toEqual(expect.any(String));
   });
 });
 

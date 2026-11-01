@@ -16,6 +16,7 @@ import {
   MAX_IMAGE_BYTES,
   type UploadPurpose,
 } from "@/lib/schemas/upload";
+import { putFile } from "@/lib/upload-client";
 import { cn } from "@/lib/utils";
 
 /**
@@ -65,11 +66,7 @@ export function ImageUpload({
       });
       if (!form.ok) throw new Error(form.error);
 
-      const body = new FormData();
-      for (const [k, v] of Object.entries(form.data.fields)) body.append(k, v);
-      body.append("file", file); // must be the last field for S3
-      const res = await fetch(form.data.url, { method: "POST", body });
-      if (!res.ok) throw new Error("Upload failed. Try again.");
+      await putFile(form.data, file);
 
       await save(form.data.key);
     } catch (error) {

@@ -1,6 +1,9 @@
-import { afterAll, beforeAll, describe, expect, it } from "vitest";
+import { afterAll, beforeAll, describe, expect, it, vi } from "vitest";
+
+vi.mock("@/server/storage/r2", () => import("@/test/fake-r2"));
+
 import { db } from "@/server/db/client";
-import { fileSize, writeLocalFile } from "@/server/storage";
+import { fileSize } from "@/server/storage";
 import { newKey, prefixes } from "@/server/storage/keys";
 import {
   addTestMember,
@@ -8,6 +11,7 @@ import {
   createTestAccount,
   createTestUser,
 } from "@/test/factories";
+import { putTestObject } from "@/test/fake-r2";
 import {
   addAttachment,
   attachmentPrefix,
@@ -22,6 +26,7 @@ import {
   NotFoundError,
   type WorkspaceContext,
 } from "./context";
+import { billing, PlanLimitError } from "./plan-limits";
 import { exportRoadmapCsv } from "./roadmap-export";
 import { listColumns, listRoadmaps } from "./roadmaps";
 import { hasTeamCardVote, listVoters, toggleTeamCardVote } from "./votes";
@@ -76,7 +81,7 @@ async function card(title: string) {
 
 async function uploaded(ctx: WorkspaceContext) {
   const key = newKey(attachmentPrefix(ctx), "application/pdf");
-  await writeLocalFile(key, PDF);
+  putTestObject(key, PDF);
   return key;
 }
 
@@ -104,6 +109,16 @@ describe("card attachments", () => {
     await deleteAttachment(db, wsA, row.id);
     expect(await fileSize(key)).toBeNull();
     expect(await listAttachments(db, wsA, c.id)).toEqual([]);
+  });
+
+  it("are a Pro feature: Free can't add one (doc 29 T3)", async () => {
+    const c = await card("Free files");
+    const key = await uploaded(wsA);
+    const spy = vi.spyOn(billing, "enabled").mockReturnValue(true); // Free
+    await expect(
+      addAttachment(db, wsA, { cardId: c.id, key, name: "a.pdf" }),
+    ).rejects.toBeInstanceOf(PlanLimitError);
+    spy.mockRestore();
   });
 
   it("deleting a card removes its files", async () => {

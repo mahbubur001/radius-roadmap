@@ -1,6 +1,6 @@
 import { randomUUID } from "node:crypto";
 import { expect, test } from "@playwright/test";
-import { signUpOwner } from "./helpers";
+import { hasR2, signUpOwner } from "./helpers";
 
 // Account branding on the public site and the widget (doc 26 6C). Billing is
 // off in e2e, so every branding option is available; plan gates and
@@ -31,12 +31,15 @@ test("brand colour, font, favicon, theme and Powered by reach the public site an
     .click();
   await page.getByRole("button", { name: "Save changes" }).click();
   await expect(page.getByText("Branding saved.")).toBeVisible();
-  // After the form has worked, so the page is hydrated.
-  await page
-    .locator("section", { hasText: "Favicon" })
-    .locator('input[type="file"]')
-    .setInputFiles({ name: "icon.png", mimeType: "image/png", buffer: PNG });
-  await expect(page.getByText("Image updated.")).toBeVisible();
+  // Uploads live on R2 (doc 29 T11): only when it's configured.
+  if (hasR2) {
+    // After the form has worked, so the page is hydrated.
+    await page
+      .locator("section", { hasText: "Favicon" })
+      .locator('input[type="file"]')
+      .setInputFiles({ name: "icon.png", mimeType: "image/png", buffer: PNG });
+    await expect(page.getByText("Image updated.")).toBeVisible();
+  }
 
   await page.goto(`/dashboard/${slug}/settings/workspace`);
   await page.getByRole("combobox", { name: "Theme" }).click();
@@ -59,7 +62,7 @@ test("brand colour, font, favicon, theme and Powered by reach the public site an
   }));
   expect(look.primary).toBe("#dc2626");
   expect(look.font).toContain("Lora");
-  expect(look.icon).toMatch(/\/favicon\/[0-9a-f-]{36}\.png$/);
+  if (hasR2) expect(look.icon).toMatch(/\/favicon\/[0-9a-f-]{36}\.png$/);
   await expect(visitor.getByText("Powered by Radius Roadmap")).toHaveCount(0);
 
   // The widget defaults to the brand colour and drops "Powered by" too.

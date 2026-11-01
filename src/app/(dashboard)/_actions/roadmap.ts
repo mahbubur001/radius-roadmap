@@ -53,6 +53,7 @@ import {
   linkedFeedback,
   roadmapTargets,
 } from "@/server/services/feedback-links";
+import { assertFeature } from "@/server/services/plan-limits";
 import { exportRoadmapCsv } from "@/server/services/roadmap-export";
 import {
   createObjective,
@@ -299,11 +300,13 @@ function withUrl<T extends { key: string }>({ key, ...rest }: T) {
 
 export const requestAttachmentUploadAction = workspaceAction(
   requestAttachmentSchema,
-  async (ctx, { cardId, contentType }) => {
+  async (ctx, { cardId, contentType, size }) => {
+    await assertFeature(db, ctx.accountId, "uploads"); // Pro (doc 29 T3)
     await getCard(db, ctx, cardId);
     return createUpload(
       attachmentPrefix(ctx),
       contentType,
+      size,
       MAX_ATTACHMENT_BYTES,
     );
   },

@@ -13,6 +13,7 @@ import { invalidateSite } from "@/server/public-cache";
 import { getAccount, setAccountLogo } from "@/server/services/accounts";
 import { setFavicon } from "@/server/services/branding";
 import { assertRole, ForbiddenError } from "@/server/services/context";
+import { assertFeature } from "@/server/services/plan-limits";
 import { setUserImage } from "@/server/services/profile";
 import {
   getWorkspaceById,
@@ -20,9 +21,9 @@ import {
 } from "@/server/services/workspaces";
 import { requireAccount, requireUser } from "@/server/session";
 import {
+  checkUploaded,
   createUpload,
   deleteFile,
-  fileSize,
   fileUrl,
   prefixes,
 } from "@/server/storage";
@@ -53,6 +54,8 @@ async function resolveTarget(
   // Anyone who can open the workspace can add images to card descriptions.
   // Nothing is "replaced": the URL goes into the card's rich text.
   if (purpose === "card-image") {
+    // Images in content are Pro; logos and favicons aren't (doc 29 T3).
+    await assertFeature(db, ctx.accountId, "uploads");
     if (!workspaceId) throw new ForbiddenError("Missing workspace.");
     const ws = await getWorkspaceById(db, ctx, workspaceId);
     return {
@@ -107,7 +110,12 @@ export const requestUploadAction = action(
         `Files must be ${target.maxBytes / 1024} KB or smaller.`,
       );
     }
-    return createUpload(target.prefix, contentType, target.maxBytes);
+    return createUpload(
+      target.prefix,
+      contentType,
+      size,
+      target.maxBytes ?? MAX_IMAGE_BYTES,
+    );
   },
 );
 
@@ -117,8 +125,7 @@ export const saveUploadAction = action(
     const target = await resolveTarget(purpose, workspaceId);
     if (key !== null) {
       if (!keyHasPrefix(key, target.prefix)) throw new ForbiddenError();
-      const size = await fileSize(key);
-      if (size === null || size > (target.maxBytes ?? MAX_IMAGE_BYTES)) {
+      if (!(await checkUploaded(key, target.maxBytes ?? MAX_IMAGE_BYTES))) {
         throw new ForbiddenError("The upload didn't finish. Try again.");
       }
     }

@@ -3,6 +3,13 @@ import { firstLink, waitForMail } from "./mail";
 
 export const PASSWORD = "SuperSecret123!";
 
+/**
+ * Files live on Cloudflare R2 (doc 29 T11). Upload steps run only when it's
+ * configured in .env.local (the bucket's CORS must allow localhost:3000).
+ */
+export const R2_PUBLIC_URL = process.env.R2_PUBLIC_URL?.replace(/\/$/, "");
+export const hasR2 = !!(R2_PUBLIC_URL && process.env.R2_BUCKET);
+
 /** Fills the sign-up form (email may be prefilled) and verifies the email. */
 export async function signUpAndVerify(page: Page, name: string, email: string) {
   await page.getByLabel("Your name").fill(name);

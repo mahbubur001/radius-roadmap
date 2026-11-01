@@ -94,7 +94,7 @@ export function safeHref(value: unknown): string | null {
 export function safeImageSrc(value: unknown): string | null {
   if (typeof value !== "string") return null;
   const v = value.trim();
-  if (/^https:\/\//i.test(v) || v.startsWith("/api/files/")) return v;
+  if (/^https:\/\//i.test(v)) return v;
   return null;
 }
 

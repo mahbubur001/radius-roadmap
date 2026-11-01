@@ -14,9 +14,12 @@ async function signInAdmin(page: Page) {
   await page.getByLabel("Email").fill(ADMIN);
   await page.getByLabel("Password").fill(PASSWORD);
   await page.getByRole("button", { name: "Sign in" }).click();
+  // Wait until the app has finished redirecting (the admin has no account,
+  // so "/" sends them on to /onboarding): navigating away mid-redirect gets
+  // cut off by it.
   await page
-    .waitForURL((url) => !url.pathname.startsWith("/sign-in"), {
-      timeout: 5_000,
+    .waitForURL((url) => !["/sign-in", "/"].includes(url.pathname), {
+      timeout: 10_000,
     })
     .catch(async () => {
       await page.goto("/sign-up");
@@ -73,9 +76,10 @@ test("platform admin: 404 for others, invite a customer with Pro, suspend and re
   await expect(customer).toHaveURL(new RegExp(`/dashboard/app-${id}$`));
   // (Billing is off in e2e, so the plan is checked on the admin page.)
   await page.goto(accountUrl);
-  await expect(page.getByText(`${owner} · owner`)).toBeVisible();
+  // The owner joined, and the plan was granted by this admin.
+  await expect(page.getByText(owner, { exact: true })).toBeVisible();
   await expect(
-    page.getByText(/granted.*platform-admin@example\.test/),
+    page.getByText(/Granted.*platform-admin@example\.test/),
   ).toBeVisible();
 
   // Suspend: the dashboard and the public site stop.

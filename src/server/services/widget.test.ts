@@ -222,9 +222,9 @@ describe("widget site", () => {
     });
   });
 
-  it("needs a plan with the widget when billing is on", async () => {
+  it("works on the Free plan when billing is on (doc 29)", async () => {
     vi.spyOn(billing, "enabled").mockReturnValue(true);
-    expect(await widgetSite(db, pub, "wid")).toBeNull();
+    expect(await widgetSite(db, pub, "wid")).not.toBeNull();
   });
 
   it("unverified feedback always waits in the triage inbox", async () => {

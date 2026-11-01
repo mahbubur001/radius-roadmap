@@ -1,11 +1,8 @@
-import { createHmac, randomUUID, timingSafeEqual } from "node:crypto";
+import { randomUUID } from "node:crypto";
 import {
   ATTACHMENT_TYPES,
   type AttachmentType,
   type ImageType,
-  MAX_ATTACHMENT_BYTES,
-  MAX_FAVICON_BYTES,
-  MAX_IMAGE_BYTES,
 } from "@/lib/schemas/upload";
 
 // Pure helpers (no env access) so they can be unit-tested.
@@ -34,13 +31,6 @@ export function newKey(prefix: string, contentType: AttachmentType) {
   return `${prefix}/${randomUUID()}.${ATTACHMENT_TYPES[contentType]}`;
 }
 
-/** Largest upload a key may hold: card attachments above 2 MB, favicons below. */
-export function maxBytesForKey(key: string) {
-  if (key.includes("/card-files/")) return MAX_ATTACHMENT_BYTES;
-  if (/^accounts\/[^/]+\/favicon\//.test(key)) return MAX_FAVICON_BYTES;
-  return MAX_IMAGE_BYTES;
-}
-
 export function isValidKey(key: string) {
   return KEY_PATTERN.test(key) && !key.includes("..");
 }
@@ -55,37 +45,6 @@ export function contentTypeForKey(key: string): AttachmentType | null {
   const ext = key.split(".").pop();
   const entry = Object.entries(ATTACHMENT_TYPES).find(([, e]) => e === ext);
   return (entry?.[0] as AttachmentType | undefined) ?? null;
-}
-
-// Local driver: short-lived HMAC token standing in for S3's signed policy.
-
-function payload(key: string, contentType: string, expires: number) {
-  return `${key}\n${contentType}\n${expires}`;
-}
-
-export function signUpload(
-  secret: string,
-  key: string,
-  contentType: string,
-  expires: number,
-) {
-  return createHmac("sha256", `uploads:${secret}`)
-    .update(payload(key, contentType, expires))
-    .digest("base64url");
-}
-
-export function verifyUpload(
-  secret: string,
-  token: string,
-  key: string,
-  contentType: string,
-  expires: number,
-  now = Date.now(),
-) {
-  if (!Number.isFinite(expires) || expires < now) return false;
-  const expected = Buffer.from(signUpload(secret, key, contentType, expires));
-  const actual = Buffer.from(token);
-  return expected.length === actual.length && timingSafeEqual(expected, actual);
 }
 
 /** Checks the file's magic bytes match the declared image type. */

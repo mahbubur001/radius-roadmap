@@ -13,7 +13,7 @@ import {
   type SQL,
   sql,
 } from "drizzle-orm";
-import { PLANS, type PlanId } from "@/lib/plans";
+import { normalizePlan, PLANS, type PlanId } from "@/lib/plans";
 import type { Db } from "@/server/db/client";
 import {
   accountBilling,
@@ -44,7 +44,10 @@ const overrideActive = sql<boolean>`(${planOverrides.plan} is not null and (${pl
 const stripePaid = sql<boolean>`(${accountBilling.status} in (${sql.raw(
   PAID.map((s) => `'${s}'`).join(", "),
 )}))`;
-const effectivePlan = sql<PlanId>`case when ${overrideActive} then ${planOverrides.plan}::text when ${stripePaid} then ${accountBilling.plan}::text else 'free' end`;
+// Old plan names read as Free / Pro (doc 29 T7), here and in getAccountPlan.
+const asTwoPlans = (plan: unknown) =>
+  sql`(case when ${plan}::text in ('pro', 'enterprise') then 'pro' else 'free' end)`;
+const effectivePlan = sql<PlanId>`case when ${overrideActive} then ${asTwoPlans(planOverrides.plan)} when ${stripePaid} then ${asTwoPlans(accountBilling.plan)} else 'free' end`;
 const planSource = sql<
   "manual" | "stripe" | "free"
 >`case when ${overrideActive} then 'manual' when ${stripePaid} then 'stripe' else 'free' end`;
@@ -297,5 +300,76 @@ export async function accountDetail(db: Db, accountId: string) {
     webhooks: hooks?.n ?? 0,
     history,
     billingOn: billing.enabled(),
+  };
+}
+
+/** New accounts per day for the last `days` days (UTC), oldest first. */
+export async function signupsByDay(db: Db, days = 30) {
+  const since = new Date(Date.now() - (days - 1) * 24 * 3600 * 1000);
+  since.setUTCHours(0, 0, 0, 0);
+  const rows = await db
+    .select({
+      day: sql<string>`to_char(${organization.createdAt} at time zone 'UTC', 'YYYY-MM-DD')`,
+      n: count(),
+    })
+    .from(organization)
+    .where(gt(organization.createdAt, since))
+    .groupBy(sql`1`);
+  const byDay = new Map(rows.map((r) => [r.day, r.n]));
+  return Array.from({ length: days }, (_, i) => {
+    const d = new Date(since.getTime() + i * 24 * 3600 * 1000);
+    const key = d.toISOString().slice(0, 10);
+    return { day: key, n: byDay.get(key) ?? 0 };
+  });
+}
+
+/** Newest accounts, for the overview. */
+export async function recentAccounts(db: Db, limit = 6) {
+  return (await listAccounts(db, {})).accounts.slice(0, limit);
+}
+
+/**
+ * What an operator should look at (overview): suspended accounts, granted
+ * plans ending within 7 days, and accounts still waiting for their owner.
+ */
+export async function needsAttention(db: Db) {
+  const inWeek = new Date(Date.now() + 7 * 24 * 3600 * 1000);
+  const [ending, suspended, waiting] = await Promise.all([
+    db
+      .select({
+        id: organization.id,
+        name: organization.name,
+        plan: planOverrides.plan,
+        endsAt: planOverrides.endsAt,
+      })
+      .from(planOverrides)
+      .innerJoin(organization, eq(organization.id, planOverrides.accountId))
+      .where(
+        and(
+          isNotNull(planOverrides.endsAt),
+          gt(planOverrides.endsAt, new Date()),
+          lte(planOverrides.endsAt, inWeek),
+        ),
+      )
+      .orderBy(asc(planOverrides.endsAt))
+      .limit(5),
+    db
+      .select({
+        id: organization.id,
+        name: organization.name,
+        at: accountSettings.suspendedAt,
+        reason: accountSettings.suspendedReason,
+      })
+      .from(accountSettings)
+      .innerJoin(organization, eq(organization.id, accountSettings.accountId))
+      .where(isNotNull(accountSettings.suspendedAt))
+      .orderBy(desc(accountSettings.suspendedAt))
+      .limit(5),
+    listAccounts(db, { status: "awaiting_owner" }),
+  ]);
+  return {
+    ending: ending.map((e) => ({ ...e, plan: normalizePlan(e.plan) })),
+    suspended,
+    waiting: waiting.accounts.slice(0, 5),
   };
 }

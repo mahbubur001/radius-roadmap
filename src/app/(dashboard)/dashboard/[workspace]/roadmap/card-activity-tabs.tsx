@@ -9,6 +9,11 @@ import {
   type getCardAction,
   requestAttachmentUploadAction,
 } from "@/app/(dashboard)/_actions/roadmap";
+import {
+  ProBadge,
+  usePlanFeatures,
+  useProWall,
+} from "@/components/dashboard/plan-features";
 import { Button } from "@/components/ui/button";
 import {
   ATTACHMENT_TYPES,
@@ -16,6 +21,7 @@ import {
   MAX_ATTACHMENT_BYTES,
 } from "@/lib/schemas/upload";
 import { ago } from "@/lib/time";
+import { putFile } from "@/lib/upload-client";
 import { cn } from "@/lib/utils";
 
 type Detail = Extract<
@@ -45,6 +51,8 @@ export function Attachments({
   const input = useRef<HTMLInputElement>(null);
   const [busy, setBusy] = useState(false);
   const [over, setOver] = useState(false);
+  const { uploads } = usePlanFeatures();
+  const proWall = useProWall();
 
   async function upload(file: File): Promise<Attachment | null> {
     if (!(file.type in ATTACHMENT_TYPES)) {
@@ -65,11 +73,9 @@ export function Attachments({
       toast.error(form.error);
       return null;
     }
-    const body = new FormData();
-    for (const [k, v] of Object.entries(form.data.fields)) body.append(k, v);
-    body.append("file", file); // must be the last field for S3
-    const res = await fetch(form.data.url, { method: "POST", body });
-    if (!res.ok) {
+    try {
+      await putFile(form.data, file);
+    } catch {
       toast.error(`${file.name}: upload failed.`);
       return null;
     }
@@ -80,7 +86,7 @@ export function Attachments({
       name: file.name,
     });
     if (!saved.ok) {
-      toast.error(saved.error);
+      toast.error(`${file.name}: ${saved.error}`);
       return null;
     }
     return saved.data;
@@ -116,7 +122,8 @@ export function Attachments({
         onDrop={(e) => {
           e.preventDefault();
           setOver(false);
-          void uploadAll(e.dataTransfer.files);
+          if (uploads) void uploadAll(e.dataTransfer.files);
+          else proWall("Attachments");
         }}
         className={cn(
           "flex flex-col items-center gap-2 rounded-lg border border-dashed bg-muted/40 p-6 text-center text-sm",
@@ -126,11 +133,14 @@ export function Attachments({
         <Button
           type="button"
           disabled={busy}
-          onClick={() => input.current?.click()}
+          onClick={() =>
+            uploads ? input.current?.click() : proWall("Attachments")
+          }
         >
           <Upload />
           {busy ? "Uploading…" : "Upload attachment"}
         </Button>
+        <ProBadge />
         <span className="text-muted-foreground">
           Or drop files here · images or PDF, up to 10 MB
         </span>

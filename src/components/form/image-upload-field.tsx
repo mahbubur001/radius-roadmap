@@ -7,6 +7,11 @@ import {
   requestUploadAction,
   saveUploadAction,
 } from "@/app/(dashboard)/_actions/uploads";
+import {
+  ProBadge,
+  usePlanFeatures,
+  useProWall,
+} from "@/components/dashboard/plan-features";
 import { Button } from "@/components/ui/button";
 import { Label } from "@/components/ui/label";
 import {
@@ -14,6 +19,7 @@ import {
   type ImageType,
   MAX_IMAGE_BYTES,
 } from "@/lib/schemas/upload";
+import { putFile } from "@/lib/upload-client";
 import { cn } from "@/lib/utils";
 
 /**
@@ -39,6 +45,8 @@ export function ImageUploadField({
   const input = useRef<HTMLInputElement>(null);
   const [url, setUrl] = useState(initial);
   const [busy, setBusy] = useState(false);
+  const { uploads } = usePlanFeatures();
+  const proWall = useProWall();
 
   async function upload(file: File) {
     if (!(file.type in IMAGE_TYPES)) {
@@ -56,11 +64,7 @@ export function ImageUploadField({
         size: file.size,
       });
       if (!form.ok) throw new Error(form.error);
-      const body = new FormData();
-      for (const [k, v] of Object.entries(form.data.fields)) body.append(k, v);
-      body.append("file", file); // must be the last field for S3
-      const res = await fetch(form.data.url, { method: "POST", body });
-      if (!res.ok) throw new Error("Upload failed. Try again.");
+      await putFile(form.data, file);
       const saved = await saveUploadAction({
         purpose: "card-image",
         workspaceId,
@@ -78,7 +82,10 @@ export function ImageUploadField({
 
   return (
     <div className="flex flex-col gap-2">
-      <Label>{label}</Label>
+      <Label>
+        {label}
+        <ProBadge />
+      </Label>
       {url ? (
         // biome-ignore lint/performance/noImgElement: user upload, any size
         <img
@@ -104,7 +111,9 @@ export function ImageUploadField({
           variant="outline"
           size="sm"
           disabled={busy}
-          onClick={() => input.current?.click()}
+          onClick={() =>
+            uploads ? input.current?.click() : proWall("Image uploads")
+          }
         >
           <ImageUp />
           {busy ? "Uploading…" : url ? "Change" : addLabel}

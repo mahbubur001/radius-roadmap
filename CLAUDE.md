@@ -19,7 +19,7 @@ The owner works from several computers. **Claude's local memory does not travel 
 
 ## Stack (confirmed)
 
-Next.js 16 (App Router, `proxy.ts`) · React 19 · TypeScript strict · pnpm · Better Auth 1.7 · Drizzle ORM + PostgreSQL 16 · Zod · React Hook Form · Tailwind v4 + shadcn/ui · dnd-kit · Tiptap · BullMQ + Redis · Amazon SES + React Email · S3 · Stripe · Biome · Vitest · Playwright. Deployed on AWS EC2 with pm2 (`web` + `worker`) behind Caddy.
+Next.js 16 (App Router, `proxy.ts`) · React 19 · TypeScript strict · pnpm · Better Auth 1.7 · Drizzle ORM + PostgreSQL 16 · Zod · React Hook Form · Tailwind v4 + shadcn/ui · dnd-kit · Tiptap · BullMQ + Redis · Amazon SES + React Email · Cloudflare R2 · Stripe · Biome · Vitest · Playwright. Deployed on AWS EC2 with pm2 (`web` + `worker`) behind Caddy.
 
 ## Library docs: use Context7
 
@@ -45,7 +45,7 @@ widget/               Preact embeddable widget → public/widget.js (Vite)
 ## Commands
 
 ```bash
-docker compose up -d        # local Postgres, Redis, Mailpit (or native Postgres + Redis)
+docker compose up -d        # local Postgres and Redis (or native Postgres + Redis)
 pnpm dev                    # Next dev server (http://localhost:3000)
 pnpm worker:dev             # BullMQ worker (tsx watch)
 pnpm widget:dev             # widget build watch
@@ -91,8 +91,9 @@ Keep this list in sync with `package.json`. Deploy files: `ecosystem.config.cjs`
 - Better Auth's HTTP endpoints for organization writes are disabled (`disabledPaths` in `src/server/auth`). Never re-enable them or call `authClient.organization.*` for team changes; go through our services.
 
 ### Uploads
-- Use `src/server/storage` only: `createUpload` (signed POST form), `fileUrl`, `deleteFile`. Keys always sit under a tenant prefix (`prefixes.*`); check them with `keyHasPrefix` before saving.
-- `STORAGE_DRIVER=local` keeps files in `.uploads/` (dev); `s3` is for production.
+- Files live on **Cloudflare R2 only** (doc 29 T11), in development too (`R2_*` in `.env.local`). Use `src/server/storage` only: `createUpload` (a presigned PUT: content type and exact size signed), `checkUploaded` (size + magic bytes, before saving a key), `fileUrl`, `deleteFile`. The browser sends the file with `putFile()` (`src/lib/upload-client.ts`). Keys always sit under a tenant prefix (`prefixes.*`); check them with `keyHasPrefix` before saving.
+- Images in content and card attachments are **Pro** (`assertFeature(…, "uploads")` on the server, `ProBadge` / `useProWall` in the UI); logos, favicon and avatars are on every plan.
+- Unit tests never touch R2: `vi.mock("@/server/storage/r2", () => import("@/test/fake-r2"))`.
 
 ### Public REST API and webhooks (doc 27)
 - `/api/v1/*` routes are thin: wrap them in `apiRoute()` (`src/server/api/handler.ts`, does key auth, write permission, rate limit, errors, snake_case). Reads go in `services/api-read.ts` (account-scoped, cursor pages), writes in `src/server/api/writes.ts` through the normal services. Every request/response shape is a Zod schema with `.meta({ id })` in `src/server/api/schemas.ts` / `write-schemas.ts`; `openapi.json` is generated from them, so add new endpoints there too.
@@ -122,7 +123,7 @@ Keep this list in sync with `package.json`. Deploy files: `ecosystem.config.cjs`
 - Jobs must be idempotent (safe to run twice). Pass ids, not whole objects.
 
 ### Email
-- Send only through `src/server/email` (SES, or the account's custom SMTP). Locally, use `EMAIL_TRANSPORT=console` (logs the email and saves it to `.dev-mail/*.json`; the e2e tests read links from there) or `smtp` with Mailpit.
+- Send only through `src/server/email`. **Every email goes through Amazon SES**, in every environment (owner, 2026-11-01): no SMTP, no console mode. Locally that needs `AWS_ACCESS_KEY_ID` / `AWS_SECRET_ACCESS_KEY` and a verified `EMAIL_FROM`. The e2e tests read emails from the BullMQ email queue (`e2e/mail.ts` renders the queued job with `renderEmail`), not from an inbox.
 
 ### Widget
 - `widget/` must stay tiny: Preact only, no imports from `src/` except type-only imports, everything rendered in Shadow DOM.

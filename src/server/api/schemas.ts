@@ -13,7 +13,7 @@ export const accountSchema = z
     id: z.string(),
     name: z.string(),
     slug: z.string(),
-    plan: z.enum(["free", "startup", "pro", "enterprise"]),
+    plan: z.enum(["free", "pro"]),
     public_url: url,
     created_at: date,
   })

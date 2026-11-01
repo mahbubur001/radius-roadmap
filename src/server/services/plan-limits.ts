@@ -5,6 +5,7 @@ import {
   type Feature,
   type LimitKey,
   limitText,
+  normalizePlan,
   PLANS,
   type PlanId,
   planFor,
@@ -49,7 +50,7 @@ export async function getAccountPlan(
   accountId: string,
   now = new Date(),
 ): Promise<PlanId> {
-  if (!billing.enabled()) return "enterprise";
+  if (!billing.enabled()) return "pro";
   const [row] = await db
     .select({
       plan: accountBilling.plan,
@@ -63,10 +64,10 @@ export async function getAccountPlan(
     .where(eq(organization.id, accountId))
     .limit(1);
   if (row?.override && (!row.overrideEnds || row.overrideEnds > now)) {
-    return row.override;
+    return normalizePlan(row.override);
   }
   return row?.plan && row.status && PAID_STATUSES.has(row.status)
-    ? row.plan
+    ? normalizePlan(row.plan)
     : "free";
 }
 

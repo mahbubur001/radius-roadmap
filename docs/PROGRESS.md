@@ -11,7 +11,7 @@
    - Create the databases `radius_roadmap` and `radius_roadmap_test` if you're not using Docker.
    - Run `pnpm exec playwright install chromium` once.
 3. `pnpm install` → `docker compose up -d` (skip if native) → `pnpm db:migrate`
-4. `pnpm dev` (+ `pnpm worker:dev` in a second terminal). Sign up at http://localhost:3000/sign-up. With `EMAIL_TRANSPORT=console`, the verification link is printed by the worker and saved in `.dev-mail/`.
+4. `pnpm dev` (+ `pnpm worker:dev` in a second terminal). Sign up at http://localhost:3000/sign-up. Email goes through Amazon SES (needs `AWS_ACCESS_KEY_ID` / `AWS_SECRET_ACCESS_KEY` and a verified `EMAIL_FROM` in `.env.local`); files go to Cloudflare R2 (`R2_*`).
 5. In Claude Code: *"Read docs/PROGRESS.md and continue from Next step."*
 6. Before stopping: update **Current status**, **Next step** and the **Session log** here, then commit and push.
 
@@ -32,6 +32,7 @@
 - Phase 6 plan (Billing, widget, custom domain, white-label; approved 2026-11-01; 6A–6D all built): `docs/26-phase-6-plan.md`
 - Phase 7 plan (public REST API + webhooks; approved + built 2026-11-01): `docs/27-phase-7-plan.md`
 - Phase 8 plan (platform admin: invite customers, set plans, suspend; approved + built 2026-11-01): `docs/28-phase-8-plan.md`
+- Two plans, Free + Pro (Pro = custom domain, uploads, no "Powered by"); files on R2 only; email on SES only; admin redesign (built 2026-11-01): `docs/29-two-plans.md`
 - Stack versions as built: `docs/14-dev-tools.md` → "Versions as built"
 
 ## Current status
@@ -63,18 +64,18 @@
 - **2026-11-01, Phase 7 API + webhooks (doc 27):** account API keys (Settings → API, hashed, revoked when the creator leaves), REST API `/api/v1/*` (reads for everything; writes for cards, feedback, updates; cursor pages; 100/min per key), `openapi.json` + reference page, signed outgoing webhooks for 18 events (Settings → Webhooks, retries ~25 h, SSRF guard, delivery log, auto-off after 3 days + email). Migration `0015`.
 - **2026-11-01, Phase 6D Custom domain (doc 26 §6, §14):** customers' own domains (e.g. `feedback.acme.com`; never subdomains of ours), TXT + CNAME verification, Settings → Domain, 10-minute verify job + owner emails, proxy serves only the public site on the custom host, app-domain URLs 308 there (not embeds), links/canonicals/sitemaps/emails on the domain, Caddy on-demand TLS. Migration `0014`, env `CUSTOM_DOMAIN_TARGET`.
 - **2026-11-01, public UI polish:** LoopedIn look on public sites (blue accent, slate greys, light + dark), shared underline tabs (also Edit roadmap and the card drawer), objective colour strip on card drawers, Votes/Comments tooltips, clickable comment counts, short URLs for the default workspace (doc 26 §11).
-- **Checks:** `pnpm lint`, `typecheck`, `test` (287 tests), `test:e2e` (33 + 1 skipped unless `E2E_BILLING=1`; run `pnpm build:widget` first) and `build` pass.
-- **Git:** everything through Phase 8 is committed and pushed on `main`.
+- **Checks:** `pnpm lint`, `typecheck`, `test` (288 tests), `test:e2e` (32 + 2 skipped: R2 upload, billing unless `E2E_BILLING=1`; run `pnpm build:widget` first) and `build` pass.
+- **Git:** everything through doc 29 (two plans, R2, SES, admin redesign) is committed and pushed on `main`.
 - **Migrations to run on the other Mac:** `0005`–`0016` (`pnpm db:migrate`); add `PLATFORM_ADMIN_EMAILS=…` to `.env.local` (this Mac has `platform-admin@example.test` for the e2e test), then restart `pnpm worker:dev`.
 - **Dev tip:** Turbopack's dev cache sometimes serves stale code after edits (seen twice: CSS and a new service export). If a change doesn't show up, stop `pnpm dev`, delete `.next/dev`, and start it again.
 - **Dev test account on this Mac:** `claude-dev@example.test` / `devpassword123` (account `claude-dev`, workspace `dev-product`). Local dev DB only.
 - **Second Mac (user `radiustheme`):** set up 2026-10-28. Homebrew Postgres 18 (role `radiustheme`, no `postgres` role, so `DATABASE_URL=postgres://radiustheme@localhost:5432/radius_roadmap`) + Redis. `~/.zshrc` has `PNPM_HOME=/Users/mahbubur/...` copied from the first Mac, so pnpm (and the lefthook pre-commit hook) fails with EACCES until it's fixed to `$HOME/Library/pnpm` (workaround: prefix commands with `PNPM_HOME=$HOME/Library/pnpm`). Playwright Chromium installed 2026-10-28.
-- **First Mac (user `mahbubur`):** Homebrew Postgres 18 + Redis, `EMAIL_TRANSPORT=console`, `STORAGE_DRIVER=local` in `.env.local` (its `PUBLIC_ROOT_DOMAIN` line is no longer used and can be deleted). The dev workspace `demo-product` was renamed "Radius Roadmap" (slug unchanged). The local dev DB also holds many test accounts made by Playwright; they're harmless.
+- **First Mac (user `mahbubur`):** Homebrew Postgres 18 + Redis. Its `.env.local` needs the new R2 and AWS (SES) settings; the old `EMAIL_TRANSPORT`, `SMTP_*`, `STORAGE_DRIVER`, `UPLOAD_DIR` and `PUBLIC_ROOT_DOMAIN` lines are no longer used and can be deleted. The dev workspace `demo-product` was renamed "Radius Roadmap" (slug unchanged). The local dev DB also holds many test accounts made by Playwright; they're harmless.
 
 ## Next step
 Resume here. On a new session say: *"Read docs/PROGRESS.md and continue from Next step."*
 1. **Owner decision pending:** Comments (and Follows) on by default for new workspaces? (Recommended yes; reverses doc 20 D3.) And switch them on for existing workspaces?
-2. **Phase 8 is done.** Next: owner adds their own email to `PLATFORM_ADMIN_EMAILS`; then plan the WordPress plugin (doc 29), then Jira / AI tagging / SSO.
+2. **Owner:** set `R2_PUBLIC_URL` (bucket → Settings → Public access) and the bucket CORS rule; add AWS keys for SES locally (`AWS_ACCESS_KEY_ID`, `AWS_SECRET_ACCESS_KEY`, verified `EMAIL_FROM`); add your email to `PLATFORM_ADMIN_EMAILS`. Then run the e2e upload tests against R2. Next phase: WordPress plugin plan (doc 30). Then: owner adds their email to `PLATFORM_ADMIN_EMAILS`; WordPress plugin plan (doc 30); Jira / AI tagging / SSO.
    - For production custom domains: A record for the `CUSTOM_DOMAIN_TARGET` hostname → server, set the env var, deploy the new `deploy/Caddyfile`.
 3. **Owner (for a real billing test):** create a Stripe test account, put the keys in `.env.local`, run `pnpm stripe:setup`, `stripe listen --forward-to localhost:3000/api/webhooks/stripe`, turn on the customer portal with plan switching. Then try Checkout → Pro → cancel (doc 26 §10 last bullet).
 4. **Owner (blocking for the imports):** export from LoopedIn and put both files in `docs/samples/`: the roadmap (Roadmap → More → Export) and the feedback (Boards → More → Export).
@@ -172,3 +173,4 @@ Resume here. On a new session say: *"Read docs/PROGRESS.md and continue from Nex
 | 2026-11-01 | radiustheme (Mac 2) | Phase 6D Custom domain (doc 26 D1–D9; D1 = customer-owned domains): custom_domains (migration 0014), Settings → Domain, verify job + emails, proxy custom-host routing + redirects, links on the domain, Caddy on-demand TLS; 256 unit + 31 e2e. **Phase 6 done** | Owner picks the next phase; production DNS for custom domains |
 | 2026-11-01 | radiustheme (Mac 2) | Phase 7 (doc 27, A1–A12): API keys, REST API v1 (reads + card/feedback/update writes), OpenAPI + reference page, signed webhooks (18 events, retries, SSRF guard with no socket reuse, delivery log, auto-off + email); migration 0015; 280 unit + 32 e2e. **Phase 7 done** | Owner picks the next phase (WordPress plugin / Jira / AI tagging / SSO) |
 | 2026-11-01 | radiustheme (Mac 2) | Phase 8 platform admin (doc 28, C1–C10, C1 = env email list): /admin (proxy 404 for others), accounts list/detail, plan overrides + reminder emails, invite a customer, suspend/restore everywhere, audit log; migration 0016; 287 unit + 33 e2e. **Phase 8 done** | Owner adds their email to PLATFORM_ADMIN_EMAILS; WordPress plugin plan (doc 29) |
+| 2026-11-01 | radiustheme (Mac 2) | Doc 29: two plans (Free = everything, Pro = custom domain + uploads + no Powered by), upload wall, storage R2-only (presigned PUT, magic-byte check, fake R2 in tests), email SES-only (e2e reads the queue), operator console redesign; 288 unit + e2e green | Owner: R2_PUBLIC_URL + CORS, AWS keys for SES, own email in PLATFORM_ADMIN_EMAILS; then WordPress plugin plan |

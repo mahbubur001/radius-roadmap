@@ -28,7 +28,7 @@ import {
   ForbiddenError,
   NotFoundError,
 } from "./context";
-import { billing, PlanLimitError } from "./plan-limits";
+import { billing } from "./plan-limits";
 import { removeMember } from "./team";
 
 // Public REST API keys (doc 27 step 1).
@@ -135,16 +135,13 @@ describe("API keys", () => {
     );
   });
 
-  it("need the Enterprise plan when billing is on", async () => {
+  it("work on the Free plan when billing is on (doc 29)", async () => {
+    vi.spyOn(billing, "enabled").mockReturnValue(true); // B is on Free
     const { key } = await createApiKey(db, other, {
       name: "B",
       permission: "read",
     });
-    vi.spyOn(billing, "enabled").mockReturnValue(true); // B is on Free
-    expect(await verifyApiKey(db, key)).toBeNull();
-    await expect(
-      createApiKey(db, other, { name: "C", permission: "read" }),
-    ).rejects.toBeInstanceOf(PlanLimitError);
+    expect(await verifyApiKey(db, key)).not.toBeNull();
   });
 
   it("are limited to 10 per account", async () => {

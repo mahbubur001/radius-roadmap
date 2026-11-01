@@ -1,3 +1,4 @@
+import { eq } from "drizzle-orm";
 import {
   afterAll,
   afterEach,
@@ -64,8 +65,14 @@ afterEach(() => {
   vi.restoreAllMocks();
 });
 
-async function onPlan(accountId: string, plan: "startup" | "pro") {
+async function onPlan(accountId: string, plan: "free" | "pro") {
   vi.spyOn(billing, "enabled").mockReturnValue(true);
+  if (plan === "free") {
+    await db
+      .delete(accountBilling)
+      .where(eq(accountBilling.accountId, accountId));
+    return;
+  }
   await db
     .insert(accountBilling)
     .values({ accountId, plan, status: "active" })
@@ -141,47 +148,44 @@ describe("saving", () => {
   });
 });
 
-describe("plan gates", () => {
-  it("Startup can't set colour, font, favicon or hide Powered by", async () => {
-    await onPlan(other.accountId, "startup");
+describe("plan gates (doc 29)", () => {
+  it("Free sets colour, font and favicon, but can't hide Powered by", async () => {
+    await onPlan(other.accountId, "free");
     const none: BrandingInput = { color: "", font: "", hidePoweredBy: false };
-    for (const patch of [
-      { color: "#123456" },
-      { font: "inter" as const },
-      { hidePoweredBy: true },
-    ]) {
-      await expect(
-        updateBranding(db, other, { ...none, ...patch }),
-      ).rejects.toBeInstanceOf(PlanLimitError);
-    }
+    await updateBranding(db, other, {
+      ...none,
+      color: "#123456",
+      font: "inter",
+    });
+    await setFavicon(db, other, FAVICON(other.accountId));
     await expect(
-      setFavicon(db, other, FAVICON(other.accountId)),
+      updateBranding(db, other, { ...none, hidePoweredBy: true }),
     ).rejects.toBeInstanceOf(PlanLimitError);
+    expect(await getEffectiveBranding(db, other.accountId)).toEqual({
+      color: { value: "#123456", foreground: "#ffffff" },
+      font: { id: "inter", name: "Inter", serif: false },
+      favicon: FAVICON(other.accountId),
+      logo: true,
+      poweredBy: true,
+    });
     await updateBranding(db, other, none); // clearing is fine
+    await setFavicon(db, other, null);
   });
 
-  it("after a downgrade, saved values stay but aren't applied", async () => {
+  it("after a downgrade, a saved 'hide Powered by' stays but isn't applied", async () => {
     await onPlan(other.accountId, "pro");
     await updateBranding(db, other, {
       color: "#facc15",
       font: "inter" as const,
       hidePoweredBy: true,
     });
-    await setFavicon(db, other, FAVICON(other.accountId));
-    expect(await getEffectiveBranding(db, other.accountId)).toEqual({
-      color: { value: "#facc15", foreground: "#0f172a" },
-      font: { id: "inter", name: "Inter", serif: false },
-      favicon: FAVICON(other.accountId),
-      logo: true,
-      poweredBy: false,
-    });
+    expect((await getEffectiveBranding(db, other.accountId)).poweredBy).toBe(
+      false,
+    );
 
-    await onPlan(other.accountId, "startup");
-    expect(await getEffectiveBranding(db, other.accountId)).toEqual({
-      color: null,
-      font: null,
-      favicon: null,
-      logo: true,
+    await onPlan(other.accountId, "free");
+    expect(await getEffectiveBranding(db, other.accountId)).toMatchObject({
+      color: { value: "#facc15" },
       poweredBy: true,
     });
     // Saving the unchanged form on the lower plan is allowed.
@@ -190,17 +194,17 @@ describe("plan gates", () => {
       font: "inter" as const,
       hidePoweredBy: true,
     });
-    expect((await getBranding(db, other.accountId)).color).toBe("#facc15");
+    expect((await getBranding(db, other.accountId)).hidePoweredBy).toBe(true);
   });
 
-  it("free plan shows Powered by and nothing else", () => {
+  it("Free shows Powered by; everything else applies", () => {
     expect(
       effectiveBranding("free", { color: "#000000", hidePoweredBy: true }),
     ).toEqual({
-      color: null,
+      color: { value: "#000000", foreground: "#ffffff" },
       font: null,
       favicon: null,
-      logo: false,
+      logo: true,
       poweredBy: true,
     });
   });

@@ -1,4 +1,8 @@
 import { defineConfig, devices } from "@playwright/test";
+import { config } from "dotenv";
+
+// The tests read R2_* (uploads run only when R2 is set up; doc 29 T11).
+config({ path: ".env.local", quiet: true });
 
 // The app and the worker must both run: sign-up emails go through the queue.
 // Locally this reuses `pnpm dev` / `pnpm worker:dev` if they are already up.

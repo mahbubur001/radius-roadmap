@@ -1,6 +1,6 @@
 import { and, eq, isNotNull, isNull, lte, or } from "drizzle-orm";
 import { env } from "@/lib/env";
-import { PLANS, type PlanId } from "@/lib/plans";
+import { normalizePlan, PLANS } from "@/lib/plans";
 import {
   type PlanOverrideInput,
   planOverrideSchema,
@@ -153,7 +153,7 @@ export async function overrideReminders(db: Db, now = new Date()) {
           to,
           props: {
             accountName: row.accountName,
-            planName: PLANS[row.plan as PlanId].name,
+            planName: PLANS[normalizePlan(row.plan)].name,
             endsAt: row.endsAt?.toISOString() ?? "",
             url: owners.billingUrl,
           },

@@ -13,6 +13,7 @@ import {
   Link as LinkIcon,
   List,
   ListOrdered,
+  Lock,
   Underline,
   Video,
 } from "lucide-react";
@@ -22,6 +23,10 @@ import {
   requestUploadAction,
   saveUploadAction,
 } from "@/app/(dashboard)/_actions/uploads";
+import {
+  usePlanFeatures,
+  useProWall,
+} from "@/components/dashboard/plan-features";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import {
@@ -34,6 +39,7 @@ import {
   type ImageType,
   MAX_IMAGE_BYTES,
 } from "@/lib/schemas/upload";
+import { putFile } from "@/lib/upload-client";
 import { cn } from "@/lib/utils";
 import { parseVideoUrl } from "@/lib/video";
 import { VideoNode } from "./video-node";
@@ -88,6 +94,8 @@ export function RichTextEditor({
 
   const fileInput = useRef<HTMLInputElement>(null);
   const [uploading, setUploading] = useState(false);
+  const { uploads } = usePlanFeatures();
+  const proWall = useProWall();
 
   async function uploadImage(file: File) {
     if (!editor) return;
@@ -106,11 +114,7 @@ export function RichTextEditor({
         size: file.size,
       });
       if (!form.ok) throw new Error(form.error);
-      const body = new FormData();
-      for (const [k, v] of Object.entries(form.data.fields)) body.append(k, v);
-      body.append("file", file);
-      const res = await fetch(form.data.url, { method: "POST", body });
-      if (!res.ok) throw new Error("Upload failed. Try again.");
+      await putFile(form.data, file);
       const saved = await saveUploadAction({
         purpose: "card-image",
         workspaceId,
@@ -228,11 +232,14 @@ export function RichTextEditor({
           variant="ghost"
           size="icon"
           className="size-7"
-          aria-label="Insert image"
+          aria-label={uploads ? "Insert image" : "Insert image (Pro)"}
+          title={uploads ? undefined : "Images need the Pro plan"}
           disabled={uploading}
-          onClick={() => fileInput.current?.click()}
+          onClick={() =>
+            uploads ? fileInput.current?.click() : proWall("Images")
+          }
         >
-          <ImageIcon />
+          {uploads ? <ImageIcon /> : <Lock />}
         </Button>
         <VideoButton
           onInsert={(video) =>

@@ -91,12 +91,16 @@ test("publish a post: public Updates tab, post page and RSS; schedule another", 
   await expect(
     reactions.getByRole("button", { name: "Celebrate (1)" }),
   ).toHaveAttribute("aria-pressed", "true");
-  await page.reload();
-  await expect(
-    page
-      .getByRole("group", { name: "Reactions" })
-      .getByRole("button", { name: "Celebrate (1)" }),
-  ).toHaveAttribute("aria-pressed", "true");
+  // The public cache refreshes right after the reaction; a reload in the
+  // same instant can still get the previous copy, so allow a few tries.
+  await expect(async () => {
+    await page.reload();
+    await expect(
+      page
+        .getByRole("group", { name: "Reactions" })
+        .getByRole("button", { name: "Celebrate (1)" }),
+    ).toHaveAttribute("aria-pressed", "true", { timeout: 2_000 });
+  }).toPass({ timeout: 15_000 });
   const feed = await page.request.get(`${listUrl}/feed.xml`);
   expect(feed.status()).toBe(200);
   expect(await feed.text()).toContain("<title>Hello changelog</title>");

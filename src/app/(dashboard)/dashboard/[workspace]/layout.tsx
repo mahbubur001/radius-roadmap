@@ -1,5 +1,6 @@
 import Link from "next/link";
 import { Suspense } from "react";
+import { PlanFeaturesProvider } from "@/components/dashboard/plan-features";
 import { Sidebar } from "@/components/dashboard/sidebar";
 import { SidebarNav } from "@/components/dashboard/sidebar-nav";
 import { UserMenu } from "@/components/dashboard/user-menu";
@@ -10,7 +11,7 @@ import { listMyAccounts } from "@/server/services/accounts";
 import { getBillingRow } from "@/server/services/billing";
 import { seesAllWorkspaces } from "@/server/services/context";
 import { inboxCount } from "@/server/services/feedback";
-import { billing } from "@/server/services/plan-limits";
+import { billing, hasFeature } from "@/server/services/plan-limits";
 import {
   getWorkspaceBySlug,
   listWorkspaces,
@@ -49,10 +50,38 @@ export default function WorkspaceLayout({
           <PastDueBanner slug={slug} />
         </Suspense>
         <main className="flex-1 bg-muted/40 p-6">
-          <div className="mx-auto w-full max-w-[1500px]">{children}</div>
+          <div className="mx-auto w-full max-w-[1500px]">
+            <Suspense fallback={null}>
+              <Features slug={slug}>{children}</Features>
+            </Suspense>
+          </div>
         </main>
       </div>
     </div>
+  );
+}
+
+/** What the plan includes, for the "Pro" walls in the UI (doc 29 T8). */
+async function Features({
+  slug,
+  children,
+}: {
+  slug: Promise<string>;
+  children: React.ReactNode;
+}) {
+  const ctx = await requireWorkspace(await slug);
+  const uploads = await hasFeature(db, ctx.accountId, "uploads");
+  return (
+    <PlanFeaturesProvider
+      value={{
+        uploads,
+        billingHref: billing.enabled()
+          ? `/dashboard/${ctx.workspaceSlug}/settings/billing`
+          : null,
+      }}
+    >
+      {children}
+    </PlanFeaturesProvider>
   );
 }
 

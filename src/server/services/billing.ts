@@ -5,6 +5,7 @@ import {
   INTERVALS,
   LIMIT_LABELS,
   lookupKey,
+  normalizePlan,
   PLANS,
   type PlanId,
   parseLookupKey,
@@ -309,7 +310,7 @@ export async function billingNotice(db: Db, customerId: string) {
   return {
     accountId: row.accountId,
     accountName: row.accountName,
-    planName: PLANS[row.plan].name,
+    planName: PLANS[normalizePlan(row.plan)].name,
     owners: owners.map((o) => o.email),
     /** Path of Settings → Billing in the account's first workspace. */
     billingPath: first ? `/dashboard/${first.slug}/settings/billing` : "/",

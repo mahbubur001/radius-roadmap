@@ -9,9 +9,12 @@ import {
   it,
   vi,
 } from "vitest";
+
+vi.mock("@/server/storage/r2", () => import("@/test/fake-r2"));
+
 import { db } from "@/server/db/client";
-import { organization, workspaces } from "@/server/db/schema";
-import { fileSize, prefixes, writeLocalFile } from "@/server/storage";
+import { accountBilling, organization, workspaces } from "@/server/db/schema";
+import { fileSize, prefixes } from "@/server/storage";
 import { deletePrefix } from "@/server/storage/purge";
 import {
   addTestMember,
@@ -19,6 +22,7 @@ import {
   createTestAccount,
   createTestUser,
 } from "@/test/factories";
+import { putTestObject } from "@/test/fake-r2";
 import { deleteAccount } from "./accounts";
 import {
   billingNotice,
@@ -30,9 +34,11 @@ import {
 import { ForbiddenError, type WorkspaceContext } from "./context";
 import { createBoard } from "./feedback-boards";
 import {
+  assertFeature,
   billing,
   gateSettings,
   getAccountPlan,
+  hasFeature,
   PlanLimitError,
 } from "./plan-limits";
 import { getPublicWorkspace } from "./public-site";
@@ -108,34 +114,32 @@ function billingOn() {
 }
 
 describe("billing off (no Stripe keys)", () => {
-  it("every account is unlimited", async () => {
-    expect(await getAccountPlan(db, wsA.accountId)).toBe("enterprise");
+  it("every account gets Pro", async () => {
+    expect(await getAccountPlan(db, wsA.accountId)).toBe("pro");
     await expect(
       createRoadmap(db, wsA, { title: "Extra" }),
     ).resolves.toBeTruthy();
   });
 });
 
-describe("Free plan limits", () => {
-  it("blocks a second workspace, roadmap and board", async () => {
+describe("Free plan (doc 29)", () => {
+  it("has no limits on workspaces, roadmaps or boards", async () => {
     billingOn();
     expect(await getAccountPlan(db, wsB.accountId)).toBe("free");
     await expect(
       createWorkspace(db, wsB, { name: "Gamma", slug: "gamma" }),
-    ).rejects.toBeInstanceOf(PlanLimitError);
+    ).resolves.toBeTruthy();
     await expect(
       createRoadmap(db, wsB, { title: "Second" }),
-    ).rejects.toBeInstanceOf(PlanLimitError);
+    ).resolves.toBeTruthy();
     await expect(
       createBoard(db, wsB, { name: "Second board" }),
-    ).rejects.toBeInstanceOf(PlanLimitError);
+    ).resolves.toBeTruthy();
   });
 
-  it("can't turn on comments or follows; saved switches are ignored publicly", async () => {
+  it("has every feature except custom domain, uploads and hiding Powered by", async () => {
     billingOn();
-    await expect(
-      updatePublicSite(db, wsB, { ...publicSite, commentsEnabled: true }),
-    ).rejects.toBeInstanceOf(PlanLimitError);
+    await updatePublicSite(db, wsB, { ...publicSite, commentsEnabled: true });
     expect(
       await gateSettings(db, wsB.accountId, {
         commentsEnabled: true,
@@ -143,10 +147,50 @@ describe("Free plan limits", () => {
         showRoadmap: true,
       }),
     ).toEqual({
-      commentsEnabled: false,
-      followsEnabled: false,
+      commentsEnabled: true,
+      followsEnabled: true,
       showRoadmap: true,
     });
+    for (const f of [
+      "widget",
+      "embed",
+      "api",
+      "webhooks",
+      "logo",
+      "whiteLabel",
+    ] as const) {
+      expect(await hasFeature(db, wsB.accountId, f), f).toBe(true);
+    }
+    for (const f of ["customDomain", "uploads", "hidePoweredBy"] as const) {
+      expect(await hasFeature(db, wsB.accountId, f), f).toBe(false);
+      await expect(assertFeature(db, wsB.accountId, f)).rejects.toBeInstanceOf(
+        PlanLimitError,
+      );
+    }
+  });
+
+  it("reads old Startup / Enterprise rows as Free / Pro", async () => {
+    billingOn();
+    await db
+      .insert(accountBilling)
+      .values({
+        accountId: wsA.accountId,
+        plan: "enterprise",
+        status: "active",
+      })
+      .onConflictDoUpdate({
+        target: accountBilling.accountId,
+        set: { plan: "enterprise", status: "active" },
+      });
+    expect(await getAccountPlan(db, wsA.accountId)).toBe("pro");
+    await db
+      .update(accountBilling)
+      .set({ plan: "startup" })
+      .where(eq(accountBilling.accountId, wsA.accountId));
+    expect(await getAccountPlan(db, wsA.accountId)).toBe("free");
+    await db
+      .delete(accountBilling)
+      .where(eq(accountBilling.accountId, wsA.accountId));
   });
 });
 
@@ -175,13 +219,14 @@ describe("subscriptions from Stripe", () => {
     expect(await getAccountPlan(db, wsB.accountId)).toBe("pro");
     await syncSubscription(db, snapshot(wsB.accountId, { status: "canceled" }));
     expect(await getAccountPlan(db, wsB.accountId)).toBe("free");
-    // Existing extras stay; public comments switch off (doc 26 P6).
+    // Back on Free, the Pro extras switch off; everything else stays.
+    expect(await hasFeature(db, wsB.accountId, "customDomain")).toBe(false);
     const ws = await getPublicWorkspace(
       db,
       { accountId: wsB.accountId },
       "beta",
     );
-    expect(ws?.settings.commentsEnabled).toBe(false);
+    expect(ws?.settings.commentsEnabled).toBe(true);
   });
 
   it("finds the account by customer id when metadata is missing", async () => {
@@ -191,11 +236,11 @@ describe("subscriptions from Stripe", () => {
         db,
         snapshot(wsB.accountId, {
           accountId: null,
-          lookupKey: "startup_yearly",
+          lookupKey: "pro_yearly",
         }),
       ),
     ).toBe(wsB.accountId);
-    expect(await getAccountPlan(db, wsB.accountId)).toBe("startup");
+    expect(await getAccountPlan(db, wsB.accountId)).toBe("pro");
     expect(
       await syncSubscription(db, {
         ...snapshot("nobody"),
@@ -231,7 +276,9 @@ describe("subscriptions from Stripe", () => {
     expect(fetch).toHaveBeenCalledWith(`sub_${wsA.accountId}`);
     expect(await getAccountPlan(db, wsA.accountId)).toBe("pro");
     // Account B is untouched by A's subscription.
-    expect(await getAccountPlan(db, wsB.accountId)).toBe("startup");
+    await syncSubscription(db, snapshot(wsB.accountId, { status: "canceled" }));
+    expect(await getAccountPlan(db, wsB.accountId)).toBe("free");
+    expect(await getAccountPlan(db, wsA.accountId)).toBe("pro");
   });
 
   it("ignores unrelated events", async () => {
@@ -254,7 +301,7 @@ describe("billing overview", () => {
     expect(overview.interval).toBe("year");
     expect(overview.usage.find((u) => u.key === "roadmaps")).toMatchObject({
       used: 2,
-      limit: 5,
+      limit: Infinity,
     });
     await expect(getBillingOverview(db, memberA)).rejects.toBeInstanceOf(
       ForbiddenError,
@@ -305,14 +352,14 @@ describe("account deletion", () => {
       await db.select().from(workspaces).where(eq(workspaces.id, ws.id)),
     ).toHaveLength(0);
     // Other accounts are untouched.
-    expect(await getAccountPlan(db, wsA.accountId)).toBe("enterprise");
+    expect(await getAccountPlan(db, wsA.accountId)).toBe("pro");
   });
 
   it("removes only the account's files", async () => {
     const mine = `${prefixes.accountLogo("acct-del-test")}/${randomUUID()}.png`;
     const other = `${prefixes.accountLogo("acct-keep-test")}/${randomUUID()}.png`;
-    await writeLocalFile(mine, new Uint8Array([1]));
-    await writeLocalFile(other, new Uint8Array([2]));
+    putTestObject(mine, new Uint8Array([1]));
+    putTestObject(other, new Uint8Array([2]));
     await deletePrefix(prefixes.account("acct-del-test"));
     expect(await fileSize(mine)).toBeNull();
     expect(await fileSize(other)).toBe(1);

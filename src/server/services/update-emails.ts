@@ -144,11 +144,7 @@ export function updateEmail(
           ? { name: post.categoryName, color: post.categoryColor }
           : null,
       html: absolute(renderRichText(post.bodyJson, { email: true })),
-      coverUrl: cover
-        ? cover.startsWith("/")
-          ? `${origin()}${cover}`
-          : cover
-        : null,
+      coverUrl: cover,
       url: `${post.siteBase}${wsSegment(post.workspaceSlug, post.defaultWs)}/updates/${post.slug}`,
       unsubscribeUrl: unsubscribe,
       brand,

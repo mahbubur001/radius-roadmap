@@ -1,6 +1,5 @@
 import { eq } from "drizzle-orm";
 import { foregroundFor, HEX_COLOR } from "@/lib/color";
-import { env } from "@/lib/env";
 import { findFont } from "@/lib/fonts";
 import { type Feature, type PlanId, planIncludes } from "@/lib/plans";
 import { type BrandingInput, brandingSchema } from "@/lib/schemas/branding";
@@ -155,13 +154,9 @@ export async function getEmailBrand(
     getEffectiveBranding(db, accountId),
   ]);
   if (!account) return undefined;
-  const logo = brand.logo ? fileUrl(account.logo) : null;
   return {
     name: account.name,
-    // Local storage gives a path; emails need the full URL.
-    logoUrl: logo?.startsWith("/")
-      ? `${new URL(env.NEXT_PUBLIC_APP_URL).origin}${logo}`
-      : logo,
+    logoUrl: brand.logo ? fileUrl(account.logo) : null,
     color: brand.color?.value ?? null,
     poweredBy: brand.poweredBy,
   };

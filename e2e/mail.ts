@@ -1,30 +1,50 @@
-import { readdir, readFile } from "node:fs/promises";
-import { join } from "node:path";
 import { expect } from "@playwright/test";
+import { Queue } from "bullmq";
+import { Redis } from "ioredis";
+import { renderEmail } from "@/server/email/render";
+import type { EmailJob } from "@/server/email/types";
 
-const MAIL_DIR = ".dev-mail";
+// Email always goes out through Amazon SES, so the tests can't read an inbox.
+// Instead they read the email job the app queued (BullMQ keeps jobs for a
+// day) and render it with the same templates the worker uses.
 
-type DevMail = { to: string; subject: string; text: string; html: string };
+type Mail = { to: string; subject: string; text: string; html: string };
 
-/** Waits for the console email transport to write a message to `to`. */
-export async function waitForMail(
-  to: string,
-  subject?: string,
-): Promise<DevMail> {
-  let mail: DevMail | undefined;
+let queue: Queue<EmailJob> | undefined;
+function emailQueue() {
+  queue ??= new Queue<EmailJob>("email", {
+    connection: new Redis(process.env.REDIS_URL ?? "redis://localhost:6379", {
+      maxRetriesPerRequest: null,
+    }),
+  });
+  return queue;
+}
+
+/** Waits for the app to queue an email to `to` (optionally with `subject`). */
+export async function waitForMail(to: string, subject?: string): Promise<Mail> {
+  let mail: Mail | undefined;
   await expect
     .poll(
       async () => {
-        const files = (await readdir(MAIL_DIR).catch(() => []))
-          .filter((f) => f.endsWith(`-${to}.json`))
-          .sort()
-          .reverse();
-        for (const f of files) {
-          const m: DevMail = JSON.parse(
-            await readFile(join(MAIL_DIR, f), "utf8"),
-          );
+        const jobs = await emailQueue().getJobs(
+          [
+            "waiting",
+            "active",
+            "delayed",
+            "completed",
+            "failed",
+            "prioritized",
+          ],
+          0,
+          2000,
+        );
+        const mine = jobs
+          .filter((j) => j?.data?.to === to)
+          .sort((a, b) => b.timestamp - a.timestamp);
+        for (const job of mine) {
+          const m = await renderEmail(job.data);
           if (!subject || m.subject.includes(subject)) {
-            mail = m;
+            mail = { to: m.to, subject: m.subject, text: m.text, html: m.html };
             return true;
           }
         }
@@ -33,7 +53,7 @@ export async function waitForMail(
       { timeout: 20_000, message: `no email for ${to} (${subject ?? "any"})` },
     )
     .toBe(true);
-  return mail as DevMail;
+  return mail as Mail;
 }
 
 export function firstLink(text: string): string {

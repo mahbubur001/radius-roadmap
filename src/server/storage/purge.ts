@@ -1,11 +1,5 @@
-import { rm } from "node:fs/promises";
-import path from "node:path";
-import {
-  DeleteObjectsCommand,
-  ListObjectsV2Command,
-  S3Client,
-} from "@aws-sdk/client-s3";
-import { env } from "@/lib/env";
+import { DeleteObjectsCommand, ListObjectsV2Command } from "@aws-sdk/client-s3";
+import { r2 } from "./r2";
 
 // Used by the worker (account deletion), so no "server-only" here or in
 // anything it imports (see src/test/worker-imports.test.ts).
@@ -15,20 +9,12 @@ export async function deletePrefix(prefix: string) {
   if (!/^accounts\/[^/.]+\/$/.test(prefix)) {
     throw new Error(`Refusing to delete prefix ${prefix}.`);
   }
-  if (env.STORAGE_DRIVER !== "s3") {
-    await rm(path.join(path.resolve(env.UPLOAD_DIR), prefix), {
-      recursive: true,
-      force: true,
-    });
-    return;
-  }
-  if (!env.S3_BUCKET) throw new Error("S3_BUCKET is not set.");
-  const s3 = new S3Client({ region: env.AWS_REGION });
+  const { client, bucket } = r2();
   let token: string | undefined;
   do {
-    const page = await s3.send(
+    const page = await client.send(
       new ListObjectsV2Command({
-        Bucket: env.S3_BUCKET,
+        Bucket: bucket,
         Prefix: prefix,
         ContinuationToken: token,
       }),
@@ -37,9 +23,9 @@ export async function deletePrefix(prefix: string) {
       o.Key ? [{ Key: o.Key }] : [],
     );
     if (objects.length) {
-      await s3.send(
+      await client.send(
         new DeleteObjectsCommand({
-          Bucket: env.S3_BUCKET,
+          Bucket: bucket,
           Delete: { Objects: objects },
         }),
       );

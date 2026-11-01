@@ -48,7 +48,10 @@ describe("renderRichText", () => {
           ]),
         ),
         { type: "image", attrs: { src: "http://evil.test/x.png" } },
-        { type: "image", attrs: { src: "/api/files/a/b.png", alt: '"><x' } },
+        {
+          type: "image",
+          attrs: { src: "https://files.example.com/a/b.png", alt: '"><x' },
+        },
         p(
           text("ok", [
             { type: "link", attrs: { href: "https://radiustheme.com" } },
@@ -59,7 +62,7 @@ describe("renderRichText", () => {
     expect(html).not.toContain("javascript");
     expect(html).not.toContain("evil.test");
     expect(html).toContain(
-      '<img src="/api/files/a/b.png" alt="&quot;&gt;&lt;x"',
+      '<img src="https://files.example.com/a/b.png" alt="&quot;&gt;&lt;x"',
     );
     expect(html).toContain(
       '<a href="https://radiustheme.com" rel="nofollow ugc noopener" target="_blank">ok</a>',

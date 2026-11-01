@@ -14,22 +14,19 @@ export const env = createEnv({
     GOOGLE_CLIENT_ID: z.string().optional(),
     GOOGLE_CLIENT_SECRET: z.string().optional(),
 
-    // "console" (dev: log + save to .dev-mail/), "smtp" (Mailpit / custom SMTP), "ses" (production)
-    EMAIL_TRANSPORT: z.enum(["console", "smtp", "ses"]).default("console"),
+    // Email is always sent through Amazon SES (owner, 2026-11-01).
     EMAIL_FROM: z.string().default("Radius Roadmap <no-reply@localhost>"),
-    SMTP_HOST: z.string().default("localhost"),
-    SMTP_PORT: z.coerce.number().default(1025),
-    SMTP_USER: z.string().optional(),
-    SMTP_PASSWORD: z.string().optional(),
     // SES uses the default AWS credential chain (instance role on EC2)
     AWS_REGION: z.string().default("us-east-1"),
 
-    // File uploads: "local" (dev: files in UPLOAD_DIR) or "s3" (production)
-    STORAGE_DRIVER: z.enum(["local", "s3"]).default("local"),
-    UPLOAD_DIR: z.string().default(".uploads"),
-    S3_BUCKET: z.string().optional(),
-    // Public base URL for stored files (bucket URL or CloudFront)
-    S3_PUBLIC_URL: z.url().optional(),
+    // File storage: Cloudflare R2, everywhere (doc 29 T11). Optional so the
+    // app builds without it; uploads fail clearly until it's set.
+    R2_ACCOUNT_ID: z.string().optional(),
+    R2_ACCESS_KEY_ID: z.string().optional(),
+    R2_SECRET_ACCESS_KEY: z.string().optional(),
+    R2_BUCKET: z.string().optional(),
+    // The bucket's public address: a custom domain (files.example.com) or r2.dev
+    R2_PUBLIC_URL: z.url().optional(),
 
     // Signs the anonymous visitor cookie and hashes voter IPs. Falls back to
     // a key derived from BETTER_AUTH_SECRET when unset.
@@ -65,17 +62,13 @@ export const env = createEnv({
     BETTER_AUTH_URL: process.env.BETTER_AUTH_URL,
     GOOGLE_CLIENT_ID: process.env.GOOGLE_CLIENT_ID,
     GOOGLE_CLIENT_SECRET: process.env.GOOGLE_CLIENT_SECRET,
-    EMAIL_TRANSPORT: process.env.EMAIL_TRANSPORT,
     EMAIL_FROM: process.env.EMAIL_FROM,
-    SMTP_HOST: process.env.SMTP_HOST,
-    SMTP_PORT: process.env.SMTP_PORT,
-    SMTP_USER: process.env.SMTP_USER,
-    SMTP_PASSWORD: process.env.SMTP_PASSWORD,
     AWS_REGION: process.env.AWS_REGION,
-    STORAGE_DRIVER: process.env.STORAGE_DRIVER,
-    UPLOAD_DIR: process.env.UPLOAD_DIR,
-    S3_BUCKET: process.env.S3_BUCKET,
-    S3_PUBLIC_URL: process.env.S3_PUBLIC_URL,
+    R2_ACCOUNT_ID: process.env.R2_ACCOUNT_ID,
+    R2_ACCESS_KEY_ID: process.env.R2_ACCESS_KEY_ID,
+    R2_SECRET_ACCESS_KEY: process.env.R2_SECRET_ACCESS_KEY,
+    R2_BUCKET: process.env.R2_BUCKET,
+    R2_PUBLIC_URL: process.env.R2_PUBLIC_URL,
     VISITOR_SECRET: process.env.VISITOR_SECRET,
     TURNSTILE_SECRET_KEY: process.env.TURNSTILE_SECRET_KEY,
     TRUST_CLOUDFLARE: process.env.TRUST_CLOUDFLARE,

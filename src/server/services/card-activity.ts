@@ -2,7 +2,7 @@ import { and, asc, eq } from "drizzle-orm";
 import { MAX_ATTACHMENT_BYTES } from "@/lib/schemas/upload";
 import type { Db } from "@/server/db/client";
 import { cardAttachments, cardFollows, user } from "@/server/db/schema";
-import { deleteFile, fileSize, prefixes } from "@/server/storage";
+import { checkUploaded, deleteFile, prefixes } from "@/server/storage";
 import { contentTypeForKey, keyHasPrefix } from "@/server/storage/keys";
 import { getCard } from "./cards";
 import {
@@ -10,6 +10,7 @@ import {
   NotFoundError,
   type WorkspaceContext,
 } from "./context";
+import { assertFeature } from "./plan-limits";
 import { inWorkspace } from "./roadmaps";
 
 // Attachments and team follows on roadmap cards (doc 21 step C). Comments
@@ -56,14 +57,17 @@ export async function addAttachment(
   ctx: WorkspaceContext,
   input: { cardId: string; key: string; name: string },
 ) {
+  await assertFeature(db, ctx.accountId, "uploads"); // Pro (doc 29 T3)
   await getCard(db, ctx, input.cardId);
   if (!keyHasPrefix(input.key, attachmentPrefix(ctx))) {
     throw new ForbiddenError();
   }
   const contentType = contentTypeForKey(input.key);
-  const size = await fileSize(input.key);
-  if (!contentType || size === null || size > MAX_ATTACHMENT_BYTES) {
-    throw new ForbiddenError("The upload didn't finish. Try again.");
+  const size = await checkUploaded(input.key, MAX_ATTACHMENT_BYTES);
+  if (!contentType || size === null) {
+    throw new ForbiddenError(
+      "That isn't a valid image or PDF, or the upload didn't finish.",
+    );
   }
   const [row] = await db
     .insert(cardAttachments)

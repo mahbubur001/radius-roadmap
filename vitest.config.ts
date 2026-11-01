@@ -27,7 +27,8 @@ export default defineConfig({
     env: {
       NODE_ENV: "test",
       DATABASE_URL: testDatabaseUrl ?? "",
-      EMAIL_TRANSPORT: "console",
+      // Files are faked per test file (src/test/fake-r2.ts); URLs need a base.
+      R2_PUBLIC_URL: "https://files.test",
     },
     fileParallelism: false,
   },

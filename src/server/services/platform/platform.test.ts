@@ -101,22 +101,29 @@ describe("plan overrides", () => {
     });
     expect(await getAccountPlan(db, owner.accountId)).toBe("pro");
 
-    // Paying for Startup through Stripe: the override still wins (C6).
+    // Also paying through Stripe: the override still wins (C6), even an
+    // override to Free.
     await db
       .insert(accountBilling)
-      .values({ accountId: owner.accountId, plan: "startup", status: "active" })
+      .values({ accountId: owner.accountId, plan: "pro", status: "active" })
       .onConflictDoUpdate({
         target: accountBilling.accountId,
-        set: { plan: "startup", status: "active" },
+        set: { plan: "pro", status: "active" },
       });
-    expect(await getAccountPlan(db, owner.accountId)).toBe("pro");
     expect((await accountDetail(db, owner.accountId)).doubleBilled).toBe(true);
+    await setOverride(db, admin, {
+      accountId: owner.accountId,
+      plan: "free",
+      endsOn: "2099-01-31",
+      note: "Paused",
+    });
+    expect(await getAccountPlan(db, owner.accountId)).toBe("free");
 
     // After the end date: back to Stripe's plan.
     const after = new Date("2099-02-01T00:00:00Z");
-    expect(await getAccountPlan(db, owner.accountId, after)).toBe("startup");
+    expect(await getAccountPlan(db, owner.accountId, after)).toBe("pro");
     await endOverride(db, admin, owner.accountId);
-    expect(await getAccountPlan(db, owner.accountId)).toBe("startup");
+    expect(await getAccountPlan(db, owner.accountId)).toBe("pro");
     await db
       .delete(accountBilling)
       .where(eq(accountBilling.accountId, owner.accountId));

@@ -136,11 +136,10 @@ async function customHost(request: NextRequest, host: string) {
     return domainRedirect(target);
   }
 
-  // Only the public site, its API and files (D7). No app pages, no auth,
-  // no server actions.
+  // Only the public site and its API (D7; files come from R2). No app
+  // pages, no auth, no server actions.
   if (pathname.startsWith("/api/")) {
-    return pathname.startsWith("/api/public/") ||
-      pathname.startsWith("/api/files/")
+    return pathname.startsWith("/api/public/")
       ? NextResponse.next()
       : NextResponse.json({ error: "Not found." }, { status: 404 });
   }

@@ -1,6 +1,6 @@
 import { randomUUID } from "node:crypto";
 import { expect, test } from "@playwright/test";
-import { signUpOwner } from "./helpers";
+import { hasR2, R2_PUBLIC_URL, signUpOwner } from "./helpers";
 import { waitForMail } from "./mail";
 
 // 1×1 transparent PNG.
@@ -10,6 +10,7 @@ const PNG = Buffer.from(
 );
 
 test("upload an avatar, then remove it", async ({ page }) => {
+  test.skip(!hasR2, "Needs R2 (R2_* in .env.local)");
   const { slug } = await signUpOwner(page, randomUUID().slice(0, 8));
   await page.goto(`/dashboard/${slug}/settings/profile`);
   await page.waitForLoadState("networkidle"); // hydrated
@@ -23,13 +24,21 @@ test("upload an avatar, then remove it", async ({ page }) => {
   });
   await expect(page.getByText("Image updated.")).toBeVisible();
   const img = page.getByRole("main").locator("img").first();
-  await expect(img).toHaveAttribute("src", /^\/api\/files\/users\/.+\.png$/);
+  await expect(img).toHaveAttribute(
+    "src",
+    new RegExp(`^${R2_PUBLIC_URL}/users/.+\\.png$`),
+  );
   const src = (await img.getAttribute("src")) ?? "";
   expect((await page.request.get(src)).status()).toBe(200);
 
   await page.getByRole("button", { name: "Remove" }).click();
   await expect(page.getByText("Image removed.")).toBeVisible();
-  expect((await page.request.get(src)).status()).toBe(404);
+  // The file is deleted from R2 (its public edge may cache it briefly).
+  await expect
+    .poll(async () => (await page.request.get(src)).status(), {
+      timeout: 30_000,
+    })
+    .toBe(404);
 });
 
 test("changing email asks the current address to approve", async ({ page }) => {

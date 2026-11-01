@@ -208,3 +208,8 @@ Installed versions differ from the planning estimates above. These are the ones 
   - `papaparse` (LoopedIn CSV import)
   - shadcn `calendar` (`react-day-picker` 10, `date-fns` 4), `popover`, `textarea`, `progress`
   - public sites live on the app domain at `/<account>/<workspace>` (doc 19 "D1 revised"; `PUBLIC_ROOT_DOMAIN` was removed 2026-10-28); env `VISITOR_SECRET` (signs the visitor cookie), `TURNSTILE_SECRET_KEY` + `NEXT_PUBLIC_TURNSTILE_SITE_KEY` (optional; Turnstile is skipped when unset)
+
+## Change 2026-11-01 (owner): files on Cloudflare R2
+
+File storage moves from Amazon S3 to **Cloudflare R2** (doc 29 T11): S3-compatible API through the same AWS SDK (no new dependency), no egress fees. R2 has no presigned POST, so uploads use presigned PUT URLs (content type and exact size signed). `STORAGE_DRIVER=r2` + `R2_*` env vars; `s3` stays available.
+

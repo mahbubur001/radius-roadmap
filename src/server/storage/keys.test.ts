@@ -2,16 +2,11 @@ import { describe, expect, it } from "vitest";
 import {
   isValidKey,
   keyHasPrefix,
-  maxBytesForKey,
   newKey,
   prefixes,
-  signUpload,
   sniffFile,
   sniffImage,
-  verifyUpload,
 } from "./keys";
-
-const secret = "x".repeat(32);
 
 describe("storage keys", () => {
   it("builds keys under the tenant prefix", () => {
@@ -35,30 +30,6 @@ describe("storage keys", () => {
   });
 });
 
-describe("local upload tokens", () => {
-  const key = newKey(prefixes.avatar("u1"), "image/png");
-  const expires = Date.now() + 60_000;
-  const token = signUpload(secret, key, "image/png", expires);
-
-  it("accepts a valid token", () => {
-    expect(verifyUpload(secret, token, key, "image/png", expires)).toBe(true);
-  });
-
-  it("rejects another key, type, secret or an expired token", () => {
-    const other = newKey(prefixes.avatar("u2"), "image/png");
-    expect(verifyUpload(secret, token, other, "image/png", expires)).toBe(
-      false,
-    );
-    expect(verifyUpload(secret, token, key, "image/jpeg", expires)).toBe(false);
-    expect(verifyUpload("y".repeat(32), token, key, "image/png", expires)).toBe(
-      false,
-    );
-    expect(
-      verifyUpload(secret, token, key, "image/png", expires, expires + 1),
-    ).toBe(false);
-  });
-});
-
 describe("sniffImage", () => {
   it("matches magic bytes to the declared type", () => {
     const png = new Uint8Array([0x89, 0x50, 0x4e, 0x47, 0x0d, 0x0a]);
@@ -72,13 +43,11 @@ describe("sniffImage", () => {
 describe("card attachments", () => {
   const prefix = prefixes.cardAttachments("acct_1", "ws_1");
 
-  it("allows PDF keys and a 10 MB limit only under the attachments prefix", () => {
+  it("allows PDF keys under the attachments prefix", () => {
     const pdf = newKey(prefix, "application/pdf");
     expect(pdf).toMatch(/\.pdf$/);
     expect(isValidKey(pdf)).toBe(true);
-    expect(maxBytesForKey(pdf)).toBe(10 * 1024 * 1024);
-    const logo = newKey(prefixes.accountLogo("acct_1"), "image/png");
-    expect(maxBytesForKey(logo)).toBe(2 * 1024 * 1024);
+    expect(keyHasPrefix(pdf, prefix)).toBe(true);
   });
 
   it("checks PDF magic bytes", () => {
@@ -90,9 +59,51 @@ describe("card attachments", () => {
 });
 
 describe("favicons", () => {
-  it("are capped at 256 KB", () => {
+  it("live under the account's favicon prefix", () => {
     const icon = newKey(prefixes.accountFavicon("acct_1"), "image/png");
     expect(keyHasPrefix(icon, prefixes.accountFavicon("acct_1"))).toBe(true);
-    expect(maxBytesForKey(icon)).toBe(256 * 1024);
+    expect(keyHasPrefix(icon, prefixes.accountLogo("acct_1"))).toBe(false);
+  });
+});
+
+describe("R2 presigned PUT (doc 29 T11)", () => {
+  it("signs the content type and exact length, on the R2 endpoint", async () => {
+    const { S3Client } = await import("@aws-sdk/client-s3");
+    const { presignPut } = await import("./index");
+    const client = new S3Client({
+      region: "auto",
+      endpoint: "https://acct123.r2.cloudflarestorage.com",
+      credentials: { accessKeyId: "AKID", secretAccessKey: "secret" },
+    });
+    const key = newKey(prefixes.cardImages("a1", "w1"), "image/png");
+    const url = new URL(
+      await presignPut(
+        { client, bucket: "files" },
+        key,
+        "image/png",
+        1234,
+        null,
+      ),
+    );
+    expect(url.host).toBe("files.acct123.r2.cloudflarestorage.com");
+    expect(url.pathname).toBe(`/${key}`);
+    const signed = url.searchParams.get("X-Amz-SignedHeaders")?.split(";");
+    expect(signed).toEqual(
+      expect.arrayContaining(["content-length", "content-type", "host"]),
+    );
+    expect(url.searchParams.get("X-Amz-Expires")).toBe("300");
+
+    const pdf = new URL(
+      await presignPut(
+        { client, bucket: "files" },
+        newKey(prefixes.cardAttachments("a1", "w1"), "application/pdf"),
+        "application/pdf",
+        99,
+        "attachment",
+      ),
+    );
+    expect(pdf.searchParams.get("X-Amz-SignedHeaders")).toContain(
+      "content-disposition",
+    );
   });
 });

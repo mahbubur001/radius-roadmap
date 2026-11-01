@@ -163,10 +163,10 @@ describe("auth", () => {
     expect(one(accountSchema).parse(ok.json).data.id).toBe(ws.accountId);
   });
 
-  it("needs the Enterprise plan when billing is on", async () => {
+  it("works on the Free plan when billing is on (doc 29)", async () => {
     vi.spyOn(billing, "enabled").mockReturnValue(true);
     expect((await call(getAccount, "/account", { key: readKey })).status).toBe(
-      401,
+      200,
     );
   });
 

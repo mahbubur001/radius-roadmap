@@ -2,7 +2,7 @@ import { randomUUID } from "node:crypto";
 import { createServer } from "node:http";
 import type { AddressInfo } from "node:net";
 import { type Browser, expect, type Page, test } from "@playwright/test";
-import { signUpOwner } from "./helpers";
+import { hasR2, signUpOwner } from "./helpers";
 import { waitForMail } from "./mail";
 
 // A stuck action fails fast with its locator instead of the whole test timing out.
@@ -296,27 +296,32 @@ test("card attachments, team comments, follow and CSV export", async ({
 
   const drawer = await openCard(page, "Dark mode");
 
-  // Attachment: upload a PDF, then delete it.
-  await drawer.getByRole("tab", { name: "Attachments (0)" }).click();
-  await drawer.getByLabel("Attachment files").setInputFiles({
-    name: "spec.pdf",
-    mimeType: "application/pdf",
-    buffer: Buffer.from("%PDF-1.4\n%test\n"),
-  });
-  await expect(drawer.getByRole("link", { name: "spec.pdf" })).toBeVisible();
-  await expect(
-    drawer.getByRole("tab", { name: "Attachments (1)" }),
-  ).toBeVisible();
-  await drawer.getByRole("button", { name: "Delete spec.pdf" }).click();
-  await expect(drawer.getByText("No attachments yet.")).toBeVisible();
+  // Attachments live on R2 (doc 29 T11): only when it's configured.
+  if (hasR2) {
+    // Attachment: upload a PDF, then delete it.
+    await drawer.getByRole("tab", { name: "Attachments (0)" }).click();
+    await drawer.getByLabel("Attachment files").setInputFiles({
+      name: "spec.pdf",
+      mimeType: "application/pdf",
+      buffer: Buffer.from("%PDF-1.4\n%test\n"),
+    });
+    await expect(drawer.getByRole("link", { name: "spec.pdf" })).toBeVisible();
+    await expect(
+      drawer.getByRole("tab", { name: "Attachments (1)" }),
+    ).toBeVisible();
+    await drawer.getByRole("button", { name: "Delete spec.pdf" }).click();
+    await expect(drawer.getByText("No attachments yet.")).toBeVisible();
 
-  // A file that isn't really a PDF is refused by the upload route.
-  await drawer.getByLabel("Attachment files").setInputFiles({
-    name: "fake.pdf",
-    mimeType: "application/pdf",
-    buffer: Buffer.from("<html><script>alert(1)</script>"),
-  });
-  await expect(page.getByText("fake.pdf: upload failed.")).toBeVisible();
+    // A file that isn't really a PDF is refused (checked after it reaches R2).
+    await drawer.getByLabel("Attachment files").setInputFiles({
+      name: "fake.pdf",
+      mimeType: "application/pdf",
+      buffer: Buffer.from("<html><script>alert(1)</script>"),
+    });
+    await expect(
+      page.getByText(/fake\.pdf: That isn.t a valid image or PDF/),
+    ).toBeVisible();
+  }
 
   // Team comment with a link.
   await drawer.getByRole("tab", { name: "Comments (0)" }).click();

@@ -24,7 +24,6 @@ import {
 } from "@dnd-kit/sortable";
 import { CSS } from "@dnd-kit/utilities";
 import {
-  CalendarDays,
   CheckCircle2,
   ChevronUp,
   EyeOff,
@@ -34,8 +33,10 @@ import {
   Plus,
 } from "lucide-react";
 import { useId, useMemo, useRef, useState } from "react";
+import { StageTick } from "@/components/dashboard/stage-tick";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
+import { cardStage, STAGE_COLORS, type Stage } from "@/lib/stages";
 import { cn } from "@/lib/utils";
 import { useBoardDisplay } from "./board-display";
 import { ObjectivePicker } from "./objective-picker";
@@ -227,6 +228,13 @@ export function Board({
   }
 
   const activeCard = active?.type === "card" ? cardById.get(active.id) : null;
+  const columnById = new Map(columns.map((c) => [c.id, c]));
+  const stageOf = (card: BoardCard) =>
+    cardStage({
+      completed: card.completed,
+      columnStage: columnById.get(card.columnId)?.stage ?? "planned",
+      announced: card.announced,
+    });
 
   return (
     <DndContext
@@ -242,7 +250,7 @@ export function Board({
         setDragLayout(null);
       }}
     >
-      <div className="flex gap-4 overflow-x-auto pb-4">
+      <div className="flex gap-3 overflow-x-auto pb-4">
         <SortableContext
           items={sortedColumns.map((c) => `${COLUMN_PREFIX}${c.id}`)}
           strategy={horizontalListSortingStrategy}
@@ -262,6 +270,7 @@ export function Board({
                   <SortableCard
                     key={id}
                     card={card}
+                    stage={stageOf(card)}
                     objectives={objectives}
                     summaryView={summaryView}
                     onOpen={onOpenCard}
@@ -278,6 +287,7 @@ export function Board({
         {activeCard ? (
           <CardFace
             card={activeCard}
+            stage={stageOf(activeCard)}
             objective={objectives.find((c) => c.id === activeCard.objectiveId)}
             summaryView={summaryView}
             className="rotate-2 shadow-lg"
@@ -330,11 +340,11 @@ function Column({
       aria-label={column.name}
       data-testid={`column-${column.name}`}
       className={cn(
-        "flex w-80 shrink-0 flex-col rounded-lg border bg-muted/40",
+        "flex w-[300px] shrink-0 flex-col rounded-xl bg-muted/70",
         sortable.isDragging && "opacity-50",
       )}
     >
-      <header className="flex items-center gap-1.5 px-3 pt-3 pb-2">
+      <header className="flex items-center gap-2 px-3 pt-3 pb-2">
         {canManage ? (
           <button
             type="button"
@@ -346,8 +356,15 @@ function Column({
             <GripVertical className="size-4" />
           </button>
         ) : null}
-        <h3 className="text-base font-semibold">{column.name}</h3>
-        <span className="text-xs text-muted-foreground">{total}</span>
+        <span
+          aria-hidden="true"
+          className="size-2.5 shrink-0 rounded-[3px]"
+          style={{
+            background: STAGE_COLORS[column.isDone ? "shipped" : column.stage],
+          }}
+        />
+        <h3 className="truncate text-[14px] font-semibold">{column.name}</h3>
+        <span className="font-mono text-[11px] text-faint">{total}</span>
         {!column.isPublic ? (
           <EyeOff
             className="size-3.5 text-muted-foreground"
@@ -355,8 +372,9 @@ function Column({
           />
         ) : null}
         <Button
+          variant="ghost"
           size="icon"
-          className="ml-auto size-7 rounded-full"
+          className="ml-auto size-7"
           aria-label={`Add card to ${column.name}`}
           onClick={() => {
             setAdding(true);
@@ -367,7 +385,7 @@ function Column({
         </Button>
       </header>
       <SortableContext items={cardIds} strategy={verticalListSortingStrategy}>
-        <div className="flex min-h-24 flex-1 flex-col gap-2.5 px-3 pb-3">
+        <div className="flex min-h-24 flex-1 flex-col gap-2 px-2 pb-2">
           {children}
           {adding ? (
             <form
@@ -401,6 +419,7 @@ function Column({
 
 function SortableCard({
   card,
+  stage,
   objectives,
   summaryView,
   onOpen,
@@ -408,6 +427,7 @@ function SortableCard({
   onCreateObjective,
 }: {
   card: BoardCard;
+  stage: Stage;
   objectives: ObjectiveOption[];
   summaryView: boolean;
   onOpen: (id: string) => void;
@@ -432,13 +452,13 @@ function SortableCard({
           src={image}
           alt=""
           loading="lazy"
-          className="aspect-[3/1] w-full rounded-t-md border border-b-0 object-cover"
+          className="aspect-[3/1] w-full rounded-t-[10px] object-cover"
         />
       ) : null}
       <div className="relative">
         <button
           type="button"
-          className="block w-full rounded-md text-left focus-visible:ring-2 focus-visible:ring-ring focus-visible:outline-none"
+          className="block w-full rounded-[10px] text-left focus-visible:ring-2 focus-visible:ring-ring focus-visible:outline-none"
           {...sortable.attributes}
           {...sortable.listeners}
           aria-label={card.title}
@@ -446,6 +466,7 @@ function SortableCard({
         >
           <CardFace
             card={card}
+            stage={stage}
             objective={objectives.find((c) => c.id === card.objectiveId)}
             summaryView={summaryView}
             objectiveSlot
@@ -459,7 +480,7 @@ function SortableCard({
             value={card.objectiveId}
             onChange={(id) => onSetObjective(card.id, id)}
             onCreate={onCreateObjective}
-            className="absolute top-3 left-5 max-w-[calc(100%-2.5rem)]"
+            className="absolute top-2.5 left-3 max-w-[calc(100%-1.5rem)]"
           />
         ) : null}
       </div>
@@ -469,12 +490,14 @@ function SortableCard({
 
 function CardFace({
   card,
+  stage,
   objective,
   summaryView,
   objectiveSlot,
   className,
 }: {
   card: BoardCard;
+  stage: Stage;
   objective: ObjectiveOption | undefined;
   summaryView: boolean;
   /** Leave room for the objective picker drawn over the card. */
@@ -483,36 +506,32 @@ function CardFace({
 }) {
   const { display, tags } = useBoardDisplay();
   const { done, total } = card.features;
-  const shownObjective = display.showObjectives ? objective : undefined;
   const cardTags = display.showTags
     ? tags.filter((t) => card.tagIds.includes(t.id))
     : [];
   return (
     <article
       className={cn(
-        "flex cursor-pointer flex-col gap-2 rounded-md border border-l-4 bg-card py-3 pr-3 pl-4 text-card-foreground shadow-xs hover:border-ring",
+        "flex cursor-pointer flex-col gap-2.5 rounded-[10px] bg-card p-3 text-card-foreground shadow-[0_0_0_1px_var(--border),0_1px_2px_rgb(0_0_0/0.03)] transition-shadow hover:shadow-[0_0_0_1px_var(--input),0_8px_20px_-10px_rgb(0_0_0/0.18)]",
         className,
       )}
-      style={
-        shownObjective ? { borderLeftColor: shownObjective.color } : undefined
-      }
     >
       {!display.showObjectives ? null : objectiveSlot ? (
         <span className="h-4" />
       ) : (
-        <span className="flex items-center gap-1.5 text-xs font-medium">
-          {objective ? (
-            <span
-              className="size-2 rounded-full"
-              style={{ backgroundColor: objective.color }}
-            />
-          ) : null}
+        <span className="flex items-center gap-1.5 text-[11.5px] text-muted-foreground">
+          <span
+            className="text-[8px]"
+            style={{ color: objective?.color ?? "var(--faint)" }}
+          >
+            ◆
+          </span>
           {objective?.name ?? "No objective"}
         </span>
       )}
-      <p className="font-semibold leading-snug">
+      <p className="text-[13.5px] leading-snug font-medium">
         {card.completed ? (
-          <CheckCircle2 className="mr-1 inline size-4 text-primary" />
+          <CheckCircle2 className="mr-1 inline size-3.5 text-stage-shipped" />
         ) : null}
         {card.title}
       </p>
@@ -534,43 +553,43 @@ function CardFace({
         </ul>
       ) : null}
       {display.showFeatureProgress && total > 0 ? (
-        <div className="flex items-center gap-2 text-xs text-muted-foreground">
+        <div className="flex items-center gap-2 font-mono text-[11px] text-faint">
           <div className="h-1 flex-1 rounded-full bg-muted">
             <div
-              className="h-1 rounded-full bg-primary"
+              className="h-1 rounded-full bg-stage-progress"
               style={{ width: `${Math.round((done / total) * 100)}%` }}
             />
           </div>
           {done}/{total}
         </div>
       ) : null}
-      <div className="flex items-center gap-3 text-xs text-muted-foreground">
-        {display.showVotes ? (
-          <span
-            className="flex items-center gap-1 rounded border bg-background px-2 py-0.5 font-medium"
-            title="Votes"
-          >
-            <ChevronUp className="size-3.5" />
-            {card.votes}
-          </span>
-        ) : null}
+      <div className="flex items-center gap-2.5 text-xs text-faint">
+        <StageTick stage={stage} />
         {display.showDates && card.plannedFor ? (
-          <span className="flex items-center gap-1" title="Planned for">
-            <CalendarDays className="size-3.5" />
+          <span className="font-mono text-[11px]" title="Planned for">
             {formatPlanned(card.plannedFor)}
           </span>
         ) : null}
         {card.ideas ? (
           <span
-            className="flex items-center gap-1"
+            className="flex items-center gap-0.5"
             title={`${card.ideas} linked feedback`}
           >
-            <Lightbulb className="size-3.5" />
+            <Lightbulb className="size-3" />
             {card.ideas}
           </span>
         ) : null}
         {!card.isPublic ? (
-          <Lock className="ml-auto size-3.5" aria-label="Private card" />
+          <Lock className="size-3" aria-label="Private card" />
+        ) : null}
+        {display.showVotes ? (
+          <span
+            className="ml-auto flex items-center gap-0.5 font-semibold text-foreground tabular-nums"
+            title="Votes"
+          >
+            <ChevronUp className="size-3.5 text-faint" />
+            {card.votes}
+          </span>
         ) : null}
       </div>
     </article>

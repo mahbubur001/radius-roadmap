@@ -47,6 +47,7 @@ import {
 } from "./context";
 import { byPosition, keyAfter, keyBetween } from "./positions";
 import { getColumn, getRoadmap, inWorkspace, ownTagIds } from "./roadmaps";
+import { cardAnnouncedSql } from "./stages";
 import { syncCardFeedback } from "./status-sync";
 
 // Cards can be created, edited and moved by everyone with access to the
@@ -453,6 +454,8 @@ export type BoardCard = {
   attachments: number;
   comments: number;
   followers: number;
+  /** In a published update (stage tick, doc 30). */
+  announced: boolean;
 };
 
 /**
@@ -527,6 +530,7 @@ export async function listBoardCards(
       attachments: sql<number>`(select count(*)::int from ${cardAttachments} where ${cardAttachments.cardId} = ${cardRef})`,
       comments: sql<number>`(select count(*)::int from ${comments} where ${comments.cardId} = ${cardRef} and ${comments.deletedAt} is null)`,
       followers: sql<number>`(select count(*)::int from ${cardFollows} where ${cardFollows.cardId} = ${cardRef})`,
+      announced: cardAnnouncedSql(roadmapCards.id),
     })
     .from(roadmapCards)
     .where(and(...where))

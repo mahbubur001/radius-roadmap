@@ -36,6 +36,7 @@ import {
 } from "@/app/(dashboard)/_actions/roadmap";
 import { createUpdateAction } from "@/app/(dashboard)/_actions/updates";
 import { CommentsPanel } from "@/components/dashboard/comments-panel";
+import { StageJourney } from "@/components/dashboard/stage-journey";
 import { TagPicker } from "@/components/dashboard/tag-picker";
 import {
   autosaveLabel,
@@ -90,6 +91,7 @@ import {
 import { Skeleton } from "@/components/ui/skeleton";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import type { UpdateCardInput } from "@/lib/schemas/roadmap";
+import type { Stage } from "@/lib/stages";
 import { ago } from "@/lib/time";
 import { cn } from "@/lib/utils";
 import { useBoardDisplay } from "./board-display";
@@ -117,10 +119,13 @@ export function CardDrawer({
   onTagCreated,
   onCreateObjective,
   publicComments,
+  stage,
 }: {
   workspace: string;
   workspaceId: string;
   cardId: string | null;
+  /** The open card's stage (from its column, completion and updates). */
+  stage: Stage | null;
   publicUrl: string;
   objectives: ObjectiveOption[];
   tags: TagOption[];
@@ -159,6 +164,7 @@ export function CardDrawer({
           <CardEditor
             key={detail.card.id}
             detail={detail}
+            stage={stage}
             workspace={workspace}
             workspaceId={workspaceId}
             publicUrl={publicUrl}
@@ -201,8 +207,10 @@ function CardEditor({
   onTagCreated,
   onCreateObjective,
   publicComments,
+  stage,
 }: {
   detail: Detail;
+  stage: Stage | null;
   workspace: string;
   workspaceId: string;
   publicUrl: string;
@@ -339,8 +347,8 @@ function CardEditor({
                   className={cn(
                     "flex size-14 shrink-0 flex-col items-center justify-center rounded-md border-2 text-lg font-semibold transition-colors",
                     myVote
-                      ? "border-primary text-emerald-600"
-                      : "border-border text-muted-foreground hover:border-primary/60",
+                      ? "border-stage-shipped text-stage-shipped"
+                      : "border-input text-muted-foreground hover:border-foreground/40",
                   )}
                 >
                   <ChevronUp
@@ -352,7 +360,7 @@ function CardEditor({
               ) : null}
               <Input
                 aria-label="Title"
-                className="h-auto border-none bg-transparent px-0 text-2xl font-semibold shadow-none focus-visible:ring-0 md:text-2xl dark:bg-transparent"
+                className="h-auto border-none bg-transparent px-0 font-display text-2xl font-semibold tracking-[-0.02em] shadow-none focus-visible:ring-0 md:text-2xl dark:bg-transparent"
                 value={title}
                 onChange={(e) => {
                   setTitle(e.target.value);
@@ -365,6 +373,7 @@ function CardEditor({
                 }}
               />
             </div>
+            {stage ? <StageJourney stage={stage} /> : null}
             {completed || archived ? (
               <div className="flex gap-2">
                 {completed ? (

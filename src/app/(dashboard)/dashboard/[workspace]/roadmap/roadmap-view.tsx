@@ -41,6 +41,7 @@ import {
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
 import { Input } from "@/components/ui/input";
+import { cardStage } from "@/lib/stages";
 import { Board, type CardMove, type ColumnMove } from "./board";
 import { BoardDisplayProvider } from "./board-display";
 import { CardDrawer } from "./card-drawer";
@@ -255,6 +256,16 @@ export function RoadmapView({
     );
   }
 
+  const shown = cards.find((c) => c.id === openCardId);
+  const openStage = shown
+    ? cardStage({
+        completed: shown.completed,
+        columnStage:
+          columns.find((c) => c.id === shown.columnId)?.stage ?? "planned",
+        announced: shown.announced,
+      })
+    : null;
+
   async function quickAdd(columnId: string, title: string) {
     const result = await createCardAction({
       workspace,
@@ -289,6 +300,7 @@ export function RoadmapView({
         attachments: 0,
         comments: 0,
         followers: 0,
+        announced: false,
       },
     ]);
     return true;
@@ -521,6 +533,7 @@ export function RoadmapView({
           }
           onCreateObjective={data.canManage ? createObjective : undefined}
           publicComments={data.publicComments}
+          stage={openStage}
         />
 
         {data.canManage ? (

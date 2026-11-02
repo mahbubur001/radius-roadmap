@@ -108,6 +108,8 @@ export type RoadmapSettingsInput = z.input<typeof roadmapSettingsSchema>;
 
 export const roadmapIdSchema = z.object({ id });
 
+export const roadmapPublicSchema = z.object({ id, isPublic: z.boolean() });
+
 export const moveColumnSchema = z.object({
   id,
   prevId: neighbour,

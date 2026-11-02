@@ -281,6 +281,21 @@ export async function saveRoadmapSettings(
   });
 }
 
+/** Show or hide a roadmap on the public site (a hidden one is a draft). */
+export async function setRoadmapPublic(
+  db: Db,
+  ctx: WorkspaceContext,
+  id: string,
+  isPublic: boolean,
+) {
+  assertRole(ctx, "admin");
+  await getRoadmap(db, ctx, id);
+  await db
+    .update(roadmaps)
+    .set({ isPublic })
+    .where(and(inWorkspace(roadmaps, ctx), eq(roadmaps.id, id)));
+}
+
 export async function deleteRoadmap(db: Db, ctx: WorkspaceContext, id: string) {
   assertRole(ctx, "admin");
   await getRoadmap(db, ctx, id);

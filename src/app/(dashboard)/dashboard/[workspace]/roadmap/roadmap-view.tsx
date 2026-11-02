@@ -6,6 +6,8 @@ import {
   ChevronDown,
   Download,
   ExternalLink,
+  Eye,
+  EyeOff,
   Filter,
   List,
   MoreVertical,
@@ -13,6 +15,7 @@ import {
   Search,
   Settings2,
   Shapes,
+  Trash2,
   Upload,
 } from "lucide-react";
 import Link from "next/link";
@@ -23,14 +26,26 @@ import {
   createCardAction,
   createObjectiveAction,
   createRoadmapAction,
+  deleteRoadmapAction,
   exportRoadmapAction,
   moveCardAction,
   moveColumnAction,
+  setRoadmapPublicAction,
   updateCardAction,
 } from "@/app/(dashboard)/_actions/roadmap";
 import { useActionError } from "@/components/dashboard/use-action-error";
 import { useStoredFlag } from "@/components/dashboard/use-stored-flag";
 import { SWATCHES } from "@/components/form/color-picker";
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from "@/components/ui/alert-dialog";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import {
@@ -332,6 +347,39 @@ export function RoadmapView({
     setSettingsOpen(true);
   }
 
+  const [isPublic, setIsPublic] = useState(data.roadmap.isPublic);
+  const [deleting, setDeleting] = useState(false);
+  const [confirmTitle, setConfirmTitle] = useState("");
+
+  async function togglePublic() {
+    const next = !isPublic;
+    const result = await setRoadmapPublicAction({
+      workspace,
+      id: data.roadmap.id,
+      isPublic: next,
+    });
+    if (!result.ok) return actionError(result);
+    setIsPublic(next);
+    toast.success(
+      next
+        ? "Roadmap published on your public site."
+        : "Roadmap hidden from your public site (draft).",
+    );
+    router.refresh();
+  }
+
+  async function deleteRoadmap() {
+    const result = await deleteRoadmapAction({
+      workspace,
+      id: data.roadmap.id,
+    });
+    if (!result.ok) return actionError(result);
+    toast.success("Roadmap deleted.");
+    setDeleting(false);
+    router.push(`/dashboard/${workspace}/roadmap`);
+    router.refresh();
+  }
+
   const sortedColumns = [...columns].sort(byPosition);
   const firstColumn = sortedColumns.find((c) => !c.isDone) ?? sortedColumns[0];
 
@@ -340,7 +388,7 @@ export function RoadmapView({
       <div className="flex flex-col gap-4">
         <div className="flex flex-wrap items-center gap-2">
           {data.roadmaps.length > 1 || data.canManage ? (
-            <h1 className="text-xl font-semibold">
+            <h1 className="flex items-center gap-2 text-xl font-semibold">
               <DropdownMenu>
                 <DropdownMenuTrigger className="flex items-center gap-1.5 rounded-md outline-none focus-visible:ring-2 focus-visible:ring-ring">
                   {title}
@@ -367,6 +415,11 @@ export function RoadmapView({
                   ) : null}
                 </DropdownMenuContent>
               </DropdownMenu>
+              {isPublic ? null : (
+                <Badge variant="secondary" title="Hidden from the public site">
+                  Draft
+                </Badge>
+              )}
             </h1>
           ) : (
             <h1 className="text-xl font-semibold">{title}</h1>
@@ -432,6 +485,19 @@ export function RoadmapView({
                         <Upload />
                         Import roadmap
                       </Link>
+                    </DropdownMenuItem>
+                    <DropdownMenuItem onSelect={() => togglePublic()}>
+                      {isPublic ? <EyeOff /> : <Eye />}
+                      {isPublic
+                        ? "Unpublish (keep as draft)"
+                        : "Publish roadmap"}
+                    </DropdownMenuItem>
+                    <DropdownMenuItem
+                      variant="destructive"
+                      onSelect={() => setDeleting(true)}
+                    >
+                      <Trash2 />
+                      Delete roadmap…
                     </DropdownMenuItem>
                     <DropdownMenuSeparator />
                   </>
@@ -535,6 +601,44 @@ export function RoadmapView({
           publicComments={data.publicComments}
           stage={openStage}
         />
+
+        <AlertDialog
+          open={deleting}
+          onOpenChange={(open) => {
+            setDeleting(open);
+            if (!open) setConfirmTitle("");
+          }}
+        >
+          <AlertDialogContent>
+            <AlertDialogHeader>
+              <AlertDialogTitle>Delete “{title}”?</AlertDialogTitle>
+              <AlertDialogDescription>
+                Its columns, cards, features and votes are deleted for good. To
+                hide it for now instead, unpublish it. Type the roadmap&apos;s
+                name to confirm.
+              </AlertDialogDescription>
+            </AlertDialogHeader>
+            <Input
+              aria-label="Roadmap name"
+              value={confirmTitle}
+              onChange={(e) => setConfirmTitle(e.target.value)}
+              placeholder={data.roadmap.internalTitle}
+            />
+            <AlertDialogFooter>
+              <AlertDialogCancel>Cancel</AlertDialogCancel>
+              <AlertDialogAction
+                variant="destructive"
+                disabled={confirmTitle.trim() !== data.roadmap.internalTitle}
+                onClick={(e) => {
+                  e.preventDefault();
+                  void deleteRoadmap();
+                }}
+              >
+                Delete roadmap
+              </AlertDialogAction>
+            </AlertDialogFooter>
+          </AlertDialogContent>
+        </AlertDialog>
 
         {data.canManage ? (
           <>

@@ -12,6 +12,7 @@ import {
   objectiveSchema,
   requestAttachmentSchema,
   roadmapIdSchema,
+  roadmapPublicSchema,
   roadmapSettingsSchema,
   tagSchema,
   transferCardSchema,
@@ -64,6 +65,7 @@ import {
   deleteTag,
   moveColumn,
   saveRoadmapSettings,
+  setRoadmapPublic,
   updateObjective,
 } from "@/server/services/roadmaps";
 import {
@@ -119,6 +121,12 @@ export const saveRoadmapSettingsAction = workspaceAction(
 export const deleteRoadmapAction = workspaceAction(
   roadmapIdSchema,
   async (ctx, { id }) => mutate(ctx, () => deleteRoadmap(db, ctx, id)),
+);
+
+export const setRoadmapPublicAction = workspaceAction(
+  roadmapPublicSchema,
+  async (ctx, { id, isPublic }) =>
+    mutate(ctx, () => setRoadmapPublic(db, ctx, id, isPublic)),
 );
 
 export const moveColumnAction = workspaceAction(

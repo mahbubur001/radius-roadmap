@@ -138,30 +138,33 @@ export function ArticlesView({
               ? formatDate(a.publishedAt)
               : `Edited ${formatDate(a.updatedAt)}`}
           </span>
-          {a.likes + a.neutrals + a.dislikes ? (
-            <span title="Likes, neutrals, dislikes">
-              😀 {a.likes} · 😐 {a.neutrals} · 😞 {a.dislikes}
-            </span>
-          ) : null}
         </span>
       </Link>
+      <Helpful likes={a.likes} neutrals={a.neutrals} dislikes={a.dislikes} />
     </div>
   );
 
   return (
     <div className="flex flex-col gap-5">
       <div className="flex flex-col gap-1">
-        <h1 className="text-xl font-semibold">Articles</h1>
+        <h1 className="text-2xl font-semibold">Articles</h1>
         <p className="text-sm text-muted-foreground">
           Your knowledge base. Published public articles appear under Articles
           on your public site.
         </p>
       </div>
 
-      <div className="grid gap-3 sm:grid-cols-3 lg:grid-cols-5">
-        <Stat label="Published articles" value={stats.published} />
+      <div className="grid overflow-hidden rounded-xl border sm:grid-cols-3 lg:grid-cols-5 [&>*+*]:border-t sm:[&>*+*]:border-t-0 sm:[&>*+*]:border-l">
+        <Stat label="Published" value={stats.published} />
+        <Stat
+          label="Rated helpful"
+          value={
+            stats.likes + stats.neutrals + stats.dislikes
+              ? `${Math.round((stats.likes / (stats.likes + stats.neutrals + stats.dislikes)) * 100)}%`
+              : "–"
+          }
+        />
         <Stat label="Likes" value={stats.likes} />
-        <Stat label="Neutrals" value={stats.neutrals} />
         <Stat label="Dislikes" value={stats.dislikes} />
         <Stat label="Views (30 days)" value={stats.views} />
       </div>
@@ -270,12 +273,12 @@ export function ArticlesView({
               items={items}
               label="Articles in order"
               itemLabel={(a) => `Reorder ${a.title}`}
-              className="flex flex-col divide-y overflow-hidden rounded-lg border bg-card"
+              className="flex flex-col divide-y overflow-hidden rounded-xl border bg-card"
               renderItem={(a, handle) => row(a, handle)}
               onMove={move}
             />
           ) : (
-            <ul className="flex flex-col divide-y overflow-hidden rounded-lg border bg-card">
+            <ul className="flex flex-col divide-y overflow-hidden rounded-xl border bg-card">
               {items.map((a) => (
                 <li key={a.id}>{row(a)}</li>
               ))}
@@ -319,26 +322,73 @@ function CategoryLink({
       href={href}
       aria-current={active ? "page" : undefined}
       className={cn(
-        "flex items-center gap-2 rounded-md px-3 py-2",
-        active ? "bg-muted font-medium" : "hover:bg-muted/60",
+        "flex items-center gap-2 rounded-lg px-2.5 py-1.5 text-muted-foreground",
+        active
+          ? "bg-accent font-medium text-foreground"
+          : "hover:bg-accent/60 hover:text-foreground",
       )}
     >
       <span aria-hidden>{icon}</span>
       <span className="min-w-0 flex-1 truncate">{label}</span>
       {count !== undefined ? (
-        <span className="text-xs text-muted-foreground">{count}</span>
+        <span className="font-mono text-[11px] text-faint">{count}</span>
       ) : null}
     </Link>
   );
 }
 
-function Stat({ label, value }: { label: string; value: number }) {
+function Stat({ label, value }: { label: string; value: number | string }) {
   return (
-    <div className="flex flex-col gap-1 rounded-lg border p-4">
-      <span className="text-sm text-muted-foreground">{label}</span>
-      <span className="text-2xl font-semibold tabular-nums">
-        {value.toLocaleString("en")}
+    <div className="flex flex-col gap-2 px-4 py-3.5">
+      <span className="font-mono text-[11px] tracking-[0.08em] text-faint uppercase">
+        {label}
+      </span>
+      <span className="font-display text-2xl leading-none font-semibold tabular-nums">
+        {typeof value === "number" ? value.toLocaleString("en") : value}
       </span>
     </div>
+  );
+}
+
+/** Share of ratings that were "helpful", as a small meter (doc 30). */
+function Helpful({
+  likes,
+  neutrals,
+  dislikes,
+}: {
+  likes: number;
+  neutrals: number;
+  dislikes: number;
+}) {
+  const total = likes + neutrals + dislikes;
+  if (!total) {
+    return (
+      <span className="w-24 shrink-0 pr-4 text-right text-xs text-faint">
+        No ratings
+      </span>
+    );
+  }
+  const pct = Math.round((likes / total) * 100);
+  const tone =
+    pct >= 70
+      ? "var(--stage-shipped)"
+      : pct >= 40
+        ? "var(--stage-review)"
+        : "var(--signal)";
+  return (
+    <span
+      className="flex w-24 shrink-0 items-center justify-end gap-2 pr-4"
+      title={`${likes} helpful, ${neutrals} neutral, ${dislikes} not helpful`}
+    >
+      <span className="h-1 w-10 overflow-hidden rounded-full bg-muted">
+        <span
+          className="block h-full rounded-full"
+          style={{ width: `${pct}%`, background: tone }}
+        />
+      </span>
+      <span className="font-mono text-[11px] text-muted-foreground">
+        {pct}%
+      </span>
+    </span>
   );
 }

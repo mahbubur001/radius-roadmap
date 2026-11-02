@@ -45,21 +45,21 @@ export function AdminNav({ email }: { email: string }) {
         (pathname.startsWith(`${href}/`) && pathname !== "/admin/accounts/new");
 
   return (
-    <aside className="sticky top-0 hidden h-svh w-64 shrink-0 flex-col bg-(--admin-ink) text-(--admin-ink-text) md:flex">
-      <div className="flex h-16 items-center gap-3 border-b border-(--admin-ink-line) px-5">
-        <span className="grid size-8 place-items-center rounded-lg bg-primary font-semibold text-primary-foreground text-sm">
+    <aside className="hidden h-svh w-60 shrink-0 flex-col text-(--admin-ink-text) md:flex">
+      <div className="flex h-14 items-center gap-3 px-5">
+        <span className="grid size-8 place-items-center rounded-[9px] bg-foreground font-display text-sm font-semibold text-background">
           R
         </span>
         <span className="flex flex-col leading-tight">
           <span className="font-semibold text-sm text-white">
             Radius Roadmap
           </span>
-          <span className="font-mono text-[11px] uppercase tracking-[0.14em] text-(--admin-ink-text)/70">
+          <span className="w-fit rounded bg-(--admin-pro)/10 px-1 font-mono text-[10px] uppercase tracking-[0.12em] text-(--admin-pro)">
             Operator
           </span>
         </span>
       </div>
-      <nav aria-label="Admin" className="flex flex-1 flex-col gap-6 px-3 py-6">
+      <nav aria-label="Admin" className="flex flex-1 flex-col gap-5 px-3 py-4">
         {GROUPS.map((g) => (
           <div key={g.label} className="flex flex-col gap-1">
             <p className="px-3 pb-1 font-mono text-[11px] uppercase tracking-[0.14em] text-(--admin-ink-text)/60">
@@ -75,7 +75,7 @@ export function AdminNav({ email }: { email: string }) {
                   className={cn(
                     "group flex items-center gap-3 rounded-lg px-3 py-2 text-sm transition-colors",
                     on
-                      ? "bg-(--admin-ink-soft) font-medium text-white shadow-[inset_2px_0_0_var(--primary)]"
+                      ? "bg-(--admin-ink-soft) font-medium text-white"
                       : "hover:bg-(--admin-ink-soft)/60 hover:text-white",
                   )}
                 >
@@ -94,7 +94,7 @@ export function AdminNav({ email }: { email: string }) {
           </div>
         ))}
       </nav>
-      <div className="flex flex-col gap-2 border-t border-(--admin-ink-line) p-4 text-xs">
+      <div className="flex flex-col gap-2 p-4 text-xs">
         <span className="truncate text-white/90" title={email}>
           {email}
         </span>
@@ -130,7 +130,7 @@ export function AdminSearch() {
           onChange={(e) => setQ(e.target.value)}
           placeholder="Find an account by name, URL or email"
           aria-label="Find an account"
-          className="h-10 w-full rounded-lg border bg-background pr-3 pl-9 text-sm outline-none transition-shadow placeholder:text-muted-foreground focus-visible:border-ring focus-visible:ring-3 focus-visible:ring-ring/30"
+          className="h-8 w-full rounded-lg bg-muted pr-3 pl-9 text-sm outline-none transition-shadow placeholder:text-faint focus-visible:ring-2 focus-visible:ring-ring/40"
         />
       </form>
     </search>

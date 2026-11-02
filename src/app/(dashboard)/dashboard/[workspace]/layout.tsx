@@ -74,7 +74,7 @@ export default function WorkspaceLayout({
           <Suspense fallback={null}>
             <PastDueBanner slug={slug} />
           </Suspense>
-          <main className="min-h-0 flex-1 overflow-y-auto">
+          <main className="relative min-h-0 flex-1 overflow-y-auto">
             <div className="mx-auto w-full max-w-[1500px] p-6">
               <Suspense fallback={null}>
                 <Features slug={slug}>{children}</Features>

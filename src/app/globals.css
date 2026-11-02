@@ -280,7 +280,16 @@
     0 0 0 1px rgb(255 255 255 / 0.08), 0 30px 80px -20px rgb(0 0 0 / 0.9);
 }
 
-/* Dashboard canvas behind everything, so overscroll doesn't flash white. */
+/*
+ * Dashboard canvas behind everything, so overscroll doesn't flash white. The
+ * shell is exactly one screen tall and only the sheet scrolls, so the page
+ * itself never does (anything appended to <body> can't push it longer).
+ */
+:root:has([data-dashboard]),
+:root:has([data-dashboard]) body {
+  overflow: hidden;
+  overscroll-behavior: none;
+}
 :root:has([data-dashboard]) body {
   background: var(--canvas);
 }

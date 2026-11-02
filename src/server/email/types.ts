@@ -101,6 +101,15 @@ export type EmailTemplateProps = {
     unfollowUrl: string;
     brand?: EmailBrand;
   };
+  /** To people who voted on something a published post shipped (doc 30 R4). */
+  "voted-shipped": {
+    siteName: string;
+    itemTitle: string;
+    postTitle: string;
+    postUrl: string;
+    optOutUrl: string;
+    brand?: EmailBrand;
+  };
   /** To team members following a card: it was completed (doc 24 R4). */
   "card-completed": {
     workspaceName: string;

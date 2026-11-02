@@ -322,6 +322,27 @@ export const templates: { [T in EmailTemplate]: TemplateDef<T> } = {
       </EmailLayout>
     ),
   },
+  "voted-shipped": {
+    subject: ({ itemTitle }) => `It's live: ${itemTitle}`,
+    render: ({ siteName, itemTitle, postTitle, postUrl, optOutUrl, brand }) => (
+      <EmailLayout
+        brand={brand}
+        preview={`${itemTitle} is live`}
+        heading="Something you voted for shipped"
+        action={{ label: "Read the update", url: postUrl }}
+      >
+        <Text>
+          You voted for <strong>{itemTitle}</strong>, and it&apos;s live now.{" "}
+          {siteName} wrote about it in “{postTitle}”. Thanks for telling them
+          what you needed.
+        </Text>
+        <Text style={{ color: "#888", fontSize: 12 }}>
+          You get this because you voted on {siteName}.{" "}
+          <a href={optOutUrl}>Stop these emails</a>.
+        </Text>
+      </EmailLayout>
+    ),
+  },
   "card-completed": {
     subject: ({ cardTitle }) => `Completed: ${cardTitle}`,
     render: ({ workspaceName, roadmapTitle, cardTitle, url }) => (

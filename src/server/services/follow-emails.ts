@@ -19,9 +19,11 @@ import {
   feedbackStatuses,
   follows,
   organization,
+  roadmapCards,
   trackedUsers,
   updateCards,
   updates,
+  votes,
   workspaces,
 } from "@/server/db/schema";
 import type { EmailBrand, EmailJob } from "@/server/email/types";
@@ -194,7 +196,39 @@ export async function statusSweep(
   return out;
 }
 
-/** Followers of ideas linked to the cards a published public post ships. */
+/** Signed, never-expiring "stop all emails from this site" link for voters. */
+export function optOutUrl(siteSlug: string, trackedUserId: string) {
+  const sig = signLink(env.BETTER_AUTH_SECRET, `optout:${trackedUserId}`);
+  const url = new URL("/api/public/optout", origin());
+  url.searchParams.set("site", siteSlug);
+  url.searchParams.set("u", trackedUserId);
+  url.searchParams.set("sig", sig);
+  return url.toString();
+}
+
+/** Verified, not suppressed email of a tracked user (voters, followers). */
+const reachable = (accountId: string, db: Db) =>
+  and(
+    isNotNull(trackedUsers.email),
+    isNotNull(trackedUsers.emailVerifiedAt),
+    notExists(
+      db
+        .select({ one: sql`1` })
+        .from(emailSuppressions)
+        .where(
+          and(
+            eq(emailSuppressions.accountId, accountId),
+            eq(emailSuppressions.email, trackedUsers.email),
+          ),
+        ),
+    ),
+  );
+
+/**
+ * A published public post shipped some cards: followers of the linked ideas
+ * hear about it (doc 23 step 6), and, unless the post turns it off, so do the
+ * people who voted on those cards or ideas (doc 30 R4). One email per person.
+ */
 export async function shippedEmails(
   db: Db,
   updateId: string,
@@ -202,8 +236,10 @@ export async function shippedEmails(
   const [post] = await db
     .select({
       id: updates.id,
+      accountId: updates.accountId,
       title: updates.title,
       slug: updates.slug,
+      notifyVoters: updates.notifyVoters,
       wsSlug: workspaces.slug,
       siteName: organization.name,
       siteSlug: organization.slug,
@@ -224,8 +260,8 @@ export async function shippedEmails(
   const ideas = await db
     .selectDistinct({
       id: feedbackItems.id,
-      accountId: feedbackItems.accountId,
       title: feedbackItems.title,
+      followable: sql<boolean>`(${ideaIsFollowable})`,
     })
     .from(updateCards)
     .innerJoin(
@@ -238,36 +274,117 @@ export async function shippedEmails(
     )
     .innerJoin(feedbackBoards, eq(feedbackBoards.id, feedbackItems.boardId))
     .innerJoin(workspaces, eq(workspaces.id, feedbackItems.workspaceId))
-    .where(and(eq(updateCards.updateId, post.id), ideaIsFollowable));
-  const [first] = ideas;
-  if (!first) return [];
+    .where(
+      and(
+        eq(updateCards.updateId, post.id),
+        eq(feedbackItems.isPublic, true),
+        eq(feedbackItems.review, "approved"),
+        isNull(feedbackItems.mergedIntoId),
+      ),
+    );
   const followers = await followersOf(
     db,
-    first.accountId,
-    ideas.map((i) => i.id),
+    post.accountId,
+    ideas.filter((i) => i.followable).map((i) => i.id),
   );
-  const brand = followers.length
-    ? await getEmailBrand(db, first.accountId)
-    : undefined;
-  const siteBase = await publicSiteBase(db, first.accountId, post.siteSlug);
-  const postUrl = `${siteBase}${wsSegment(post.wsSlug, post.defaultWs)}/updates/${post.slug}`;
-  return followers.map((f) => ({
-    id: `shipped-${post.id}-${f.feedbackId}-${f.trackedUserId}`,
-    email: {
-      template: "idea-shipped",
-      to: f.email,
-      props: {
-        siteName: post.siteName,
-        ideaTitle: ideas.find((i) => i.id === f.feedbackId)?.title ?? "",
-        postTitle: post.title,
-        postUrl,
-        unfollowUrl: unfollowUrl(
-          post.siteSlug ?? "",
-          f.trackedUserId,
-          f.feedbackId,
+
+  type Voter = { trackedUserId: string; email: string; title: string };
+  let voters: Voter[] = [];
+  if (post.notifyVoters) {
+    const ideaIds = ideas.map((i) => i.id);
+    const [ideaVoters, cardVoters] = await Promise.all([
+      ideaIds.length
+        ? db
+            .selectDistinct({
+              trackedUserId: trackedUsers.id,
+              email: sql<string>`${trackedUsers.email}`,
+              title: feedbackItems.title,
+            })
+            .from(votes)
+            .innerJoin(trackedUsers, eq(trackedUsers.id, votes.trackedUserId))
+            .innerJoin(feedbackItems, eq(feedbackItems.id, votes.feedbackId))
+            .where(
+              and(
+                eq(votes.accountId, post.accountId),
+                inArray(votes.feedbackId, ideaIds),
+                reachable(post.accountId, db),
+              ),
+            )
+        : [],
+      db
+        .selectDistinct({
+          trackedUserId: trackedUsers.id,
+          email: sql<string>`${trackedUsers.email}`,
+          title: sql<string>`coalesce(${roadmapCards.publicTitle}, ${roadmapCards.title})`,
+        })
+        .from(updateCards)
+        .innerJoin(roadmapCards, eq(roadmapCards.id, updateCards.cardId))
+        .innerJoin(votes, eq(votes.cardId, roadmapCards.id))
+        .innerJoin(trackedUsers, eq(trackedUsers.id, votes.trackedUserId))
+        .where(
+          and(
+            eq(updateCards.updateId, post.id),
+            eq(roadmapCards.isPublic, true),
+            eq(votes.accountId, post.accountId),
+            reachable(post.accountId, db),
+          ),
         ),
-        brand,
+    ]);
+    const seen = new Set(followers.map((f) => f.trackedUserId));
+    for (const v of [...cardVoters, ...ideaVoters]) {
+      if (seen.has(v.trackedUserId)) continue;
+      seen.add(v.trackedUserId);
+      voters.push(v);
+    }
+  }
+  if (!followers.length && !voters.length) return [];
+
+  const brand = await getEmailBrand(db, post.accountId);
+  const siteBase = await publicSiteBase(db, post.accountId, post.siteSlug);
+  const postUrl = `${siteBase}${wsSegment(post.wsSlug, post.defaultWs)}/updates/${post.slug}`;
+  // One email per person: a follower of two shipped ideas hears once.
+  const told = new Set<string>();
+  const out: FollowEmail[] = [];
+  for (const f of followers) {
+    if (told.has(f.trackedUserId)) continue;
+    told.add(f.trackedUserId);
+    out.push({
+      id: `shipped-${post.id}-${f.feedbackId}-${f.trackedUserId}`,
+      email: {
+        template: "idea-shipped",
+        to: f.email,
+        props: {
+          siteName: post.siteName,
+          ideaTitle: ideas.find((i) => i.id === f.feedbackId)?.title ?? "",
+          postTitle: post.title,
+          postUrl,
+          unfollowUrl: unfollowUrl(
+            post.siteSlug ?? "",
+            f.trackedUserId,
+            f.feedbackId,
+          ),
+          brand,
+        },
       },
-    },
-  }));
+    });
+  }
+  voters = voters.filter((v) => !told.has(v.trackedUserId));
+  for (const v of voters) {
+    out.push({
+      id: `voted-shipped-${post.id}-${v.trackedUserId}`,
+      email: {
+        template: "voted-shipped",
+        to: v.email,
+        props: {
+          siteName: post.siteName,
+          itemTitle: v.title,
+          postTitle: post.title,
+          postUrl,
+          optOutUrl: optOutUrl(post.siteSlug ?? "", v.trackedUserId),
+          brand,
+        },
+      },
+    });
+  }
+  return out;
 }

@@ -6,13 +6,23 @@ import { useRouter } from "next/navigation";
 import { useState } from "react";
 import { toast } from "sonner";
 import { createUpdateAction } from "@/app/(dashboard)/_actions/updates";
+import { StageTick } from "@/components/dashboard/stage-tick";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
 import type { UpdateTab } from "@/lib/schemas/updates";
 import { cn } from "@/lib/utils";
 import type { UpdateRow } from "@/server/services/updates";
 import { CategoriesDialog, type CategoryOption } from "./categories-dialog";
+
+const ALL = "all";
 
 const TABS: { key: UpdateTab; label: string }[] = [
   { key: "published", label: "Published" },
@@ -66,7 +76,7 @@ export function UpdatesView({
   return (
     <div className="flex flex-col gap-5">
       <div className="flex flex-col gap-1">
-        <h1 className="text-xl font-semibold">Updates</h1>
+        <h1 className="text-2xl font-semibold">Updates</h1>
         <p className="text-sm text-muted-foreground">
           Tell your users what shipped. Published posts appear on your public
           site and can be emailed to subscribers.
@@ -115,20 +125,36 @@ export function UpdatesView({
               className="w-56 pl-8"
             />
           </div>
-          <select
-            name="category"
-            defaultValue={categoryId}
-            aria-label="Category"
-            onChange={(e) => e.currentTarget.form?.requestSubmit()}
-            className="h-9 cursor-pointer rounded-md border bg-transparent px-2 text-sm"
+          <Select
+            value={categoryId || ALL}
+            onValueChange={(v) => {
+              const next = new URLSearchParams();
+              if (tab !== "published") next.set("tab", tab);
+              if (query) next.set("q", query);
+              if (v !== ALL) next.set("category", v);
+              const qs = next.toString();
+              router.push(qs ? `${base}?${qs}` : base);
+            }}
           >
-            <option value="">All categories</option>
-            {categories.map((c) => (
-              <option key={c.id} value={c.id}>
-                {c.name}
-              </option>
-            ))}
-          </select>
+            <SelectTrigger aria-label="Category" className="w-44">
+              <SelectValue />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value={ALL}>All categories</SelectItem>
+              {categories.map((c) => (
+                <SelectItem key={c.id} value={c.id}>
+                  <span
+                    className="size-2 rounded-full"
+                    style={{ backgroundColor: c.color }}
+                  />
+                  {c.name}
+                </SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
+          {categoryId ? (
+            <input type="hidden" name="category" value={categoryId} />
+          ) : null}
         </form>
         <Button variant="secondary" asChild>
           <Link href={`${base}/subscribers`}>
@@ -145,47 +171,67 @@ export function UpdatesView({
       </div>
 
       {items.length ? (
-        <ul className="flex flex-col divide-y overflow-hidden rounded-lg border bg-card">
+        <ul className="flex flex-col divide-y overflow-hidden rounded-xl border bg-card">
           {items.map((p) => (
             <li key={p.id}>
               <Link
                 href={`${base}/${p.id}`}
-                className="flex flex-col gap-1.5 px-5 py-4 hover:bg-muted/40"
+                className="flex items-start gap-4 px-4 py-3.5 hover:bg-muted/50"
               >
-                <span className="flex flex-wrap items-center gap-2 text-xs text-muted-foreground">
-                  {p.category ? (
-                    <span className="flex items-center gap-1.5 rounded border px-2 py-0.5 text-foreground">
-                      <span
-                        className="size-2 rounded-full"
-                        style={{ backgroundColor: p.category.color }}
-                      />
-                      {p.category.name}
-                    </span>
-                  ) : null}
-                  {p.pinned ? (
-                    <span className="flex items-center gap-1">
-                      <Pin className="size-3.5" />
-                      Pinned
-                    </span>
-                  ) : null}
-                  {p.isPublic ? null : <Badge variant="outline">Private</Badge>}
-                  {p.status === "scheduled" ? (
-                    <span className="flex items-center gap-1">
-                      <CalendarClock className="size-3.5" />
-                      {formatDate(p.publishAt)}
-                    </span>
-                  ) : p.status === "published" ? (
-                    <span>{formatDate(p.publishedAt)}</span>
-                  ) : (
-                    <span>Edited {formatDate(p.updatedAt)}</span>
-                  )}
-                  {p.cards ? (
-                    <span>
-                      {p.cards} {p.cards === 1 ? "card" : "cards"}
-                    </span>
-                  ) : null}
+                <span
+                  aria-hidden="true"
+                  className="mt-0.5 size-10 shrink-0 rounded-lg"
+                  style={{
+                    background: `linear-gradient(135deg, color-mix(in oklab, ${p.category?.color ?? "var(--stage-new)"} 40%, var(--muted)), var(--muted))`,
+                  }}
+                />
+                <span className="flex min-w-0 flex-1 flex-col gap-1">
+                  <span className="truncate text-[14.5px] font-medium">
+                    {p.title}
+                  </span>
+                  <span className="flex flex-wrap items-center gap-2 text-xs text-muted-foreground">
+                    {p.category ? (
+                      <span className="flex items-center gap-1.5 font-medium text-foreground">
+                        <span
+                          className="size-2 rounded-full"
+                          style={{ backgroundColor: p.category.color }}
+                        />
+                        {p.category.name}
+                      </span>
+                    ) : null}
+                    {p.pinned ? (
+                      <span className="flex items-center gap-1">
+                        <Pin className="size-3.5" />
+                        Pinned
+                      </span>
+                    ) : null}
+                    {p.isPublic ? null : (
+                      <Badge variant="outline">Private</Badge>
+                    )}
+                    {p.status === "scheduled" ? (
+                      <span className="flex items-center gap-1">
+                        <CalendarClock className="size-3.5" />
+                        {formatDate(p.publishAt)}
+                      </span>
+                    ) : p.status === "published" ? (
+                      <span>{formatDate(p.publishedAt)}</span>
+                    ) : (
+                      <span>Edited {formatDate(p.updatedAt)}</span>
+                    )}
+                    {p.cards ? (
+                      <span className="flex items-center gap-1.5">
+                        <StageTick
+                          stage={
+                            p.status === "published" ? "announced" : "shipped"
+                          }
+                          label={false}
+                        />
+                        {p.cards} {p.cards === 1 ? "card" : "cards"}{" "}
+                        {p.status === "published" ? "announced" : "to announce"}
+                      </span>
+                    ) : null}
+                  </span>
                 </span>
-                <span className="font-medium">{p.title}</span>
               </Link>
             </li>
           ))}

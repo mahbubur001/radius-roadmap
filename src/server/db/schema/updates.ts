@@ -112,6 +112,11 @@ export const updates = pgTable(
     pinned: boolean().notNull().default(false),
     /** Email subscribers when published (doc 23 U2). */
     emailSubscribers: boolean().notNull().default(true),
+    /**
+     * Email the people who voted on the shipped cards and their ideas when
+     * published (doc 30 R4).
+     */
+    notifyVoters: boolean().notNull().default(true),
     /** Set once the subscriber emails were queued; never re-sent. */
     emailedAt: timestamp({ withTimezone: true }),
     createdBy: text().references(() => user.id, { onDelete: "set null" }),

@@ -1,0 +1,1 @@
+ALTER TABLE "updates" ADD COLUMN "notify_voters" boolean DEFAULT true NOT NULL;

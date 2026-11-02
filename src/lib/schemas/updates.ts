@@ -37,6 +37,7 @@ export const patchUpdateSchema = z.object({
   isPublic: z.boolean().optional(),
   pinned: z.boolean().optional(),
   emailSubscribers: z.boolean().optional(),
+  notifyVoters: z.boolean().optional(),
   /** Storage key of an uploaded image, or null to remove. */
   cover: z.string().max(300).nullable().optional(),
 });

@@ -2,7 +2,7 @@ import { eq } from "drizzle-orm";
 import { afterAll, beforeAll, describe, expect, it } from "vitest";
 import { env } from "@/lib/env";
 import { db } from "@/server/db/client";
-import { emailSuppressions, trackedUsers } from "@/server/db/schema";
+import { emailSuppressions, trackedUsers, votes } from "@/server/db/schema";
 import { verifyLink } from "@/server/internal-signature";
 import {
   addTestMember,
@@ -23,7 +23,12 @@ import { linkCard } from "./feedback-links";
 import { shippedEmails, statusSweep } from "./follow-emails";
 import { listColumns, listRoadmaps } from "./roadmaps";
 import { suppress } from "./subscribers";
-import { createUpdate, publishUpdate, setUpdateCards } from "./updates";
+import {
+  createUpdate,
+  patchUpdate,
+  publishUpdate,
+  setUpdateCards,
+} from "./updates";
 import { guestSignIn } from "./voter-auth";
 import { createWorkspace, updatePublicSite } from "./workspaces";
 
@@ -166,5 +171,44 @@ describe("shipped", () => {
     const emails = await shippedEmails(db, post.id);
     expect(emails.map((e) => e.email.to)).toEqual(["vee@x.test"]);
     expect(emails[0]?.email.template).toBe("idea-shipped");
+  });
+
+  it("also emails voters of the cards (once each), unless the post says no", async () => {
+    const [roadmap] = await listRoadmaps(db, ws);
+    const [column] = await listColumns(db, ws, roadmap?.id ?? "");
+    const card = await createCard(db, ws, {
+      roadmapId: roadmap?.id ?? "",
+      columnId: column?.id ?? "",
+      title: "CSV export",
+    });
+    // Vee (verified) and Gus (guest, unverified) voted; only Vee is reachable.
+    await db.insert(votes).values(
+      [verifiedId, guestId].map((trackedUserId) => ({
+        accountId: ws.accountId,
+        workspaceId: ws.workspaceId,
+        cardId: card.id,
+        trackedUserId,
+      })),
+    );
+    const post = await createUpdate(db, ws, {});
+    await setUpdateCards(db, ws, post.id, [card.id]);
+    await publishUpdate(db, ws, post.id);
+    const emails = await shippedEmails(db, post.id);
+    expect(emails.map((e) => [e.email.to, e.email.template])).toEqual([
+      ["vee@x.test", "voted-shipped"],
+    ]);
+    const url = new URL(
+      (emails[0]?.email.props as { optOutUrl: string }).optOutUrl,
+    );
+    expect(
+      verifyLink(
+        env.BETTER_AUTH_SECRET,
+        `optout:${url.searchParams.get("u")}`,
+        url.searchParams.get("sig") ?? "",
+      ),
+    ).toBe(true);
+
+    await patchUpdate(db, ws, { id: post.id, notifyVoters: false });
+    expect(await shippedEmails(db, post.id)).toEqual([]);
   });
 });

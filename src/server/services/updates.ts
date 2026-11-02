@@ -248,6 +248,7 @@ export async function duplicateUpdate(
       categoryId: post.categoryId,
       isPublic: post.isPublic,
       emailSubscribers: post.emailSubscribers,
+      notifyVoters: post.notifyVoters,
       createdBy: ctx.userId,
     });
     await tx.execute(sql`
@@ -337,6 +338,7 @@ export async function getUpdateDetail(
         title: roadmapCards.title,
         completed: sql<boolean>`${roadmapCards.completedAt} is not null`,
         roadmap: roadmaps.slug,
+        votes: sql<number>`${roadmapCards.voteCount} + ${roadmapCards.importedVotes}`,
       })
       .from(updateCards)
       .innerJoin(roadmapCards, eq(roadmapCards.id, updateCards.cardId))
@@ -365,6 +367,7 @@ export async function searchCardsForUpdate(
       id: roadmapCards.id,
       title: roadmapCards.title,
       completed: sql<boolean>`${roadmapCards.completedAt} is not null`,
+      votes: sql<number>`${roadmapCards.voteCount} + ${roadmapCards.importedVotes}`,
     })
     .from(roadmapCards)
     .where(

@@ -105,7 +105,9 @@ export function UpdateEditor({
   const [emailSubscribers, setEmailSubscribers] = useState(
     post.emailSubscribers,
   );
+  const [notifyVoters, setNotifyVoters] = useState(post.notifyVoters);
   const [cards, setCards] = useState<ShippedCard[]>(post.cards);
+  const shippedVotes = cards.reduce((n, c) => n + Number(c.votes), 0);
   const [updatedAt, setUpdatedAt] = useState(new Date(post.updatedAt));
   const [confirmDelete, setConfirmDelete] = useState(false);
 
@@ -161,7 +163,7 @@ export function UpdateEditor({
         <div className="flex min-w-0 flex-1 flex-col gap-4">
           <Input
             aria-label="Title"
-            className="h-auto border-none bg-transparent px-0 text-2xl font-semibold shadow-none focus-visible:ring-0 md:text-2xl dark:bg-transparent"
+            className="h-auto border-none bg-transparent px-0 font-display text-[28px] font-semibold tracking-[-0.02em] shadow-none focus-visible:ring-0 md:text-[28px] dark:bg-transparent"
             value={title}
             maxLength={200}
             onChange={(e) => {
@@ -187,7 +189,7 @@ export function UpdateEditor({
 
         <aside
           aria-label="Post settings"
-          className="flex w-full shrink-0 flex-col gap-5 rounded-lg border bg-muted/30 p-5 lg:w-80"
+          className="flex w-full shrink-0 flex-col gap-5 rounded-xl border bg-muted/40 p-5 lg:sticky lg:top-0 lg:w-80"
         >
           <PublishPanel
             workspace={workspace}
@@ -296,6 +298,39 @@ export function UpdateEditor({
             onChange={saveCards}
           />
 
+          {cards.length ? (
+            <div className="flex flex-col gap-3 rounded-xl bg-signal/6 p-3 shadow-[inset_0_0_0_1px_color-mix(in_oklab,var(--signal)_20%,transparent)]">
+              <Label className="flex items-center justify-between gap-3 font-normal">
+                <span>
+                  Tell the people who voted
+                  <span className="block text-xs text-muted-foreground">
+                    An “It's live” email to everyone who voted on these cards
+                    and their ideas, once, when it's published.
+                  </span>
+                </span>
+                <Switch
+                  checked={notifyVoters}
+                  disabled={post.status === "published"}
+                  onCheckedChange={(v) => {
+                    setNotifyVoters(v);
+                    schedule({ notifyVoters: v });
+                  }}
+                />
+              </Label>
+              <p className="text-xs">
+                <b className="font-semibold">
+                  Closes the loop on {shippedVotes}{" "}
+                  {shippedVotes === 1 ? "vote" : "votes"}.
+                </b>{" "}
+                <span className="text-muted-foreground">
+                  Publishing marks{" "}
+                  {cards.length === 1 ? "this card" : "these cards"} as
+                  Announced.
+                </span>
+              </p>
+            </div>
+          ) : null}
+
           <div className="flex flex-col gap-2 border-t pt-4">
             <Button variant="secondary" onClick={duplicate}>
               <Copy />
@@ -358,7 +393,7 @@ function ShippedCards({
   const [open, setOpen] = useState(false);
   const [q, setQ] = useState("");
   const [results, setResults] = useState<
-    { id: string; title: string; completed: boolean }[]
+    { id: string; title: string; completed: boolean; votes: number }[]
   >([]);
 
   useEffect(() => {
@@ -434,6 +469,7 @@ function ShippedCards({
                           title: r.title,
                           completed: r.completed,
                           roadmap: "",
+                          votes: r.votes,
                         },
                       ]);
                       setOpen(false);

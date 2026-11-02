@@ -1,7 +1,7 @@
 "use client";
 
 import { ChevronUp, Lightbulb, MessageSquare, X } from "lucide-react";
-import { Badge } from "@/components/ui/badge";
+import { StageTick } from "@/components/dashboard/stage-tick";
 import { Button } from "@/components/ui/button";
 import { Checkbox } from "@/components/ui/checkbox";
 import {
@@ -16,6 +16,7 @@ import {
   priorityBucket,
   type ReviewAction,
 } from "@/lib/schemas/feedback";
+import { feedbackStage } from "@/lib/stages";
 import { ago } from "@/lib/time";
 import { cn } from "@/lib/utils";
 import type {
@@ -34,6 +35,7 @@ export function FeedbackRowItem({
   board,
   selected,
   focused,
+  open,
   onSelect,
   onOpen,
 }: {
@@ -44,21 +46,36 @@ export function FeedbackRowItem({
   board?: BoardOption;
   selected: boolean;
   focused: boolean;
+  /** Showing in the detail pane beside the list. */
+  open: boolean;
   onSelect: (selected: boolean) => void;
   onOpen: () => void;
 }) {
   const bucket = priorityBucket(item.priority);
+  const stage = status
+    ? feedbackStage({
+        review: item.review,
+        kind: status.kind,
+        announced: item.announced,
+      })
+    : null;
   return (
     <li
       data-feedback-row={item.id}
       className={cn(
-        "flex items-start gap-3 rounded-lg border bg-card p-4 shadow-xs hover:border-ring/50",
-        selected && "border-ring/50 bg-muted/40",
-        focused && "ring-2 ring-ring/50",
+        "group relative flex items-start gap-3 border-b px-4 py-3 transition-colors hover:bg-muted/60",
+        (selected || open) && "bg-accent",
+        focused && "bg-muted/60",
+        open &&
+          "before:absolute before:inset-y-0 before:left-0 before:w-0.5 before:bg-foreground",
       )}
     >
       <Checkbox
-        className="mt-4"
+        className={cn(
+          "mt-0.5 transition-opacity",
+          !selected &&
+            "opacity-0 group-hover:opacity-100 focus-visible:opacity-100",
+        )}
         checked={selected}
         aria-label={`Select ${item.title}`}
         onCheckedChange={(on) => onSelect(on === true)}
@@ -66,77 +83,69 @@ export function FeedbackRowItem({
       <button
         type="button"
         onClick={onOpen}
-        className="flex min-w-0 flex-1 items-start gap-4 text-left focus-visible:outline-none"
+        aria-current={open ? "true" : undefined}
+        className="flex min-w-0 flex-1 items-start gap-3 text-left focus-visible:outline-none"
       >
-        <span className="flex w-12 shrink-0 flex-col items-center rounded-md border bg-background py-1.5 text-sm font-semibold">
-          <ChevronUp className="size-4 text-muted-foreground" />
-          {item.votes}
-        </span>
-        <span className="flex min-w-0 flex-1 flex-col gap-1.5">
-          <span className="flex flex-wrap items-center gap-x-3 gap-y-1 text-xs">
-            {status ? (
-              <span className="flex items-center gap-1.5 font-medium">
-                <span
-                  className="size-2 rounded-full"
-                  style={{ backgroundColor: status.color }}
-                />
-                {status.name}
-              </span>
-            ) : null}
-            {item.isPublic ? null : (
-              <span className="text-muted-foreground">Private</span>
-            )}
+        <span className="flex min-w-0 flex-1 flex-col gap-1">
+          <span className="flex items-center gap-2">
+            <StageTick stage={stage} />
+            <span className="truncate text-[13.5px] leading-snug font-medium">
+              {item.title}
+            </span>
             {item.review === "pending" ? (
-              <Badge variant="secondary">Waiting for review</Badge>
+              <span
+                className="size-1.5 shrink-0 rounded-full bg-signal"
+                title="Waiting for review"
+              />
             ) : null}
-            {item.review === "rejected" ? (
-              <Badge variant="outline">Rejected</Badge>
-            ) : null}
-            {item.archived ? <Badge variant="outline">Archived</Badge> : null}
-            {board ? (
-              <span className="text-muted-foreground">{board.name}</span>
-            ) : null}
+          </span>
+          <span className="flex flex-wrap items-center gap-x-1.5 gap-y-0.5 text-[12px] text-faint">
+            {status ? <span>{status.name}</span> : null}
+            {board ? <span>· {board.name}</span> : null}
             {objective ? (
-              <span className="flex items-center gap-1 text-muted-foreground">
+              <span className="flex items-center gap-1">
+                ·
                 <span
-                  className="size-2 rounded-full"
+                  className="size-1.5 rounded-full"
                   style={{ backgroundColor: objective.color }}
                 />
                 {objective.name}
               </span>
             ) : null}
-          </span>
-          <span className="truncate text-base font-semibold">{item.title}</span>
-          {item.summaryText ? (
-            <span className="line-clamp-2 text-sm text-muted-foreground">
-              {item.summaryText}
-            </span>
-          ) : null}
-          <span className="mt-1 flex items-center gap-3 text-xs text-muted-foreground">
+            {item.isPublic ? null : <span>· Private</span>}
+            {item.review === "pending" ? (
+              <span>· Waiting for review</span>
+            ) : null}
+            {item.review === "rejected" ? <span>· Rejected</span> : null}
+            {item.archived ? <span>· Archived</span> : null}
             <span suppressHydrationWarning>
-              Last updated {ago(new Date(item.updatedAt))}
+              · {ago(new Date(item.updatedAt))}
             </span>
-            <span className="ml-auto flex items-center gap-3">
-              {bucket ? (
-                <Badge variant="secondary">
-                  {PRIORITY_BUCKETS[bucket].label} · {item.priority}
-                </Badge>
-              ) : null}
-              {item.linkedCards ? (
-                <span
-                  className="flex items-center gap-1"
-                  title="Linked to a roadmap card"
-                >
-                  <Lightbulb className="size-3.5" />
-                  {item.linkedCards}
-                </span>
-              ) : null}
-              <span className="flex items-center gap-1" title="Comments">
-                <MessageSquare className="size-3.5" />
+            {bucket ? (
+              <span>
+                · {PRIORITY_BUCKETS[bucket].label} {item.priority}
+              </span>
+            ) : null}
+            {item.linkedCards ? (
+              <span
+                className="flex items-center gap-0.5"
+                title="Linked to a roadmap card"
+              >
+                · <Lightbulb className="size-3" />
+                {item.linkedCards}
+              </span>
+            ) : null}
+            {item.comments ? (
+              <span className="flex items-center gap-0.5" title="Comments">
+                · <MessageSquare className="size-3" />
                 {item.comments}
               </span>
-            </span>
+            ) : null}
           </span>
+        </span>
+        <span className="flex h-10 w-10 shrink-0 flex-col items-center justify-center rounded-lg text-[13px] font-semibold tabular-nums shadow-[inset_0_0_0_1px_var(--input)]">
+          <ChevronUp className="size-3 text-faint" />
+          {item.votes}
         </span>
       </button>
     </li>
@@ -169,7 +178,7 @@ export function BulkBar({
     <div
       role="toolbar"
       aria-label="Bulk actions"
-      className="flex flex-wrap items-center gap-2 rounded-lg border bg-muted/50 px-3 py-2 text-sm"
+      className="flex flex-wrap items-center gap-2 rounded-lg bg-muted px-2.5 py-2 text-sm"
     >
       <span className="font-medium">{count} selected</span>
       {inbox ? (

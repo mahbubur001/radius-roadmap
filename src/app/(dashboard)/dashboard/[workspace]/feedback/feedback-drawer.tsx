@@ -20,12 +20,14 @@ import {
   deleteFeedbackAction,
   duplicateFeedbackAction,
   getFeedbackAction,
+  mergeFeedbackAction,
   setFeedbackArchivedAction,
   setFeedbackCompletedAction,
   unlinkCardAction,
   updateFeedbackAction,
 } from "@/app/(dashboard)/_actions/feedback";
 import { CommentsPanel } from "@/components/dashboard/comments-panel";
+import { StageTick } from "@/components/dashboard/stage-tick";
 import { TagPicker } from "@/components/dashboard/tag-picker";
 import {
   autosaveLabel,
@@ -81,6 +83,7 @@ import {
   SIZES,
   type UpdateFeedbackInput,
 } from "@/lib/schemas/feedback";
+import { feedbackStage, STAGE_LABELS } from "@/lib/stages";
 import {
   LinkCardDialog,
   MergeDialog,
@@ -121,8 +124,13 @@ type Shared = {
 
 export function FeedbackDrawer({
   feedbackId,
+  inline = false,
   ...props
-}: Shared & { feedbackId: string | null }) {
+}: Shared & {
+  feedbackId: string | null;
+  /** In the detail pane beside the list (wide screens) instead of a drawer. */
+  inline?: boolean;
+}) {
   const { workspace, onClose } = props;
   const [detail, setDetail] = useState<Detail | null>(null);
 
@@ -142,6 +150,27 @@ export function FeedbackDrawer({
       live = false;
     };
   }, [workspace, feedbackId, onClose]);
+
+  if (inline) {
+    if (!feedbackId) return null;
+    return (
+      <section aria-label="Edit feedback" className="h-full overflow-y-auto">
+        {detail ? (
+          <FeedbackEditor
+            key={detail.item.id}
+            detail={detail}
+            inline
+            {...props}
+          />
+        ) : (
+          <div className="flex flex-col gap-4 p-6">
+            <Skeleton className="h-8 w-2/3" />
+            <Skeleton className="h-40 w-full" />
+          </div>
+        )}
+      </section>
+    );
+  }
 
   return (
     <Sheet open={!!feedbackId} onOpenChange={(open) => !open && onClose()}>
@@ -177,8 +206,13 @@ function FeedbackEditor({
   onTagCreated,
   onOpenItem,
   publicComments,
-}: Shared & { detail: Detail }) {
+  inline = false,
+}: Shared & { detail: Detail; inline?: boolean }) {
   const { item } = detail;
+  const [similar, setSimilar] = useState(detail.similar);
+  const [mergeWith, setMergeWith] = useState<(typeof similar)[number] | null>(
+    null,
+  );
   const [cards, setCards] = useState(detail.cards);
   const [dialog, setDialog] = useState<"push" | "link" | "merge" | null>(null);
   const [title, setTitle] = useState(item.title);
@@ -246,18 +280,22 @@ function FeedbackEditor({
     await reloadLinks();
   }
 
+  const stage = feedbackStage({
+    review: item.review,
+    kind: statuses.find((s) => s.id === statusId)?.kind ?? "open",
+    announced: cards.some((c) => c.announced),
+  });
   const score = priorityScore(impact, effort);
   const bucket = priorityBucket(score);
 
   return (
     <div className="flex flex-col">
-      <SheetHeader className="flex-row items-center gap-2 border-b pr-12">
-        <SheetTitle className="sr-only">Edit feedback</SheetTitle>
-        <SheetDescription className="sr-only">
-          Changes save automatically.
-        </SheetDescription>
-        <span className="text-xs text-muted-foreground" aria-live="polite">
-          {autosaveLabel(status)}
+      <Head inline={inline}>
+        <span className="truncate font-mono text-[11.5px] text-faint">
+          {boards.find((b) => b.id === boardId)?.name ?? "Feedback"}
+        </span>
+        <span className="font-mono text-[11px] text-faint" aria-live="polite">
+          {autosaveLabel(status) ? `· ${autosaveLabel(status)}` : ""}
         </span>
         {item.review === "pending" ? (
           <Badge variant="secondary">Waiting for review</Badge>
@@ -352,12 +390,22 @@ function FeedbackEditor({
             </DropdownMenuItem>
           </DropdownMenuContent>
         </DropdownMenu>
-      </SheetHeader>
+        {inline ? (
+          <Button
+            variant="ghost"
+            size="icon-sm"
+            aria-label="Close"
+            onClick={onClose}
+          >
+            <X />
+          </Button>
+        ) : null}
+      </Head>
 
-      <div className="flex flex-col gap-4 p-4">
+      <div className="flex flex-col gap-4 px-6 pt-4 pb-6">
         <Input
           aria-label="Title"
-          className="h-auto border-none px-0 text-lg font-semibold shadow-none focus-visible:ring-0"
+          className="h-auto border-none px-0 font-display text-[21px] leading-tight font-semibold tracking-[-0.02em] shadow-none focus-visible:ring-0 md:text-[21px] dark:bg-transparent"
           value={title}
           onChange={(e) => {
             setTitle(e.target.value);
@@ -366,6 +414,66 @@ function FeedbackEditor({
             }
           }}
         />
+
+        <div className="flex flex-wrap items-center gap-3">
+          <span className="inline-flex h-7 items-center gap-2 rounded-lg bg-muted px-2.5 text-[12.5px] font-medium">
+            <StageTick stage={stage} label={false} />
+            {stage ? STAGE_LABELS[stage] : "Declined"}
+          </span>
+          <span className="font-display text-[22px] leading-none font-semibold tabular-nums">
+            {item.voteCount + item.importedVotes}
+          </span>
+          <span className="text-[12.5px] text-faint">
+            {item.voteCount + item.importedVotes === 1 ? "vote" : "votes"} ·{" "}
+            {detail.voters.named.length}{" "}
+            {detail.voters.named.length === 1 ? "person" : "people"} you can
+            reach
+          </span>
+        </div>
+
+        {similar.length ? (
+          <section
+            aria-label="Possible duplicates"
+            className="flex flex-col gap-1.5"
+          >
+            {similar.map((d) => (
+              <div
+                key={d.id}
+                className="flex items-center gap-2.5 rounded-lg border border-dashed px-3 py-2 text-sm"
+              >
+                <Merge className="size-3.5 shrink-0 text-faint" />
+                <span className="min-w-0 flex-1 text-muted-foreground">
+                  Looks like{" "}
+                  <button
+                    type="button"
+                    className="font-medium text-foreground hover:underline"
+                    onClick={() => onOpenItem(d.id)}
+                  >
+                    “{d.title}”
+                  </button>{" "}
+                  ({d.votes} {d.votes === 1 ? "vote" : "votes"})
+                </span>
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  onClick={() => setMergeWith(d)}
+                >
+                  Merge
+                </Button>
+                <Button
+                  variant="ghost"
+                  size="icon-sm"
+                  aria-label={`Not a duplicate of ${d.title}`}
+                  onClick={() =>
+                    setSimilar((all) => all.filter((x) => x.id !== d.id))
+                  }
+                >
+                  <X />
+                </Button>
+              </div>
+            ))}
+          </section>
+        ) : null}
 
         <Tabs defaultValue="general">
           <TabsList>
@@ -382,13 +490,13 @@ function FeedbackEditor({
             {cards.length ? (
               <section
                 aria-label="On the roadmap"
-                className="flex flex-col gap-2 rounded-md border p-3"
+                className="flex flex-col gap-2 rounded-lg border p-3"
               >
                 <h3 className="text-sm font-medium">On the roadmap</h3>
                 <ul className="flex flex-col gap-1">
                   {cards.map((c) => (
                     <li key={c.id} className="flex items-center gap-2 text-sm">
-                      <MapIcon className="size-4 shrink-0 text-muted-foreground" />
+                      <StageTick stage={c.stage} />
                       <Link
                         href={`/dashboard/${workspace}/roadmap?r=${c.roadmapSlug}&card=${c.id}`}
                         className="min-w-0 flex-1 truncate hover:underline"
@@ -644,6 +752,21 @@ function FeedbackEditor({
         }}
       />
 
+      <MergeConfirm
+        workspace={workspace}
+        item={{
+          id: item.id,
+          title,
+          votes: item.voteCount + item.importedVotes,
+        }}
+        other={mergeWith}
+        onOpenChange={(open) => !open && setMergeWith(null)}
+        onMerged={(removedId, keptId) => {
+          onRemoved(removedId);
+          onOpenItem(keptId);
+        }}
+      />
+
       <AlertDialog open={confirmDelete} onOpenChange={setConfirmDelete}>
         <AlertDialogContent>
           <AlertDialogHeader>
@@ -710,5 +833,83 @@ function SizeSelect({
         </SelectContent>
       </Select>
     </div>
+  );
+}
+
+/** The drawer's header row, or a plain bar in the detail pane. */
+function Head({
+  inline,
+  children,
+}: {
+  inline: boolean;
+  children: React.ReactNode;
+}) {
+  if (inline) {
+    return (
+      <div className="sticky top-0 z-10 flex items-center gap-2 border-b bg-background/90 px-6 py-2.5 backdrop-blur">
+        <h2 className="sr-only">Edit feedback</h2>
+        {children}
+      </div>
+    );
+  }
+  return (
+    <SheetHeader className="flex-row items-center gap-2 border-b px-6 pr-12">
+      <SheetTitle className="sr-only">Edit feedback</SheetTitle>
+      <SheetDescription className="sr-only">
+        Changes save automatically.
+      </SheetDescription>
+      {children}
+    </SheetHeader>
+  );
+}
+
+/**
+ * Merge a likely duplicate (doc 30 R3): the one with fewer votes goes into
+ * the one with more, so the bigger conversation is kept.
+ */
+function MergeConfirm({
+  workspace,
+  item,
+  other,
+  onOpenChange,
+  onMerged,
+}: {
+  workspace: string;
+  item: { id: string; title: string; votes: number };
+  other: { id: string; title: string; votes: number } | null;
+  onOpenChange: (open: boolean) => void;
+  onMerged: (removedId: string, keptId: string) => void;
+}) {
+  if (!other) return null;
+  const [from, into] = other.votes > item.votes ? [item, other] : [other, item];
+  return (
+    <AlertDialog open onOpenChange={onOpenChange}>
+      <AlertDialogContent>
+        <AlertDialogHeader>
+          <AlertDialogTitle>Merge these ideas?</AlertDialogTitle>
+          <AlertDialogDescription>
+            “{from.title}” goes into “{into.title}”. Its votes, followers and
+            comments move over, and it redirects there.
+          </AlertDialogDescription>
+        </AlertDialogHeader>
+        <AlertDialogFooter>
+          <AlertDialogCancel>Cancel</AlertDialogCancel>
+          <AlertDialogAction
+            onClick={async () => {
+              const result = await mergeFeedbackAction({
+                workspace,
+                sourceId: from.id,
+                targetId: into.id,
+              });
+              if (!result.ok) return toast.error(result.error);
+              toast.success("Merged. Votes and followers moved over.");
+              onMerged(from.id, into.id);
+            }}
+          >
+            Merge
+          </AlertDialogAction>
+        </AlertDialogFooter>
+      </AlertDialogContent>
+    </AlertDialog>
   );
 }

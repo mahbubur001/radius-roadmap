@@ -35,6 +35,7 @@ import {
   searchFeedback,
   setFeedbackArchived,
   setFeedbackCompleted,
+  similarFeedback,
   updateFeedback,
 } from "@/server/services/feedback";
 import {
@@ -71,17 +72,19 @@ async function mutate<T>(ctx: WorkspaceContext, run: () => Promise<T>) {
 export const getFeedbackAction = workspaceAction(
   feedbackIdSchema,
   async (ctx, { id }) => {
-    const [item, voters, cards, comments] = await Promise.all([
+    const [item, voters, cards, comments, similar] = await Promise.all([
       getFeedbackDetail(db, ctx, id),
       listFeedbackVoters(db, ctx, id),
       linkedCards(db, ctx, id),
       listTeamComments(db, ctx, { feedbackId: id }),
+      similarFeedback(db, ctx, id),
     ]);
     return {
       item,
       voters,
       cards,
       comments,
+      similar,
       me: ctx.userId,
       canModerate: ctx.role !== "member",
     };

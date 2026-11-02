@@ -1,6 +1,7 @@
 import { and, asc, desc, eq, ilike, isNull, or, sql } from "drizzle-orm";
 import type { z } from "zod";
 import type { pushToRoadmapSchema } from "@/lib/schemas/feedback";
+import { cardStage } from "@/lib/stages";
 import type { Db } from "@/server/db/client";
 import {
   cardFeedbackLinks,
@@ -15,6 +16,7 @@ import type { WorkspaceContext } from "./context";
 import { getFeedback } from "./feedback";
 import { byPosition, keyAfter } from "./positions";
 import { getColumn, inWorkspace, listColumns, listRoadmaps } from "./roadmaps";
+import { cardAnnouncedSql } from "./stages";
 import { syncFeedbackStatus } from "./status-sync";
 
 // Feedback ↔ roadmap card links (doc 20 §1 "Push to roadmap"). Everyone with
@@ -185,14 +187,16 @@ export async function linkedCards(
   ctx: WorkspaceContext,
   feedbackId: string,
 ) {
-  return db
+  const rows = await db
     .select({
       id: roadmapCards.id,
       title: roadmapCards.title,
       roadmapSlug: roadmaps.slug,
       roadmapTitle: roadmaps.internalTitle,
       columnName: roadmapColumns.name,
+      columnStage: roadmapColumns.stage,
       completed: sql<boolean>`${roadmapCards.completedAt} is not null`,
+      announced: cardAnnouncedSql(roadmapCards.id),
     })
     .from(cardFeedbackLinks)
     .innerJoin(roadmapCards, eq(roadmapCards.id, cardFeedbackLinks.cardId))
@@ -205,6 +209,14 @@ export async function linkedCards(
       ),
     )
     .orderBy(asc(roadmapCards.title));
+  return rows.map(({ columnStage, ...c }) => ({
+    ...c,
+    stage: cardStage({
+      completed: c.completed,
+      columnStage,
+      announced: c.announced,
+    }),
+  }));
 }
 
 /** "Add to roadmap card" picker: unarchived cards matching `q`. */

@@ -29,7 +29,7 @@ async function Comments({ slug }: { slug: Promise<string> }) {
     getWorkspaceBySlug(db, ctx, ctx.workspaceSlug),
   ]);
   return (
-    <div className="flex max-w-3xl flex-col gap-5">
+    <div className="mx-auto flex w-full max-w-3xl flex-col gap-5">
       <Link
         href={`/dashboard/${ctx.workspaceSlug}/feedback`}
         className="flex w-fit items-center gap-1 text-sm text-muted-foreground hover:text-foreground"

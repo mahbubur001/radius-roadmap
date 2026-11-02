@@ -29,7 +29,7 @@ test("bulk status change, statuses editor, and a second board", async ({
   // Each board is a tab with its open-item count.
   const boards = page.getByRole("navigation", { name: "Boards" });
   await expect(boards.locator("[aria-current=page]")).toHaveText(
-    "Feature requests (0)",
+    "Feature requests0",
   );
 
   await addFeedback(page, "Export to CSV");
@@ -83,7 +83,7 @@ test("bulk status change, statuses editor, and a second board", async ({
   await settings.getByRole("button", { name: "Save board" }).click();
   await expect(page).toHaveURL(/\?b=bugs$/);
   await expect(boards.locator("[aria-current=page]")).toHaveText(
-    "Bug reports (0)",
+    "Bug reports0",
   );
   await expect(page.getByText("No feedback yet.")).toBeVisible();
 });

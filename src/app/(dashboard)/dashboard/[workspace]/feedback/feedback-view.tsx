@@ -28,7 +28,9 @@ import {
   createFeedbackAction,
   reviewFeedbackAction,
 } from "@/app/(dashboard)/_actions/feedback";
+import { StageTick } from "@/components/dashboard/stage-tick";
 import { useActionError } from "@/components/dashboard/use-action-error";
+import { useMedia, WIDE } from "@/components/dashboard/use-media";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Checkbox } from "@/components/ui/checkbox";
@@ -62,6 +64,7 @@ import {
   REVIEW_ACTIONS,
   type ReviewAction,
 } from "@/lib/schemas/feedback";
+import { feedbackStage } from "@/lib/stages";
 import { cn } from "@/lib/utils";
 import { BoardSettingsDialog } from "./board-settings-dialog";
 import { FeedbackDrawer } from "./feedback-drawer";
@@ -104,11 +107,11 @@ const REVIEW_KEYS: Record<string, ReviewAction> = {
 };
 
 function isTyping(target: EventTarget | null) {
-  const el = target as HTMLElement | null;
+  if (!(target instanceof Element)) return false;
+  const el = target;
   return (
-    !!el?.closest(
-      "input, textarea, select, [contenteditable], [role=dialog]",
-    ) || el?.getAttribute("role") === "combobox"
+    !!el.closest("input, textarea, select, [contenteditable], [role=dialog]") ||
+    el.getAttribute("role") === "combobox"
   );
 }
 
@@ -290,9 +293,10 @@ export function FeedbackView({
     );
   }
 
-  // Inbox keyboard shortcuts.
+  // Keyboard: j/k move (and open, when the detail sits beside the list),
+  // x selects, Enter opens; a/p/r review in the inbox.
+  const wideList = useMedia(WIDE);
   useEffect(() => {
-    if (!inbox) return;
     function onKey(e: KeyboardEvent) {
       if (e.metaKey || e.ctrlKey || e.altKey || isTyping(e.target)) return;
       const item = items[focusIndex];
@@ -306,6 +310,8 @@ export function FeedbackView({
         document
           .querySelector(`[data-feedback-row="${items[next]?.id}"]`)
           ?.scrollIntoView({ block: "nearest" });
+        const nextItem = items[next];
+        if (wideList && nextItem) openItem(nextItem.id);
       } else if (e.key === "x" && item) {
         setSelected((all) => {
           const next = new Set(all);
@@ -315,7 +321,7 @@ export function FeedbackView({
         });
       } else if (e.key === "Enter" && item) {
         openItem(item.id);
-      } else if (REVIEW_KEYS[e.key] && item) {
+      } else if (inbox && REVIEW_KEYS[e.key] && item) {
         e.preventDefault();
         void review(
           selectedIds.length ? selectedIds : [item.id],
@@ -325,7 +331,7 @@ export function FeedbackView({
     }
     window.addEventListener("keydown", onKey);
     return () => window.removeEventListener("keydown", onKey);
-  }, [inbox, items, focusIndex, selectedIds, review, openItem]);
+  }, [inbox, wideList, items, focusIndex, selectedIds, review, openItem]);
 
   const statusById = useMemo(
     () => new Map(statuses.map((s) => [s.id, s])),
@@ -346,6 +352,28 @@ export function FeedbackView({
     filter.state !== "open" ? filter.state : null,
   ].filter(Boolean).length;
 
+  const wide = wideList;
+  const drawerProps = {
+    workspace,
+    workspaceId: data.workspaceId,
+    feedbackId: openId,
+    boards: data.boards,
+    statuses,
+    objectives: data.objectives,
+    tags,
+    onClose: closeItem,
+    onChanged: patchItem,
+    onRemoved: removeItem,
+    onOpenItem: openItem,
+    publicComments: data.publicComments,
+    onTagCreated: (tag: { id: string; name: string }) =>
+      setTags((all) =>
+        all.some((t) => t.id === tag.id)
+          ? all
+          : [...all, tag].sort((a, b) => a.name.localeCompare(b.name)),
+      ),
+  };
+
   async function newBoard() {
     const result = await createBoardAction({ workspace, name: "New board" });
     if (!result.ok) return actionError(result);
@@ -361,134 +389,113 @@ export function FeedbackView({
   }
 
   const allSelected = items.length > 0 && selectedIds.length === items.length;
-
-  const tab = (active: boolean) =>
+  const pane = (active: boolean) =>
     cn(
-      "-mb-px flex shrink-0 items-center gap-1.5 border-b-2 px-3 py-2",
-      active
-        ? "border-primary font-semibold"
-        : "border-transparent text-muted-foreground hover:text-foreground",
+      "flex items-center gap-2.5 rounded-lg px-2 py-1.5 text-[13.5px] text-muted-foreground transition-colors hover:bg-accent hover:text-foreground",
+      active && "bg-accent font-medium text-foreground",
     );
+  const group =
+    "px-2 pt-4 pb-1 font-mono text-[10.5px] tracking-[0.08em] text-faint uppercase";
 
   return (
-    <div className="flex flex-col gap-5">
-      <div className="flex flex-col gap-1">
-        <h1 className="text-xl font-semibold">Feedback</h1>
-        <p className="text-sm text-muted-foreground">
-          {inbox
-            ? "New submissions from every board, waiting for review."
-            : board.description || "Ideas and requests from your users."}
-        </p>
-      </div>
-
-      <nav
-        className="flex gap-1 overflow-x-auto border-b text-sm"
-        aria-label="Boards"
-      >
-        {data.boards.map((b) => {
-          const active = !inbox && b.id === board.id;
-          return (
-            <Link
-              key={b.id}
-              href={`${base}?b=${encodeURIComponent(b.slug)}`}
-              aria-current={active ? "page" : undefined}
-              className={tab(active)}
-            >
-              {b.name} ({b.openCount})
-              {b.isPublic ? null : (
-                <Lock className="size-3.5" aria-label="Private board" />
-              )}
-            </Link>
-          );
-        })}
-        {data.publicComments || data.pendingComments ? (
-          <Link href={`${base}/comments`} className={cn(tab(false), "ml-auto")}>
-            <MessageSquare className="size-4" />
-            Comments
-            {data.pendingComments ? (
-              <Badge variant="secondary">{data.pendingComments}</Badge>
-            ) : null}
-          </Link>
-        ) : null}
+    <div data-bleed="" className="flex h-full min-h-0">
+      {/* Views: inbox, boards, statuses */}
+      <aside className="hidden w-56 shrink-0 flex-col overflow-y-auto border-r p-2 lg:flex">
         <Link
           href={`${base}/inbox`}
           aria-current={inbox ? "page" : undefined}
-          className={cn(
-            tab(inbox),
-            !(data.publicComments || data.pendingComments) && "ml-auto",
-          )}
+          className={pane(inbox)}
         >
           <Inbox className="size-4" />
           Inbox
           {data.inboxCount ? (
-            <Badge variant="secondary">{data.inboxCount}</Badge>
+            <span className="ml-auto font-mono text-[11px] text-signal">
+              {data.inboxCount}
+            </span>
           ) : null}
         </Link>
-      </nav>
-
-      <div className="flex flex-wrap items-center gap-2">
-        {inbox ? null : (
-          <Button onClick={() => setCreating(true)}>
-            <Plus />
-            New feedback
-          </Button>
-        )}
-
-        <div className="ml-auto flex flex-wrap items-center gap-2">
-          {inbox ? null : (
-            <span className="flex items-center gap-1.5 rounded-full bg-muted px-3 py-1 text-xs font-medium">
-              {board.isPublic ? (
-                <Globe className="size-3.5" />
-              ) : (
-                <Lock className="size-3.5" />
-              )}
-              {board.isPublic ? "Public board" : "Private board"}
-            </span>
-          )}
-
-          <div className="relative">
-            <Search className="pointer-events-none absolute top-2.5 left-2.5 size-4 text-muted-foreground" />
-            <Input
-              type="search"
-              aria-label="Search feedback"
-              placeholder="Search…"
-              className="w-48 border-transparent bg-transparent pl-8 shadow-none focus-visible:border-input"
-              value={q}
-              onChange={(e) => setQ(e.target.value)}
-            />
-          </div>
-
-          <Button
-            variant="secondary"
-            aria-expanded={showFilters}
-            onClick={() => setShowFilters((on) => !on)}
-          >
-            <Filter />
-            {showFilters ? "Hide filters" : "Show filters"}
-            {filterCount ? (
-              <Badge variant="outline">{filterCount}</Badge>
+        {data.publicComments || data.pendingComments ? (
+          <Link href={`${base}/comments`} className={pane(false)}>
+            <MessageSquare className="size-4" />
+            Comments
+            {data.pendingComments ? (
+              <span className="ml-auto font-mono text-[11px] text-faint">
+                {data.pendingComments}
+              </span>
             ) : null}
-          </Button>
+          </Link>
+        ) : null}
 
-          {data.canManage && !inbox ? (
-            <Button
-              variant="secondary"
-              onClick={() => setBoardSettingsOpen(true)}
-            >
-              <Settings2 />
-              Edit board
-            </Button>
-          ) : null}
+        <p className={group}>Boards</p>
+        <nav aria-label="Boards" className="flex flex-col gap-0.5">
+          {data.boards.map((b) => {
+            const active = !inbox && b.id === board.id;
+            return (
+              <Link
+                key={b.id}
+                href={`${base}?b=${encodeURIComponent(b.slug)}`}
+                aria-current={active ? "page" : undefined}
+                className={pane(active)}
+              >
+                {b.isPublic ? (
+                  <Globe className="size-3.5 shrink-0 text-faint" />
+                ) : (
+                  <Lock
+                    className="size-3.5 shrink-0 text-faint"
+                    aria-label="Private board"
+                  />
+                )}
+                <span className="truncate">{b.name}</span>
+                <span className="ml-auto font-mono text-[11px] text-faint">
+                  {b.openCount}
+                </span>
+              </Link>
+            );
+          })}
+        </nav>
 
-          {data.canManage ? (
+        <p className={group}>By status</p>
+        <div className="flex flex-col gap-0.5">
+          {statuses.map((st) => {
+            const active = filter.statusId === st.id;
+            return (
+              <button
+                key={st.id}
+                type="button"
+                aria-pressed={active}
+                onClick={() => setParams({ status: active ? null : st.id })}
+                className={cn(pane(active), "text-left")}
+              >
+                <StageTick
+                  stage={feedbackStage({ review: "approved", kind: st.kind })}
+                  label={false}
+                />
+                <span className="truncate">{st.name}</span>
+              </button>
+            );
+          })}
+        </div>
+
+        {data.canManage ? (
+          <div className="mt-auto flex items-center gap-1 pt-4">
+            {inbox ? null : (
+              <Button
+                variant="ghost"
+                size="sm"
+                onClick={() => setBoardSettingsOpen(true)}
+              >
+                <Settings2 />
+                Edit board
+              </Button>
+            )}
             <DropdownMenu>
               <DropdownMenuTrigger asChild>
-                <Button variant="secondary">
+                <Button variant="ghost" size="sm" className="ml-auto">
                   More
                   <MoreVertical />
                 </Button>
               </DropdownMenuTrigger>
-              <DropdownMenuContent align="end">
+              <DropdownMenuContent align="end" side="top">
                 <DropdownMenuItem onSelect={() => setStatusesOpen(true)}>
                   <Shapes />
                   Statuses
@@ -499,140 +506,201 @@ export function FeedbackView({
                 </DropdownMenuItem>
               </DropdownMenuContent>
             </DropdownMenu>
-          ) : null}
-        </div>
-      </div>
+          </div>
+        ) : null}
+      </aside>
 
-      {showFilters ? (
-        <div className="grid grid-cols-2 gap-3 rounded-lg border bg-card p-3 md:grid-cols-4">
-          <FilterSelect
-            label="Sort"
-            value={filter.sort ?? defaults.sort ?? "votes"}
-            onChange={(sort) => setParams({ sort })}
-            options={Object.entries(FEEDBACK_SORTS)}
-          />
-          <FilterSelect
-            label="Status"
-            ariaLabel="Filter by status"
-            value={filter.statusId ?? ALL}
-            onChange={(status) => setParams({ status })}
-            options={[
-              [ALL, "All statuses"],
-              ...statuses.map((st) => [st.id, st.name] as const),
-            ]}
-          />
-          <FilterSelect
-            label="Show"
-            value={filter.state ?? "open"}
-            onChange={(state) => setParams({ state })}
-            options={[
-              ["open", "Open"],
-              ["completed", "Completed"],
-              ["archived", "Archived and rejected"],
-              [ALL, "Everything"],
-            ]}
-          />
-          <FilterSelect
-            label="Objective"
-            value={filter.objectiveId ?? ALL}
-            onChange={(objective) => setParams({ objective })}
-            options={[
-              [ALL, "All objectives"],
-              ...data.objectives.map((c) => [c.id, c.name] as const),
-            ]}
-          />
-          {tags.length ? (
-            <FilterSelect
-              label="Tag"
-              value={filter.tagId ?? ALL}
-              onChange={(tag) => setParams({ tag })}
-              options={[
-                [ALL, "All tags"],
-                ...tags.map((t) => [t.id, t.name] as const),
-              ]}
-            />
-          ) : null}
-          <FilterSelect
-            label="Visibility"
-            value={filter.visibility ?? ALL}
-            onChange={(vis) => setParams({ vis })}
-            options={[
-              [ALL, "Public + private"],
-              ["public", "Public only"],
-              ["private", "Private only"],
-            ]}
-          />
-          <FilterSelect
-            label="Roadmap card"
-            value={filter.linked ?? ALL}
-            onChange={(linked) => setParams({ linked })}
-            options={[
-              [ALL, "Linked or not"],
-              ["linked", "Linked to a card"],
-              ["unlinked", "Not linked"],
-            ]}
-          />
-          <FilterSelect
-            label="Priority"
-            value={filter.priority ?? ALL}
-            onChange={(priority) => setParams({ priority })}
-            options={[
-              [ALL, "Any priority"],
-              ...Object.entries(PRIORITY_BUCKETS).map(
-                ([key, b]) => [key, b.label] as const,
-              ),
-              ["none", "No score yet"],
-            ]}
-          />
-          {filterCount ? (
-            <Button
-              variant="ghost"
-              size="sm"
-              className="self-end justify-self-start"
-              onClick={() =>
-                setParams(
-                  Object.fromEntries(
-                    Object.values(PARAMS)
-                      .filter((p) => p !== "q")
-                      .map((p) => [p, null]),
-                  ),
-                )
-              }
-            >
-              Clear filters
-            </Button>
-          ) : null}
-        </div>
-      ) : null}
-
-      {selectedIds.length ? (
-        <BulkBar
-          count={selectedIds.length}
-          inbox={inbox}
-          statuses={statuses}
-          objectives={data.objectives}
-          busy={busy}
-          onReview={(action) => review(selectedIds, action)}
-          onStatus={(statusId) => bulk({ statusId })}
-          onObjective={(objectiveId) => bulk({ objectiveId })}
-          onClear={() => setSelected(new Set())}
-        />
-      ) : inbox && items.length ? (
-        <p className="text-xs text-muted-foreground">
-          Shortcuts: <kbd>j</kbd>/<kbd>k</kbd> move, <kbd>x</kbd> select,{" "}
-          <kbd>Enter</kbd> open, <kbd>a</kbd> approve, <kbd>p</kbd> keep
-          private, <kbd>r</kbd> reject.
-        </p>
-      ) : null}
-
-      <div
+      {/* The list */}
+      <section
+        aria-label={inbox ? "Inbox" : board.name}
         className={cn(
-          "flex flex-col gap-3 transition-opacity",
-          pending && "opacity-60",
+          "flex min-w-0 flex-col border-r",
+          wide ? "w-[400px] shrink-0" : "flex-1",
         )}
       >
+        <header className="flex flex-col gap-2 border-b p-3">
+          {/* Small screens: the views pane is hidden, so boards sit here. */}
+          <nav
+            aria-label="Boards and inbox"
+            className="-mx-1 flex gap-1 overflow-x-auto text-[13px] lg:hidden"
+          >
+            {data.boards.map((b) => (
+              <Link
+                key={b.id}
+                href={`${base}?b=${encodeURIComponent(b.slug)}`}
+                aria-current={!inbox && b.id === board.id ? "page" : undefined}
+                className={cn(pane(!inbox && b.id === board.id), "shrink-0")}
+              >
+                {b.name}
+              </Link>
+            ))}
+            <Link
+              href={`${base}/inbox`}
+              aria-current={inbox ? "page" : undefined}
+              className={cn(pane(inbox), "shrink-0")}
+            >
+              Inbox
+              {data.inboxCount ? (
+                <span className="font-mono text-[11px] text-signal">
+                  {data.inboxCount}
+                </span>
+              ) : null}
+            </Link>
+          </nav>
+          <div className="flex items-center gap-2">
+            <h1 className="min-w-0 flex-1 truncate text-lg font-semibold">
+              {inbox ? "Inbox" : board.name}
+            </h1>
+            {inbox ? null : (
+              <Button size="sm" onClick={() => setCreating(true)}>
+                <Plus />
+                New feedback
+              </Button>
+            )}
+          </div>
+          <div className="flex items-center gap-2">
+            <label className="flex h-8 min-w-0 flex-1 items-center gap-2 rounded-lg bg-muted px-2.5 text-faint">
+              <Search className="size-3.5 shrink-0" />
+              <input
+                type="search"
+                aria-label="Search feedback"
+                placeholder={inbox ? "Search the inbox" : "Search feedback"}
+                className="min-w-0 flex-1 bg-transparent text-sm text-foreground outline-none placeholder:text-faint"
+                value={q}
+                onChange={(e) => setQ(e.target.value)}
+              />
+            </label>
+            <Button
+              variant="outline"
+              size="sm"
+              aria-expanded={showFilters}
+              onClick={() => setShowFilters((on) => !on)}
+            >
+              <Filter />
+              {showFilters ? "Hide filters" : "Show filters"}
+              {filterCount ? (
+                <Badge variant="secondary">{filterCount}</Badge>
+              ) : null}
+            </Button>
+          </div>
+          {showFilters ? (
+            <div className="grid grid-cols-2 gap-2 pt-1">
+              <FilterSelect
+                label="Sort"
+                value={filter.sort ?? defaults.sort ?? "votes"}
+                onChange={(sort) => setParams({ sort })}
+                options={Object.entries(FEEDBACK_SORTS)}
+              />
+              <FilterSelect
+                label="Status"
+                ariaLabel="Filter by status"
+                value={filter.statusId ?? ALL}
+                onChange={(status) => setParams({ status })}
+                options={[
+                  [ALL, "All statuses"],
+                  ...statuses.map((st) => [st.id, st.name] as const),
+                ]}
+              />
+              <FilterSelect
+                label="Show"
+                value={filter.state ?? "open"}
+                onChange={(state) => setParams({ state })}
+                options={[
+                  ["open", "Open"],
+                  ["completed", "Completed"],
+                  ["archived", "Archived and rejected"],
+                  [ALL, "Everything"],
+                ]}
+              />
+              <FilterSelect
+                label="Objective"
+                value={filter.objectiveId ?? ALL}
+                onChange={(objective) => setParams({ objective })}
+                options={[
+                  [ALL, "All objectives"],
+                  ...data.objectives.map((c) => [c.id, c.name] as const),
+                ]}
+              />
+              {tags.length ? (
+                <FilterSelect
+                  label="Tag"
+                  value={filter.tagId ?? ALL}
+                  onChange={(tag) => setParams({ tag })}
+                  options={[
+                    [ALL, "All tags"],
+                    ...tags.map((t) => [t.id, t.name] as const),
+                  ]}
+                />
+              ) : null}
+              <FilterSelect
+                label="Visibility"
+                value={filter.visibility ?? ALL}
+                onChange={(vis) => setParams({ vis })}
+                options={[
+                  [ALL, "Public + private"],
+                  ["public", "Public only"],
+                  ["private", "Private only"],
+                ]}
+              />
+              <FilterSelect
+                label="Roadmap card"
+                value={filter.linked ?? ALL}
+                onChange={(linked) => setParams({ linked })}
+                options={[
+                  [ALL, "Linked or not"],
+                  ["linked", "Linked to a card"],
+                  ["unlinked", "Not linked"],
+                ]}
+              />
+              <FilterSelect
+                label="Priority"
+                value={filter.priority ?? ALL}
+                onChange={(priority) => setParams({ priority })}
+                options={[
+                  [ALL, "Any priority"],
+                  ...Object.entries(PRIORITY_BUCKETS).map(
+                    ([key, b]) => [key, b.label] as const,
+                  ),
+                  ["none", "No score yet"],
+                ]}
+              />
+              {filterCount ? (
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  className="col-span-2 justify-self-start"
+                  onClick={() =>
+                    setParams(
+                      Object.fromEntries(
+                        Object.values(PARAMS)
+                          .filter((p) => p !== "q")
+                          .map((p) => [p, null]),
+                      ),
+                    )
+                  }
+                >
+                  Clear filters
+                </Button>
+              ) : null}
+            </div>
+          ) : null}
+          {selectedIds.length ? (
+            <BulkBar
+              count={selectedIds.length}
+              inbox={inbox}
+              statuses={statuses}
+              objectives={data.objectives}
+              busy={busy}
+              onReview={(action) => review(selectedIds, action)}
+              onStatus={(statusId) => bulk({ statusId })}
+              onObjective={(objectiveId) => bulk({ objectiveId })}
+              onClear={() => setSelected(new Set())}
+            />
+          ) : null}
+        </header>
+
         {items.length ? (
-          <div className="flex items-center gap-3 px-4 text-xs text-muted-foreground">
+          <div className="flex items-center gap-3 border-b px-4 py-1.5 font-mono text-[11px] text-faint">
             <Checkbox
               checked={
                 allSelected
@@ -651,9 +719,16 @@ export function FeedbackView({
             {items.length} {items.length === 1 ? "item" : "items"}
           </div>
         ) : null}
-        <ul className="flex flex-col gap-3" aria-busy={pending}>
+
+        <ul
+          className={cn(
+            "min-h-0 flex-1 overflow-y-auto transition-opacity",
+            pending && "opacity-60",
+          )}
+          aria-busy={pending}
+        >
           {items.length === 0 ? (
-            <li className="rounded-lg border bg-card p-6 text-center text-sm text-muted-foreground">
+            <li className="px-6 py-12 text-center text-sm text-muted-foreground">
               {inbox
                 ? "You're all caught up. New submissions from your public board land here."
                 : filter.q || filterCount
@@ -671,7 +746,8 @@ export function FeedbackView({
               }
               board={inbox ? boardById.get(item.boardId) : undefined}
               selected={selected.has(item.id)}
-              focused={inbox && index === focusIndex}
+              focused={index === focusIndex && (inbox || wide)}
+              open={wide && item.id === openId}
               onSelect={(on) =>
                 setSelected((all) => {
                   const next = new Set(all);
@@ -687,7 +763,42 @@ export function FeedbackView({
             />
           ))}
         </ul>
-      </div>
+
+        {items.length ? (
+          <footer className="flex flex-wrap items-center gap-x-4 gap-y-1 border-t px-4 py-2 text-[11.5px] text-faint">
+            <Key keys={["J", "K"]}>move</Key>
+            <Key keys={["↵"]}>open</Key>
+            <Key keys={["X"]}>select</Key>
+            {inbox ? (
+              <>
+                <Key keys={["A"]}>approve</Key>
+                <Key keys={["P"]}>private</Key>
+                <Key keys={["R"]}>reject</Key>
+              </>
+            ) : null}
+          </footer>
+        ) : null}
+      </section>
+
+      {/* Detail: inline on wide screens, a drawer otherwise */}
+      {wide ? (
+        <div className="min-w-0 flex-1">
+          {openId ? null : (
+            <div className="flex h-full flex-col items-center justify-center gap-2 p-8 text-center">
+              <p className="font-display text-base font-semibold">
+                Pick an idea
+              </p>
+              <p className="max-w-xs text-sm text-muted-foreground">
+                Its details, votes and comments open here. Use J and K to move
+                through the list.
+              </p>
+            </div>
+          )}
+          <FeedbackDrawer inline {...drawerProps} />
+        </div>
+      ) : (
+        <FeedbackDrawer {...drawerProps} />
+      )}
 
       <NewFeedbackDialog
         open={creating}
@@ -698,28 +809,6 @@ export function FeedbackView({
           router.refresh();
           openItem(id);
         }}
-      />
-
-      <FeedbackDrawer
-        workspace={workspace}
-        workspaceId={data.workspaceId}
-        feedbackId={openId}
-        boards={data.boards}
-        statuses={statuses}
-        objectives={data.objectives}
-        tags={tags}
-        onClose={closeItem}
-        onChanged={patchItem}
-        onRemoved={removeItem}
-        onOpenItem={openItem}
-        publicComments={data.publicComments}
-        onTagCreated={(tag) =>
-          setTags((all) =>
-            all.some((t) => t.id === tag.id)
-              ? all
-              : [...all, tag].sort((a, b) => a.name.localeCompare(b.name)),
-          )
-        }
       />
 
       {data.canManage ? (
@@ -744,6 +833,22 @@ export function FeedbackView({
         </>
       ) : null}
     </div>
+  );
+}
+
+function Key({ keys, children }: { keys: string[]; children: string }) {
+  return (
+    <span className="inline-flex items-center gap-1">
+      {keys.map((k) => (
+        <kbd
+          key={k}
+          className="rounded border bg-muted px-1 py-px font-mono text-[10px] text-muted-foreground"
+        >
+          {k}
+        </kbd>
+      ))}
+      {children}
+    </span>
   );
 }
 

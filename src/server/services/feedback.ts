@@ -54,6 +54,7 @@ import {
 } from "./context";
 import { byPosition } from "./positions";
 import { inWorkspace, ownTagIds } from "./roadmaps";
+import { feedbackAnnouncedSql } from "./stages";
 
 // Feedback items (doc 20 §4.1). Everyone with workspace access can create,
 // edit and triage feedback; every query is scoped by account + workspace.
@@ -494,6 +495,67 @@ export async function searchFeedback(
     .limit(20);
 }
 
+/**
+ * Likely duplicates of an item (doc 30 R3): other live items sharing most of
+ * its title words. Postgres full text finds candidates; word overlap decides.
+ */
+export async function similarFeedback(
+  db: Db,
+  ctx: WorkspaceContext,
+  id: string,
+  limit = 3,
+) {
+  const item = await getFeedback(db, ctx, id);
+  const [own] = await db
+    .execute<{ words: string[] }>(
+      sql`select tsvector_to_array(to_tsvector('english', ${item.title})) as words`,
+    )
+    .then((r) => r.rows);
+  const words = own?.words ?? [];
+  if (!words.length) return [];
+  const anyWord = sql`to_tsquery('english', ${words.map((w) => `'${w.replace(/'/g, "''")}'`).join(" | ")})`;
+  const candidates = await db
+    .select({
+      id: feedbackItems.id,
+      title: feedbackItems.title,
+      votes: sql<number>`${feedbackItems.voteCount} + ${feedbackItems.importedVotes}`,
+      words: sql<
+        string[]
+      >`tsvector_to_array(to_tsvector('english', ${feedbackItems.title}))`,
+    })
+    .from(feedbackItems)
+    .where(
+      and(
+        inWorkspace(feedbackItems, ctx),
+        not(eq(feedbackItems.id, item.id)),
+        isNull(feedbackItems.mergedIntoId),
+        isNull(feedbackItems.archivedAt),
+        not(eq(feedbackItems.review, "rejected")),
+        sql`${feedbackItems.search} @@ ${anyWord}`,
+      ),
+    )
+    .orderBy(sql`ts_rank(${feedbackItems.search}, ${anyWord}) desc`)
+    .limit(20);
+  const mine = new Set(words);
+  const need = Math.min(2, mine.size);
+  return candidates
+    .map((c) => {
+      const shared = c.words.filter((w) => mine.has(w)).length;
+      const share = shared / Math.max(mine.size, new Set(c.words).size);
+      return {
+        id: c.id,
+        title: c.title,
+        votes: Number(c.votes),
+        shared,
+        share,
+      };
+    })
+    .filter((c) => c.shared >= need && c.share >= 0.5)
+    .sort((a, b) => b.share - a.share || b.votes - a.votes)
+    .slice(0, limit)
+    .map(({ id, title, votes }) => ({ id, title, votes }));
+}
+
 // ── Triage (doc 20 §1 Triage inbox) ─────────────────────────────────────
 
 /** Waiting in the inbox: pending and not archived. */
@@ -654,6 +716,8 @@ export type FeedbackRow = {
   linkedCards: number;
   tagIds: string[];
   updatedAt: string;
+  /** A linked card is in a published update (stage tick, doc 30). */
+  announced: boolean;
 };
 
 const scoreSql = sql<
@@ -762,6 +826,7 @@ export async function listFeedback(
       completedAt: feedbackItems.completedAt,
       archivedAt: feedbackItems.archivedAt,
       updatedAt: feedbackItems.updatedAt,
+      announced: feedbackAnnouncedSql(feedbackItems.id),
     })
     .from(feedbackItems)
     .where(and(...where))

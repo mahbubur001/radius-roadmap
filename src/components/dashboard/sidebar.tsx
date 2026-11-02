@@ -1,47 +1,46 @@
 "use client";
 
-import { ChevronLeft, ChevronRight } from "lucide-react";
-import { createContext, type ReactNode, useContext } from "react";
+import { PanelLeft } from "lucide-react";
+import type { ReactNode } from "react";
 import { cn } from "@/lib/utils";
 import { useStoredFlag } from "./use-stored-flag";
 
-const SidebarContext = createContext(false);
+const KEY = "rr-sidebar-collapsed";
 
-/** True when the dashboard sidebar shows icons only. */
+/** True when the dashboard sidebar shows icons only (remembered per browser). */
 export function useSidebarCollapsed() {
-  return useContext(SidebarContext);
+  return useStoredFlag(KEY, false)[0];
 }
 
-/** Collapsible dashboard sidebar; the choice is remembered per browser. */
+/**
+ * The dimmed sidebar on the canvas (doc 30): it steps back so the sheet with
+ * the work leads. Collapses to icons with the toggle in the top bar.
+ */
 export function Sidebar({ children }: { children: ReactNode }) {
-  const [collapsed, setCollapsed] = useStoredFlag(
-    "rr-sidebar-collapsed",
-    false,
-  );
-
+  const collapsed = useSidebarCollapsed();
   return (
-    <SidebarContext.Provider value={collapsed}>
-      <aside
-        className={cn(
-          "sticky top-0 z-20 flex h-svh shrink-0 flex-col gap-6 bg-sidebar py-4 text-sidebar-foreground transition-[width] duration-200",
-          collapsed ? "w-16 items-center" : "w-52 px-3",
-        )}
-      >
-        <button
-          type="button"
-          onClick={() => setCollapsed(!collapsed)}
-          aria-label={collapsed ? "Expand sidebar" : "Collapse sidebar"}
-          aria-expanded={!collapsed}
-          className="absolute top-6 -right-3 flex size-6 items-center justify-center rounded-full bg-sidebar-foreground text-sidebar-primary shadow-sm hover:opacity-90"
-        >
-          {collapsed ? (
-            <ChevronRight className="size-3.5" />
-          ) : (
-            <ChevronLeft className="size-3.5" />
-          )}
-        </button>
-        {children}
-      </aside>
-    </SidebarContext.Provider>
+    <aside
+      className={cn(
+        "sticky top-0 flex h-svh shrink-0 flex-col gap-0.5 py-2 text-sidebar-foreground transition-[width] duration-200",
+        collapsed ? "w-14 items-center px-2" : "w-60 pr-3 pl-1",
+      )}
+    >
+      {children}
+    </aside>
+  );
+}
+
+export function SidebarToggle() {
+  const [collapsed, setCollapsed] = useStoredFlag(KEY, false);
+  return (
+    <button
+      type="button"
+      onClick={() => setCollapsed(!collapsed)}
+      aria-label={collapsed ? "Expand sidebar" : "Collapse sidebar"}
+      aria-expanded={!collapsed}
+      className="-ml-1.5 grid size-7 place-items-center rounded-md text-muted-foreground hover:bg-accent hover:text-foreground"
+    >
+      <PanelLeft className="size-4" />
+    </button>
   );
 }

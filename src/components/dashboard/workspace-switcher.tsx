@@ -43,26 +43,27 @@ export function WorkspaceSwitcher({
         <DropdownMenuTrigger
           aria-label="Switch workspace"
           className={cn(
-            "flex min-w-0 items-center gap-2 rounded-md text-left text-sidebar-foreground outline-none focus-visible:ring-2 focus-visible:ring-sidebar-ring",
-            !collapsed && "w-full p-1 hover:bg-sidebar-accent/60",
+            "flex min-w-0 items-center gap-2 rounded-lg text-left text-sidebar-accent-foreground outline-none hover:bg-sidebar-accent/70 focus-visible:ring-2 focus-visible:ring-sidebar-ring",
+            collapsed ? "p-0.5" : "w-full px-2 py-1.5",
           )}
         >
-          <WorkspaceAvatar workspace={active} />
-          {collapsed ? null : (
+          {collapsed ? (
+            <WorkspaceAvatar workspace={active} />
+          ) : (
             <>
-              <span className="flex-1 truncate text-sm font-semibold">
+              <span className="truncate font-display text-[15px] font-semibold tracking-[-0.01em]">
                 {active?.name}
               </span>
-              <ChevronDown className="size-4 shrink-0" />
+              <ChevronDown className="size-3.5 shrink-0 text-faint" />
             </>
           )}
         </DropdownMenuTrigger>
-        <DropdownMenuContent side="right" align="start" className="w-64">
+        <DropdownMenuContent side="bottom" align="start" className="w-64">
           <DropdownMenuLabel>Workspaces</DropdownMenuLabel>
           {workspaces.map((w) => (
             <DropdownMenuItem key={w.id} asChild>
               <Link href={`/dashboard/${w.slug}`}>
-                <WorkspaceAvatar workspace={w} small />
+                <WorkspaceAvatar workspace={w} />
                 <span className="flex-1 truncate">{w.name}</span>
                 {w.slug === current ? <Check /> : null}
               </Link>
@@ -94,24 +95,15 @@ export function WorkspaceSwitcher({
 
 function WorkspaceAvatar({
   workspace,
-  small,
 }: {
   workspace: SwitcherWorkspace | undefined;
-  small?: boolean;
 }) {
   return (
-    <Avatar className={small ? "size-6 rounded-md" : "size-9 rounded-full"}>
+    <Avatar className="size-6 rounded-md">
       {workspace?.logoUrl ? (
         <AvatarImage src={workspace.logoUrl} alt="" />
       ) : null}
-      <AvatarFallback
-        className={cn(
-          "text-xs font-semibold",
-          small
-            ? "rounded-md bg-primary text-primary-foreground"
-            : "rounded-full bg-sidebar-foreground text-sidebar",
-        )}
-      >
+      <AvatarFallback className="rounded-md bg-primary text-[10px] font-semibold text-primary-foreground">
         {initials(workspace?.name ?? "?")}
       </AvatarFallback>
     </Avatar>

@@ -4,10 +4,10 @@ import {
   BookOpen,
   Globe,
   Home,
+  Inbox,
   type LucideIcon,
   Map as MapIcon,
   Megaphone,
-  MessageSquare,
   PanelRight,
   Settings,
 } from "lucide-react";
@@ -25,25 +25,29 @@ type Item = { href: string; label: string; icon: LucideIcon };
 
 const main: Item[] = [
   { href: "", label: "Home", icon: Home },
-  { href: "/feedback", label: "Feedback", icon: MessageSquare },
+  { href: "/feedback", label: "Feedback", icon: Inbox },
   { href: "/roadmap", label: "Roadmap", icon: MapIcon },
   { href: "/updates", label: "Updates", icon: Megaphone },
   { href: "/articles", label: "Articles", icon: BookOpen },
 ];
 
-const settings: Item[] = [
+const configure: Item[] = [
   { href: "/settings", label: "Settings", icon: Settings },
   { href: "/public-settings", label: "Public settings", icon: Globe },
   { href: "/widget", label: "Widget", icon: PanelRight },
 ];
 
-/** `inbox`: feedback waiting for review, shown as a badge on Feedback. */
+/** `inbox`: feedback waiting for review, shown as a count on Feedback. */
 export function SidebarNav({ inbox = 0 }: { inbox?: number }) {
   const collapsed = useSidebarCollapsed();
 
   return (
     <nav
-      className={cn("flex w-full flex-col gap-1", collapsed && "items-center")}
+      aria-label="Workspace"
+      className={cn(
+        "flex w-full flex-col gap-0.5",
+        collapsed && "items-center",
+      )}
     >
       {main.map((item) => (
         <NavItem key={item.label} item={item} inbox={inbox} />
@@ -51,11 +55,11 @@ export function SidebarNav({ inbox = 0 }: { inbox?: number }) {
       {collapsed ? (
         <div className="mt-4" />
       ) : (
-        <p className="mt-3 mb-1 px-1 text-[11px] font-semibold tracking-wider text-sidebar-foreground/70 uppercase">
-          Settings
+        <p className="px-2 pt-5 pb-1.5 font-mono text-[10.5px] tracking-[0.08em] text-faint uppercase">
+          Configure
         </p>
       )}
-      {settings.map((item) => (
+      {configure.map((item) => (
         <NavItem key={item.label} item={item} inbox={inbox} />
       ))}
     </nav>
@@ -84,29 +88,27 @@ function NavItem({
       aria-label={description}
       aria-current={active ? "page" : undefined}
       className={cn(
-        "group flex items-center gap-3 rounded-md text-sm font-medium text-sidebar-foreground/75 hover:text-sidebar-foreground",
-        collapsed ? "p-0" : "p-1 hover:bg-sidebar-accent/60",
-        active && "text-sidebar-foreground",
-        active && !collapsed && "bg-sidebar-accent",
+        "relative flex items-center gap-2.5 rounded-lg text-[13.5px] transition-colors hover:bg-sidebar-accent/70 hover:text-sidebar-accent-foreground",
+        collapsed ? "size-9 justify-center" : "w-full px-2 py-1.5",
+        active &&
+          "bg-sidebar-accent font-medium text-sidebar-accent-foreground",
       )}
     >
-      <span
-        className={cn(
-          "relative flex size-9 shrink-0 items-center justify-center rounded-md bg-sidebar-foreground/10 group-hover:bg-sidebar-foreground/20",
-          active && "bg-sidebar-primary group-hover:bg-sidebar-primary",
-        )}
-      >
-        <Icon className="size-[18px]" />
-        {badge ? (
-          <span
-            data-testid="inbox-badge"
-            className="absolute -top-1 -right-1 flex h-4 min-w-4 items-center justify-center rounded-full bg-sidebar-foreground px-1 text-[10px] font-semibold text-sidebar"
-          >
-            {badge > 99 ? "99+" : badge}
-          </span>
-        ) : null}
-      </span>
+      <Icon className="size-4 shrink-0" />
       {collapsed ? null : <span className="truncate">{label}</span>}
+      {badge ? (
+        <span
+          data-testid="inbox-badge"
+          className={cn(
+            "font-mono text-[11px] font-medium text-signal tabular-nums",
+            collapsed
+              ? "absolute -top-0.5 -right-0.5 grid h-4 min-w-4 place-items-center rounded-full bg-signal px-1 text-[9.5px] text-white"
+              : "ml-auto",
+          )}
+        >
+          {badge > 99 ? "99+" : badge}
+        </span>
+      ) : null}
     </Link>
   );
 

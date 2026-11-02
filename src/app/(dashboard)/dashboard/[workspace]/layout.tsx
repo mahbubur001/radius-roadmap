@@ -1,17 +1,32 @@
 import Link from "next/link";
 import { Suspense } from "react";
+import {
+  CommandButton,
+  CommandMenu,
+} from "@/components/dashboard/command-menu";
 import { PlanFeaturesProvider } from "@/components/dashboard/plan-features";
+import { PublicSiteLink } from "@/components/dashboard/public-site-link";
 import { Sidebar } from "@/components/dashboard/sidebar";
+import { PlanNote, ThemeButton } from "@/components/dashboard/sidebar-footer";
 import { SidebarNav } from "@/components/dashboard/sidebar-nav";
+import { TopBar } from "@/components/dashboard/top-bar";
 import { UserMenu } from "@/components/dashboard/user-menu";
+import { WorkspaceRail } from "@/components/dashboard/workspace-rail";
 import { WorkspaceSwitcher } from "@/components/dashboard/workspace-switcher";
 import { Skeleton } from "@/components/ui/skeleton";
 import { db } from "@/server/db/client";
-import { listMyAccounts } from "@/server/services/accounts";
+import { publicSiteUrl } from "@/server/public-url";
+import { getAccount, listMyAccounts } from "@/server/services/accounts";
 import { getBillingRow } from "@/server/services/billing";
 import { seesAllWorkspaces } from "@/server/services/context";
+import { activeHostname } from "@/server/services/custom-domains";
 import { inboxCount } from "@/server/services/feedback";
-import { billing, hasFeature } from "@/server/services/plan-limits";
+import {
+  billing,
+  getAccountPlan,
+  hasFeature,
+} from "@/server/services/plan-limits";
+import { getDefaultWorkspace } from "@/server/services/public-site";
 import {
   getWorkspaceBySlug,
   listWorkspaces,
@@ -27,37 +42,80 @@ export default function WorkspaceLayout({
 }: LayoutProps<"/dashboard/[workspace]">) {
   const slug = params.then((p) => p.workspace);
 
+  // Rail (workspaces, you) · dimmed sidebar · the inset sheet (doc 30).
   return (
-    <div data-dashboard="" className="flex min-h-svh">
+    <div data-dashboard="" className="flex h-svh bg-canvas">
+      <div className="sticky top-0 flex h-svh w-13 shrink-0 flex-col items-center gap-2 py-3">
+        <span
+          aria-hidden
+          className="mb-1 grid size-8 place-items-center rounded-[9px] bg-foreground text-background"
+        >
+          <BrandMark />
+        </span>
+        <Suspense fallback={null}>
+          <Rail slug={slug} />
+        </Suspense>
+        <div className="flex-1" />
+        <Suspense fallback={<Skeleton className="size-8 rounded-full" />}>
+          <CurrentUser slug={slug} />
+        </Suspense>
+      </div>
       <Sidebar>
-        <Suspense fallback={<Skeleton className="size-9 rounded-md" />}>
+        <Suspense fallback={<Skeleton className="h-8 w-full" />}>
           <Switcher slug={slug} />
         </Suspense>
+        <Suspense fallback={<div className="h-6" />}>
+          <PublicLink slug={slug} />
+        </Suspense>
+        <CommandButton />
         <Suspense fallback={null}>
           <Nav slug={slug} />
         </Suspense>
-      </Sidebar>
-      <div className="flex min-w-0 flex-1 flex-col">
-        <header className="flex h-14 items-center justify-between border-b px-6">
-          <Suspense fallback={<Skeleton className="h-5 w-40" />}>
-            <WorkspaceName slug={slug} />
-          </Suspense>
-          <Suspense fallback={<Skeleton className="size-8 rounded-full" />}>
-            <CurrentUser slug={slug} />
-          </Suspense>
-        </header>
+        <div className="flex-1" />
         <Suspense fallback={null}>
-          <PastDueBanner slug={slug} />
+          <Plan slug={slug} />
         </Suspense>
-        <main className="flex-1 bg-muted/40 p-6">
-          <div className="mx-auto w-full max-w-[1500px]">
-            <Suspense fallback={null}>
-              <Features slug={slug}>{children}</Features>
-            </Suspense>
-          </div>
-        </main>
+        <ThemeButton />
+      </Sidebar>
+      <div className="flex min-w-0 flex-1 flex-col py-2 pr-2">
+        <div className="flex min-h-0 flex-1 flex-col overflow-hidden rounded-[14px] bg-background shadow-sheet">
+          <Suspense fallback={<div className="h-12 border-b" />}>
+            <Bar slug={slug} />
+          </Suspense>
+          <Suspense fallback={null}>
+            <PastDueBanner slug={slug} />
+          </Suspense>
+          <main className="min-h-0 flex-1 overflow-y-auto">
+            <div className="mx-auto w-full max-w-[1500px] p-6">
+              <Suspense fallback={null}>
+                <Features slug={slug}>{children}</Features>
+              </Suspense>
+            </div>
+          </main>
+        </div>
       </div>
+      <Suspense fallback={null}>
+        <CommandMenu />
+      </Suspense>
     </div>
+  );
+}
+
+/** The Radius mark: two arcs and a dot (signal). */
+function BrandMark() {
+  return (
+    <svg
+      aria-hidden="true"
+      viewBox="0 0 24 24"
+      className="size-[18px]"
+      fill="none"
+      stroke="currentColor"
+      strokeLinecap="round"
+    >
+      <path d="M4 18a14 14 0 0 1 14-14" strokeWidth="2.4" />
+      <path d="M8 18a10 10 0 0 1 10-10" strokeWidth="2.4" opacity=".6" />
+      <circle cx="17" cy="17" r="2.2" fill="currentColor" stroke="none" />
+    </svg>
   );
 }
 
@@ -102,15 +160,65 @@ async function Switcher({ slug }: { slug: Promise<string> }) {
   );
 }
 
+async function Rail({ slug }: { slug: Promise<string> }) {
+  const ctx = await requireWorkspace(await slug);
+  const workspaces = await listWorkspaces(db, ctx);
+  return (
+    <WorkspaceRail
+      current={ctx.workspaceSlug}
+      canManage={seesAllWorkspaces(ctx)}
+      workspaces={workspaces.map((w) => ({
+        id: w.id,
+        name: w.name,
+        slug: w.slug,
+        logoUrl: fileUrl(w.logo),
+      }))}
+    />
+  );
+}
+
+/** The workspace's public address under its name, opening the live site. */
+async function PublicLink({ slug }: { slug: Promise<string> }) {
+  const ctx = await requireWorkspace(await slug);
+  const [account, defaultWorkspace, customHost] = await Promise.all([
+    getAccount(db, ctx),
+    getDefaultWorkspace(db, ctx.accountId),
+    activeHostname(db, ctx.accountId),
+  ]);
+  const url = publicSiteUrl(
+    account.slug,
+    ctx.workspaceSlug,
+    defaultWorkspace,
+    customHost,
+  );
+  return <PublicSiteLink url={url} />;
+}
+
+async function Plan({ slug }: { slug: Promise<string> }) {
+  const ctx = await requireWorkspace(await slug);
+  if (!seesAllWorkspaces(ctx)) return null;
+  const pro = (await getAccountPlan(db, ctx.accountId)) === "pro";
+  return (
+    <PlanNote
+      pro={pro}
+      billingHref={
+        billing.enabled()
+          ? `/dashboard/${ctx.workspaceSlug}/settings/billing`
+          : null
+      }
+    />
+  );
+}
+
+async function Bar({ slug }: { slug: Promise<string> }) {
+  const ctx = await requireWorkspace(await slug);
+  const ws = await getWorkspaceBySlug(db, ctx, ctx.workspaceSlug);
+  return <TopBar workspaceName={ws.name} />;
+}
+
 async function Nav({ slug }: { slug: Promise<string> }) {
   const ctx = await requireWorkspace(await slug);
   return <SidebarNav inbox={await inboxCount(db, ctx)} />;
-}
-
-async function WorkspaceName({ slug }: { slug: Promise<string> }) {
-  const ctx = await requireWorkspace(await slug);
-  const ws = await getWorkspaceBySlug(db, ctx, ctx.workspaceSlug);
-  return <h1 className="text-sm font-semibold">{ws.name}</h1>;
 }
 
 async function CurrentUser({ slug }: { slug: Promise<string> }) {
@@ -136,7 +244,7 @@ async function PastDueBanner({ slug }: { slug: Promise<string> }) {
   const row = await getBillingRow(db, ctx.accountId);
   if (row?.status !== "past_due") return null;
   return (
-    <div className="border-b border-destructive/40 bg-destructive/10 px-6 py-2 text-sm">
+    <div className="border-b border-destructive/30 bg-destructive/8 px-6 py-2 text-sm">
       Your last payment didn&apos;t go through.{" "}
       <Link
         href={`/dashboard/${ctx.workspaceSlug}/settings/billing`}

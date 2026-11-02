@@ -16,7 +16,8 @@
       "!drizzle",
       "!public/widget.js",
       "!playwright-report",
-      "!test-results"
+      "!test-results",
+      "!docs/design"
     ]
   },
   "formatter": {

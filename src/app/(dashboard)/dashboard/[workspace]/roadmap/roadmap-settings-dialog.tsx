@@ -15,6 +15,7 @@ import {
   deleteRoadmapAction,
   saveRoadmapSettingsAction,
 } from "@/app/(dashboard)/_actions/roadmap";
+import { StageTick } from "@/components/dashboard/stage-tick";
 import { ConfirmDelete } from "@/components/form/confirm-delete";
 import { RichTextEditor } from "@/components/form/rich-text-editor";
 import { Button } from "@/components/ui/button";
@@ -26,9 +27,17 @@ import {
 } from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
 import { Switch } from "@/components/ui/switch";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import type { RoadmapDisplaySettings } from "@/lib/schemas/roadmap";
+import { COLUMN_STAGES, type ColumnStage, STAGE_LABELS } from "@/lib/stages";
 import { type BoardColumn, type BoardRoadmap, byPosition } from "./types";
 
 // The Edit roadmap modal (doc 24): everything is staged in local state and
@@ -101,6 +110,7 @@ type ColumnDraft = {
   name: string;
   isPublic: boolean;
   isDone: boolean;
+  stage: ColumnStage;
 };
 
 export function RoadmapSettingsDialog({
@@ -164,6 +174,7 @@ function SettingsForm({
         name: c.name,
         isPublic: c.isPublic,
         isDone: c.isDone,
+        stage: c.stage,
       }),
     ),
   });
@@ -205,11 +216,12 @@ function SettingsForm({
       workspace,
       id: roadmap.id,
       ...form,
-      columns: form.columns.map(({ id, name, isPublic, isDone }) => ({
+      columns: form.columns.map(({ id, name, isPublic, isDone, stage }) => ({
         id,
         name,
         isPublic,
         isDone,
+        stage,
       })),
     });
     setBusy(false);
@@ -364,14 +376,15 @@ function SettingsForm({
 
         <Section title="Columns">
           <p className="mb-3 text-xs text-muted-foreground">
-            Cards in a "Done" column count as completed. A column must be empty
-            before you delete it.
+            Cards in a "Done" column count as completed (Shipped). The stage
+            sets each other column's place on the way from idea to shipped. A
+            column must be empty before you delete it.
           </p>
           <div className="flex gap-3 overflow-x-auto pb-2">
             {form.columns.map((column, index) => (
               <div
                 key={column.key}
-                className="flex w-36 shrink-0 flex-col gap-3 rounded-md bg-muted p-3"
+                className="flex w-44 shrink-0 flex-col gap-3 rounded-md bg-muted p-3"
               >
                 <Input
                   aria-label="Column name"
@@ -391,6 +404,32 @@ function SettingsForm({
                   checked={column.isDone}
                   onChange={(isDone) => setColumn(column.key, { isDone })}
                 />
+                {column.isDone ? (
+                  <StageNote />
+                ) : (
+                  <Select
+                    value={column.stage}
+                    onValueChange={(stage) =>
+                      setColumn(column.key, { stage: stage as ColumnStage })
+                    }
+                  >
+                    <SelectTrigger
+                      aria-label={`Stage of ${column.name}`}
+                      size="sm"
+                      className="w-full bg-background"
+                    >
+                      <SelectValue />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {COLUMN_STAGES.map((s) => (
+                        <SelectItem key={s} value={s}>
+                          <StageTick stage={s} />
+                          {STAGE_LABELS[s]}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                )}
                 <div className="mt-auto flex items-center justify-between">
                   <Button
                     variant="ghost"
@@ -431,7 +470,7 @@ function SettingsForm({
             ))}
             <button
               type="button"
-              className="flex min-h-40 w-36 shrink-0 items-center justify-center gap-1 rounded-md border border-dashed text-sm font-medium text-primary hover:bg-muted"
+              className="flex min-h-40 w-44 shrink-0 items-center justify-center gap-1 rounded-md border border-dashed text-sm font-medium text-primary hover:bg-muted"
               onClick={() =>
                 setForm((f) => ({
                   ...f,
@@ -442,6 +481,7 @@ function SettingsForm({
                       name: "New column",
                       isPublic: true,
                       isDone: false,
+                      stage: "planned",
                     },
                   ],
                 }))
@@ -626,5 +666,15 @@ function ColumnSwitch({
       {label}
       <Switch checked={checked} onCheckedChange={onChange} />
     </Label>
+  );
+}
+
+/** Done columns don't pick a stage: their cards are shipped. */
+function StageNote() {
+  return (
+    <p className="flex h-7 items-center justify-center gap-1.5 text-xs text-muted-foreground">
+      <StageTick stage="shipped" />
+      Shipped
+    </p>
   );
 }

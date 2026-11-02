@@ -1,4 +1,5 @@
 import { z } from "zod";
+import { COLUMN_STAGES } from "@/lib/stages";
 import {
   ATTACHMENT_TYPES,
   type AttachmentType,
@@ -96,6 +97,7 @@ export const roadmapSettingsSchema = z.object({
         name: z.string().trim().min(1, "Name every column").max(40),
         isPublic: z.boolean(),
         isDone: z.boolean(),
+        stage: z.enum(COLUMN_STAGES),
       }),
     )
     .min(1, "Keep at least one column")

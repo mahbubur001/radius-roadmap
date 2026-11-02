@@ -44,14 +44,13 @@ export function WorkspaceSwitcher({
           aria-label="Switch workspace"
           className={cn(
             "flex min-w-0 items-center gap-2 rounded-lg text-left text-sidebar-accent-foreground outline-none hover:bg-sidebar-accent/70 focus-visible:ring-2 focus-visible:ring-sidebar-ring",
-            collapsed ? "p-0.5" : "w-full px-2 py-1.5",
+            collapsed ? "p-1" : "w-full px-1.5 py-1.5",
           )}
         >
-          {collapsed ? (
-            <WorkspaceAvatar workspace={active} />
-          ) : (
+          <WorkspaceAvatar workspace={active} />
+          {collapsed ? null : (
             <>
-              <span className="truncate font-display text-[15px] font-semibold tracking-[-0.01em]">
+              <span className="flex-1 truncate font-display text-[15px] font-semibold tracking-[-0.01em]">
                 {active?.name}
               </span>
               <ChevronDown className="size-3.5 shrink-0 text-faint" />

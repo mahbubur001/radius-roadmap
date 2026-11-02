@@ -6,6 +6,7 @@ import {
   index,
   integer,
   jsonb,
+  pgEnum,
   pgTable,
   primaryKey,
   text,
@@ -89,6 +90,16 @@ export const roadmaps = pgTable(
   ],
 );
 
+/**
+ * Where a column sits on the way from idea to shipped (doc 30 R2). Done
+ * columns are "shipped" whatever this says (`isDone`).
+ */
+export const roadmapStage = pgEnum("roadmap_stage", [
+  "review",
+  "planned",
+  "in_progress",
+]);
+
 export const roadmapColumns = pgTable(
   "roadmap_columns",
   {
@@ -103,6 +114,7 @@ export const roadmapColumns = pgTable(
     isPublic: boolean().notNull().default(true),
     /** Cards in this column count as completed ("Show completed"). */
     isDone: boolean().notNull().default(false),
+    stage: roadmapStage().notNull().default("planned"),
     createdAt: timestamp({ withTimezone: true }).notNull().defaultNow(),
   },
   (t) => [index("roadmap_columns_roadmap_idx").on(t.roadmapId)],

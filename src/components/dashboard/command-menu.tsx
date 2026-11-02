@@ -28,9 +28,11 @@ import {
   DialogDescription,
   DialogTitle,
 } from "@/components/ui/dialog";
+import type { Stage } from "@/lib/stages";
 import { cn } from "@/lib/utils";
 import type { QuickSearchResult } from "@/server/services/search";
 import { useSidebarCollapsed } from "./sidebar";
+import { StageTick } from "./stage-tick";
 
 const OPEN_EVENT = "rr:command-menu";
 
@@ -46,6 +48,8 @@ type Entry = {
   hint?: string;
   icon: LucideIcon;
   href: string;
+  /** Ideas and cards show their stage tick instead of the icon. */
+  stage?: Stage | null;
 };
 
 const PAGES: [string, string, LucideIcon][] = [
@@ -134,6 +138,7 @@ export function CommandMenu() {
         hint: `${i.votes}`,
         icon: MessageSquare,
         href: `${base}/feedback?feedback=${i.id}`,
+        stage: i.stage,
       })),
       ...found.cards.map((c) => ({
         key: `card:${c.id}`,
@@ -142,6 +147,7 @@ export function CommandMenu() {
         hint: c.roadmapName,
         icon: MapIcon,
         href: `${base}/roadmap?r=${encodeURIComponent(c.roadmapSlug)}&card=${c.id}`,
+        stage: c.stage,
       })),
       ...found.articles.map((a) => ({
         key: `article:${a.id}`,
@@ -248,7 +254,11 @@ export function CommandMenu() {
                     i === current && "bg-accent",
                   )}
                 >
-                  <entry.icon className="size-4 shrink-0" />
+                  {entry.stage !== undefined ? (
+                    <StageTick stage={entry.stage} />
+                  ) : (
+                    <entry.icon className="size-4 shrink-0" />
+                  )}
                   <span className="flex-1 truncate text-foreground">
                     {entry.label}
                   </span>

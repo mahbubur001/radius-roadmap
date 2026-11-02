@@ -50,11 +50,11 @@ export function inWorkspace(table: Scoped, ctx: WorkspaceContext): SQL {
 }
 
 export const DEFAULT_COLUMNS = [
-  { name: "In progress", isDone: false },
-  { name: "Up next", isDone: false },
-  { name: "Future", isDone: false },
-  { name: "Done", isDone: true },
-];
+  { name: "In progress", isDone: false, stage: "in_progress" },
+  { name: "Up next", isDone: false, stage: "planned" },
+  { name: "Future", isDone: false, stage: "review" },
+  { name: "Done", isDone: true, stage: "planned" },
+] as const;
 
 /** LoopedIn's defaults (doc 16 §3). */
 export const DEFAULT_OBJECTIVES = [
@@ -255,6 +255,7 @@ export async function saveRoadmapSettings(
         name: column.name,
         isPublic: column.isPublic,
         isDone: column.isDone,
+        stage: column.stage,
         position,
       };
       if (column.id) {

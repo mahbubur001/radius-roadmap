@@ -1,5 +1,6 @@
 import type { RichTextValue } from "@/components/form/rich-text-editor";
 import type { RoadmapDisplaySettings } from "@/lib/schemas/roadmap";
+import type { ColumnStage } from "@/lib/stages";
 import type { BoardCard } from "@/server/services/cards";
 
 // Plain data passed from the roadmap page (server) to the board (client).
@@ -12,6 +13,7 @@ export type BoardColumn = {
   position: string;
   isPublic: boolean;
   isDone: boolean;
+  stage: ColumnStage;
 };
 
 export type BoardRoadmap = {

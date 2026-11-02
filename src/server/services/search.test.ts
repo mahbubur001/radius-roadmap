@@ -1,5 +1,6 @@
 import { afterAll, beforeAll, describe, expect, it } from "vitest";
 import { db } from "@/server/db/client";
+import { updateCards, updates } from "@/server/db/schema";
 import {
   addTestMember,
   cleanup,
@@ -7,7 +8,7 @@ import {
   createTestUser,
 } from "@/test/factories";
 import { createArticle } from "./articles";
-import { createCard } from "./cards";
+import { createCard, setCardCompleted } from "./cards";
 import type { WorkspaceContext } from "./context";
 import { createFeedback, listBoards } from "./feedback";
 import { listColumns, listRoadmaps } from "./roadmaps";
@@ -63,6 +64,34 @@ describe("quickSearch", () => {
     expect(dark.cards[0]?.roadmapSlug).toBeTruthy();
     const untitled = await quickSearch(db, mine, "untit");
     expect(untitled.articles).toHaveLength(1);
+  });
+
+  it("gives each result its stage; a card in a published update is announced", async () => {
+    const before = await quickSearch(db, mine, "dark");
+    expect(before.ideas[0]?.stage).toBe("review"); // team ideas skip the inbox
+    expect(before.cards[0]?.stage).toBe("in_progress");
+    const card = before.cards[0]?.id as string;
+    await setCardCompleted(db, mine, card, true);
+    expect((await quickSearch(db, mine, "dark")).cards[0]?.stage).toBe(
+      "shipped",
+    );
+    const [post] = await db
+      .insert(updates)
+      .values({
+        accountId: mine.accountId,
+        workspaceId: mine.workspaceId,
+        slug: "dark-mode-is-here",
+        title: "Dark mode is here",
+        status: "published",
+        publishedAt: new Date(),
+      })
+      .returning();
+    await db
+      .insert(updateCards)
+      .values({ updateId: post?.id as string, cardId: card });
+    expect((await quickSearch(db, mine, "dark")).cards[0]?.stage).toBe(
+      "announced",
+    );
   });
 
   it("never returns another account's data", async () => {

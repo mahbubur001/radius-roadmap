@@ -11,7 +11,6 @@ import { PlanNote, ThemeButton } from "@/components/dashboard/sidebar-footer";
 import { SidebarNav } from "@/components/dashboard/sidebar-nav";
 import { TopBar } from "@/components/dashboard/top-bar";
 import { UserMenu } from "@/components/dashboard/user-menu";
-import { WorkspaceRail } from "@/components/dashboard/workspace-rail";
 import { WorkspaceSwitcher } from "@/components/dashboard/workspace-switcher";
 import { Skeleton } from "@/components/ui/skeleton";
 import { db } from "@/server/db/client";
@@ -42,24 +41,9 @@ export default function WorkspaceLayout({
 }: LayoutProps<"/dashboard/[workspace]">) {
   const slug = params.then((p) => p.workspace);
 
-  // Rail (workspaces, you) · dimmed sidebar · the inset sheet (doc 30).
+  // Dimmed sidebar · the inset sheet with the work (doc 30).
   return (
     <div data-dashboard="" className="flex h-svh bg-canvas">
-      <div className="sticky top-0 flex h-svh w-13 shrink-0 flex-col items-center gap-2 py-3">
-        <span
-          aria-hidden
-          className="mb-1 grid size-8 place-items-center rounded-[9px] bg-foreground text-background"
-        >
-          <BrandMark />
-        </span>
-        <Suspense fallback={null}>
-          <Rail slug={slug} />
-        </Suspense>
-        <div className="flex-1" />
-        <Suspense fallback={<Skeleton className="size-8 rounded-full" />}>
-          <CurrentUser slug={slug} />
-        </Suspense>
-      </div>
       <Sidebar>
         <Suspense fallback={<Skeleton className="h-8 w-full" />}>
           <Switcher slug={slug} />
@@ -75,7 +59,12 @@ export default function WorkspaceLayout({
         <Suspense fallback={null}>
           <Plan slug={slug} />
         </Suspense>
-        <ThemeButton />
+        <div className="flex flex-wrap items-center gap-1 pt-1">
+          <Suspense fallback={<Skeleton className="size-8 rounded-full" />}>
+            <CurrentUser slug={slug} />
+          </Suspense>
+          <ThemeButton />
+        </div>
       </Sidebar>
       <div className="flex min-w-0 flex-1 flex-col py-2 pr-2">
         <div className="flex min-h-0 flex-1 flex-col overflow-hidden rounded-[14px] bg-background shadow-sheet">
@@ -98,24 +87,6 @@ export default function WorkspaceLayout({
         <CommandMenu />
       </Suspense>
     </div>
-  );
-}
-
-/** The Radius mark: two arcs and a dot (signal). */
-function BrandMark() {
-  return (
-    <svg
-      aria-hidden="true"
-      viewBox="0 0 24 24"
-      className="size-[18px]"
-      fill="none"
-      stroke="currentColor"
-      strokeLinecap="round"
-    >
-      <path d="M4 18a14 14 0 0 1 14-14" strokeWidth="2.4" />
-      <path d="M8 18a10 10 0 0 1 10-10" strokeWidth="2.4" opacity=".6" />
-      <circle cx="17" cy="17" r="2.2" fill="currentColor" stroke="none" />
-    </svg>
   );
 }
 
@@ -148,23 +119,6 @@ async function Switcher({ slug }: { slug: Promise<string> }) {
   const workspaces = await listWorkspaces(db, ctx);
   return (
     <WorkspaceSwitcher
-      current={ctx.workspaceSlug}
-      canManage={seesAllWorkspaces(ctx)}
-      workspaces={workspaces.map((w) => ({
-        id: w.id,
-        name: w.name,
-        slug: w.slug,
-        logoUrl: fileUrl(w.logo),
-      }))}
-    />
-  );
-}
-
-async function Rail({ slug }: { slug: Promise<string> }) {
-  const ctx = await requireWorkspace(await slug);
-  const workspaces = await listWorkspaces(db, ctx);
-  return (
-    <WorkspaceRail
       current={ctx.workspaceSlug}
       canManage={seesAllWorkspaces(ctx)}
       workspaces={workspaces.map((w) => ({

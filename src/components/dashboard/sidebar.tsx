@@ -22,7 +22,7 @@ export function Sidebar({ children }: { children: ReactNode }) {
     <aside
       className={cn(
         "sticky top-0 flex h-svh shrink-0 flex-col gap-0.5 py-2 text-sidebar-foreground transition-[width] duration-200",
-        collapsed ? "w-14 items-center px-2" : "w-60 pr-3 pl-1",
+        collapsed ? "w-16 items-center px-2" : "w-60 px-3",
       )}
     >
       {children}

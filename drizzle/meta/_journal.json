@@ -120,6 +120,13 @@
       "when": 1793524436228,
       "tag": "0016_platform_admin",
       "breakpoints": true
+    },
+    {
+      "idx": 17,
+      "version": "7",
+      "when": 1793613381218,
+      "tag": "0017_column_stage",
+      "breakpoints": true
     }
   ]
 }

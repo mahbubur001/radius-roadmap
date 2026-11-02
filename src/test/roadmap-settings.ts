@@ -25,11 +25,12 @@ export async function currentSettings(
     notifyOnComplete: roadmap.notifyOnComplete,
     display: { ...defaultDisplay, ...roadmap.display },
     internalDisplay: { ...defaultInternalDisplay, ...roadmap.internalDisplay },
-    columns: columns.map(({ id, name, isPublic, isDone }) => ({
+    columns: columns.map(({ id, name, isPublic, isDone, stage }) => ({
       id,
       name,
       isPublic,
       isDone,
+      stage,
     })),
   };
 }

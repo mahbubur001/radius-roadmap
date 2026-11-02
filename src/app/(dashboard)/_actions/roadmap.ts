@@ -102,13 +102,16 @@ export const saveRoadmapSettingsAction = workspaceAction(
     mutate(ctx, async () => {
       const { columns } = await saveRoadmapSettings(db, ctx, input);
       return {
-        columns: columns.map(({ id, name, position, isPublic, isDone }) => ({
-          id,
-          name,
-          position,
-          isPublic,
-          isDone,
-        })),
+        columns: columns.map(
+          ({ id, name, position, isPublic, isDone, stage }) => ({
+            id,
+            name,
+            position,
+            isPublic,
+            isDone,
+            stage,
+          }),
+        ),
       };
     }),
 );

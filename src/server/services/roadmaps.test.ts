@@ -422,7 +422,7 @@ describe("roadmap settings (doc 24)", () => {
       internalDisplay: { ...before.internalDisplay, showVotes: false },
       columns: [
         { ...done, name: "Shipped" },
-        { name: "Ideas", isPublic: false, isDone: false },
+        { name: "Ideas", isPublic: false, isDone: false, stage: "review" },
         second,
         first,
       ],

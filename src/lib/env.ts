@@ -17,7 +17,7 @@ export const env = createEnv({
     // Email is always sent through Amazon SES (owner, 2026-11-01).
     EMAIL_FROM: z.string().default("Radius Roadmap <no-reply@localhost>"),
     // SES uses the default AWS credential chain (instance role on EC2)
-    AWS_REGION: z.string().default("us-east-1"),
+    AWS_REGION: z.string().default("ap-south-1"), // Mumbai
 
     // File storage: Cloudflare R2, everywhere (doc 29 T11). Optional so the
     // app builds without it; uploads fail clearly until it's set.

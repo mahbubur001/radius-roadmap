@@ -56,7 +56,7 @@ export function UserMenu({
           <AvatarFallback>{initials(name)}</AvatarFallback>
         </Avatar>
       </DropdownMenuTrigger>
-      <DropdownMenuContent align="end" className="w-60">
+      <DropdownMenuContent side="top" align="start" className="w-60">
         <DropdownMenuLabel className="font-normal">
           <div className="text-sm font-medium">{name}</div>
           <div className="truncate text-xs text-muted-foreground">{email}</div>

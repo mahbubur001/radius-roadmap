@@ -115,6 +115,7 @@ async function Roadmap({
           position: c.position,
           isPublic: c.isPublic,
           isDone: c.isDone,
+          stage: c.stage,
         })),
         cards,
         objectives: objectives.map((c) => ({

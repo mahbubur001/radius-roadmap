@@ -276,7 +276,7 @@ export function PublicIdeas({
               </article>
             ))}
           </div>
-        ) : (
+        ) : mine.length && !query && !status ? null : (
           <div className="flex flex-col items-center gap-2 rounded-md border border-dashed px-6 py-12 text-center">
             <Lightbulb className="size-6 text-muted-foreground" />
             <p className="font-medium">

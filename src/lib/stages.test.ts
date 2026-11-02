@@ -20,6 +20,13 @@ describe("feedbackStage", () => {
     ).toBe("announced");
   });
 
+  it("a pending idea the team already moved on shows where it is", () => {
+    expect(feedbackStage({ review: "pending", kind: "done" })).toBe("shipped");
+    expect(feedbackStage({ review: "pending", kind: "planned" })).toBe(
+      "planned",
+    );
+  });
+
   it("declined or rejected ideas have no stage", () => {
     expect(feedbackStage({ review: "approved", kind: "declined" })).toBeNull();
     expect(feedbackStage({ review: "rejected", kind: "open" })).toBeNull();

@@ -21,6 +21,7 @@ import {
   duplicateFeedbackAction,
   getFeedbackAction,
   mergeFeedbackAction,
+  reviewFeedbackAction,
   setFeedbackArchivedAction,
   setFeedbackCompletedAction,
   unlinkCardAction,
@@ -80,6 +81,7 @@ import {
   PRIORITY_BUCKETS,
   priorityBucket,
   priorityScore,
+  type ReviewAction,
   SIZES,
   type UpdateFeedbackInput,
 } from "@/lib/schemas/feedback";
@@ -227,6 +229,31 @@ function FeedbackEditor({
   const [completed, setCompleted] = useState(!!item.completedAt);
   const [archived, setArchived] = useState(!!item.archivedAt);
   const [confirmDelete, setConfirmDelete] = useState(false);
+  const [review, setReview] = useState(item.review);
+
+  async function decide(action: ReviewAction) {
+    const result = await reviewFeedbackAction({
+      workspace,
+      ids: [item.id],
+      action,
+    });
+    if (!result.ok) return toast.error(result.error);
+    toast.success(
+      action === "approve"
+        ? "Approved. It's on your public board."
+        : action === "keep_private"
+          ? "Approved and kept private."
+          : "Rejected.",
+    );
+    const next = action === "reject" ? "rejected" : "approved";
+    setReview(next);
+    if (action !== "reject") setIsPublic(action === "approve");
+    // Reviewed items leave the inbox list.
+    onChanged(item.id, {
+      review: next,
+      isPublic: action === "reject" ? isPublic : action === "approve",
+    });
+  }
 
   const save = useCallback(
     async (patch: Patch) => {
@@ -281,7 +308,7 @@ function FeedbackEditor({
   }
 
   const stage = feedbackStage({
-    review: item.review,
+    review,
     kind: statuses.find((s) => s.id === statusId)?.kind ?? "open",
     announced: cards.some((c) => c.announced),
   });
@@ -297,7 +324,7 @@ function FeedbackEditor({
         <span className="font-mono text-[11px] text-faint" aria-live="polite">
           {autosaveLabel(status) ? `· ${autosaveLabel(status)}` : ""}
         </span>
-        {item.review === "pending" ? (
+        {review === "pending" ? (
           <Badge variant="secondary">Waiting for review</Badge>
         ) : null}
         {completed ? <Badge variant="secondary">Completed</Badge> : null}
@@ -414,6 +441,39 @@ function FeedbackEditor({
             }
           }}
         />
+
+        {review === "pending" ? (
+          <section
+            aria-label="Review"
+            className="flex flex-wrap items-center gap-2 rounded-xl bg-signal/6 px-3 py-2.5 shadow-[inset_0_0_0_1px_color-mix(in_oklab,var(--signal)_20%,transparent)]"
+          >
+            <span className="min-w-48 flex-1 text-sm">
+              <b className="font-semibold">Waiting for review.</b>{" "}
+              <span className="text-muted-foreground">
+                Approve to show it on your public board.
+              </span>
+            </span>
+            <span className="flex shrink-0 gap-1.5">
+              <Button size="sm" onClick={() => decide("approve")}>
+                Approve
+              </Button>
+              <Button
+                size="sm"
+                variant="outline"
+                onClick={() => decide("keep_private")}
+              >
+                Keep private
+              </Button>
+              <Button
+                size="sm"
+                variant="ghost"
+                onClick={() => decide("reject")}
+              >
+                Reject
+              </Button>
+            </span>
+          </section>
+        ) : null}
 
         <div className="flex flex-wrap items-center gap-3">
           <span className="inline-flex h-7 items-center gap-2 rounded-lg bg-muted px-2.5 text-[12.5px] font-medium">

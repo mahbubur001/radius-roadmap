@@ -54,8 +54,9 @@ export function feedbackStage(item: {
   announced?: boolean;
 }): Stage | null {
   if (item.kind === "declined" || item.review === "rejected") return null;
-  if (item.review === "pending") return "new";
-  if (item.kind === "open") return "review";
+  // Waiting in the inbox: New, unless the team already moved it on (e.g.
+  // linked it to a card that shipped before anyone reviewed it).
+  if (item.kind === "open") return item.review === "pending" ? "new" : "review";
   if (item.kind === "done") return item.announced ? "announced" : "shipped";
   return item.kind;
 }

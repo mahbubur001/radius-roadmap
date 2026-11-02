@@ -216,9 +216,19 @@ export function FeedbackView({
   }, []);
   const closeItem = useCallback(() => openItem(null), [openItem]);
 
-  const patchItem = useCallback((id: string, change: Partial<FeedbackRow>) => {
-    setItems((all) => all.map((i) => (i.id === id ? { ...i, ...change } : i)));
-  }, []);
+  const patchItem = useCallback(
+    (id: string, change: Partial<FeedbackRow>) => {
+      // Reviewed items leave the inbox.
+      if (inbox && change.review && change.review !== "pending") {
+        setItems((all) => all.filter((i) => i.id !== id));
+        return;
+      }
+      setItems((all) =>
+        all.map((i) => (i.id === id ? { ...i, ...change } : i)),
+      );
+    },
+    [inbox],
+  );
   const removeItem = useCallback((id: string) => {
     setItems((all) => all.filter((i) => i.id !== id));
   }, []);

@@ -776,7 +776,11 @@ export async function listFeedback(
     const b = PRIORITY_BUCKETS[f.priority];
     where.push(sql`${scoreSql} between ${b.min} and ${b.max}`);
   }
-  if (f.state === "open") {
+  if (f.state === "open" && f.review === "pending") {
+    // The inbox lists everything still waiting for review (as its count
+    // does), also items the team completed before reviewing them.
+    where.push(isNull(feedbackItems.archivedAt));
+  } else if (f.state === "open") {
     where.push(
       isNull(feedbackItems.archivedAt),
       isNull(feedbackItems.completedAt),

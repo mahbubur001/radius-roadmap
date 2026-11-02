@@ -285,6 +285,13 @@
   background: var(--canvas);
 }
 
+/* The light that runs along the Home signal bars. */
+@keyframes signal-sweep {
+  to {
+    left: 110%;
+  }
+}
+
 /* Page titles in the display face. */
 [data-dashboard] main h1 {
   font-family: var(--font-display);

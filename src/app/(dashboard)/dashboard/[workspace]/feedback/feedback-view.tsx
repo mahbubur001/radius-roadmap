@@ -398,7 +398,8 @@ export function FeedbackView({
     "px-2 pt-4 pb-1 font-mono text-[10.5px] tracking-[0.08em] text-faint uppercase";
 
   return (
-    <div data-bleed="" className="flex h-full min-h-0">
+    // Fills the scrolling sheet edge to edge (the sheet is `relative`).
+    <div className="absolute inset-0 flex min-h-0">
       {/* Views: inbox, boards, statuses */}
       <aside className="hidden w-56 shrink-0 flex-col overflow-y-auto border-r p-2 lg:flex">
         <Link

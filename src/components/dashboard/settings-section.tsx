@@ -11,9 +11,11 @@ export function SettingsSection({
   children: ReactNode;
 }) {
   return (
-    <section className="flex flex-col gap-4 rounded-lg border p-6">
+    <section className="flex flex-col gap-4 rounded-xl border bg-card p-6">
       <div>
-        <h3 className="flex items-center gap-2 font-medium">{title}</h3>
+        <h3 className="flex items-center gap-2 font-display text-[15px] font-semibold">
+          {title}
+        </h3>
         {description ? (
           <p className="mt-1 text-sm text-muted-foreground">{description}</p>
         ) : null}

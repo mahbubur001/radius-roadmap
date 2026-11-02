@@ -1,6 +1,7 @@
 "use client";
 
 import { Download, Search, Trash2 } from "lucide-react";
+import { useRouter } from "next/navigation";
 import { useState } from "react";
 import { toast } from "sonner";
 import {
@@ -10,6 +11,13 @@ import {
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
 import {
   Table,
   TableBody,
@@ -41,6 +49,7 @@ export function SubscribersView({
   status: string;
   query: string;
 }) {
+  const router = useRouter();
   const [rows, setRows] = useState(initial);
 
   async function remove(id: string) {
@@ -65,17 +74,21 @@ export function SubscribersView({
   return (
     <div className="flex flex-col gap-5">
       <div className="flex flex-col gap-1">
-        <h1 className="text-xl font-semibold">Subscribers</h1>
+        <h1 className="text-2xl font-semibold">Subscribers</h1>
         <p className="text-sm text-muted-foreground">
           People who get your published updates by email. They confirm their
           address first and can unsubscribe from any email.
         </p>
       </div>
-      <div className="grid gap-3 sm:grid-cols-3">
+      <div className="grid overflow-hidden rounded-xl border sm:grid-cols-3 [&>*+*]:border-t sm:[&>*+*]:border-t-0 sm:[&>*+*]:border-l">
         {(Object.keys(LABELS) as (keyof typeof LABELS)[]).map((k) => (
-          <div key={k} className="rounded-lg border bg-card p-4">
-            <p className="text-sm text-muted-foreground">{LABELS[k]}</p>
-            <p className="text-2xl font-semibold">{counts[k] ?? 0}</p>
+          <div key={k} className="flex flex-col gap-2 px-4 py-3.5">
+            <p className="font-mono text-[11px] tracking-[0.08em] text-faint uppercase">
+              {LABELS[k]}
+            </p>
+            <p className="font-display text-2xl leading-none font-semibold tabular-nums">
+              {counts[k] ?? 0}
+            </p>
           </div>
         ))}
       </div>
@@ -95,20 +108,30 @@ export function SubscribersView({
               className="w-64 pl-8"
             />
           </div>
-          <select
-            name="status"
-            defaultValue={status}
-            aria-label="Status"
-            onChange={(e) => e.currentTarget.form?.requestSubmit()}
-            className="h-9 cursor-pointer rounded-md border bg-transparent px-2 text-sm"
+          <Select
+            value={status || "all"}
+            onValueChange={(v) => {
+              const next = new URLSearchParams();
+              if (query) next.set("q", query);
+              if (v !== "all") next.set("status", v);
+              const qs = next.toString();
+              const base = `/dashboard/${workspace}/updates/subscribers`;
+              router.push(qs ? `${base}?${qs}` : base);
+            }}
           >
-            <option value="">All statuses</option>
-            {(Object.keys(LABELS) as (keyof typeof LABELS)[]).map((k) => (
-              <option key={k} value={k}>
-                {LABELS[k]}
-              </option>
-            ))}
-          </select>
+            <SelectTrigger aria-label="Status" className="w-52">
+              <SelectValue />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="all">All statuses</SelectItem>
+              {(Object.keys(LABELS) as (keyof typeof LABELS)[]).map((k) => (
+                <SelectItem key={k} value={k}>
+                  {LABELS[k]}
+                </SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
+          {status ? <input type="hidden" name="status" value={status} /> : null}
         </form>
         {canManage ? (
           <Button variant="secondary" className="ml-auto" onClick={exportCsv}>

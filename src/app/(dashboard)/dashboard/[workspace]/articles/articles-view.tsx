@@ -122,7 +122,7 @@ export function ArticlesView({
         <span className="flex items-center gap-2 font-medium">
           {a.featured ? (
             <Star
-              className="size-4 shrink-0 fill-current text-amber-500"
+              className="size-4 shrink-0 fill-current text-stage-review"
               aria-label="Featured"
             />
           ) : null}

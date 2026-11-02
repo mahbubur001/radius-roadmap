@@ -7,9 +7,11 @@ export default function SettingsLayout({
 }: LayoutProps<"/dashboard/[workspace]/settings">) {
   return (
     <div className="mx-auto flex max-w-5xl flex-col gap-6">
-      <h2 className="text-2xl font-semibold tracking-tight">Settings</h2>
-      <div className="flex flex-col gap-6 md:flex-row">
-        <aside className="md:w-48">
+      <h2 className="font-display text-[28px] font-semibold tracking-[-0.02em]">
+        Settings
+      </h2>
+      <div className="flex flex-col gap-8 md:flex-row">
+        <aside className="md:sticky md:top-0 md:w-52 md:self-start">
           <Suspense fallback={null}>
             <SettingsNav billing={billing.enabled()} />
           </Suspense>

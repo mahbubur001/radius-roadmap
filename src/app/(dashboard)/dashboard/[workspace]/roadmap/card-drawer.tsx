@@ -584,7 +584,7 @@ function CardEditor({
           <span
             className={cn(
               "size-2 rounded-full",
-              status === "error" ? "bg-destructive" : "bg-emerald-500",
+              status === "error" ? "bg-destructive" : "bg-stage-shipped",
             )}
           />
           {autosaveLabel(status) || "All changes saved"}

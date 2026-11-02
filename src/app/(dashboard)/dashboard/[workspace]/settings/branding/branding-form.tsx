@@ -137,7 +137,7 @@ export function BrandingForm({
                   )}
                 </div>
                 {lowContrast ? (
-                  <FieldDescription className="text-amber-600 dark:text-amber-500">
+                  <FieldDescription className="text-stage-review">
                     This colour is hard to see on white. Links and tabs may be
                     hard to read; pick a darker shade.
                   </FieldDescription>

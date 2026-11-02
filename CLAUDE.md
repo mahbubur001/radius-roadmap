@@ -132,6 +132,7 @@ Keep this list in sync with `package.json`. Deploy files: `ecosystem.config.cjs`
 - Biome formats and lints; run `pnpm check` before finishing. TypeScript strict, no `any`.
 - Server Components by default; add `"use client"` only where needed.
 - UI uses shadcn/ui components in `src/components/ui`; theme colors come from CSS variables (for white-labelling). No hard-coded brand colors.
+- **Dashboard look ("Signal", doc 30):** colours come from the tokens in `globals.css` (scoped to `[data-dashboard]`; colour means something: the six stage colours and `--signal`). Show an idea's or card's progress with `<StageTick>` (`src/lib/stages.ts`: `feedbackStage` / `cardStage`), never with ad-hoc badges. Headings use `font-display`. The sheet (`main`) is the scroll container and is `relative`; a page that must fill it edge to edge uses `absolute inset-0` (never `has-[…]` on the layout: Next keeps earlier pages mounted but hidden).
 - Everything clickable shows the pointer cursor. `globals.css` restores it for `button` and `[role="button"]` (Tailwind v4 Preflight removed it); menu and select items use `cursor-pointer`. Never add `cursor-default` to an interactive element; add `cursor-pointer` to any other clickable element (custom rows, cards, labels acting as buttons).
 
 ### Secrets

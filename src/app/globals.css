@@ -210,7 +210,8 @@
  * only for meaning. The canvas sits behind a dimmed sidebar; the work lives
  * on one inset sheet (--background). Public sites keep their own look.
  */
-:root:has([data-dashboard]) {
+:root:has([data-dashboard]),
+:root:has([data-app-shell]) {
   --canvas: #ebeae6;
   --background: #ffffff;
   --foreground: #1a1917;
@@ -246,7 +247,8 @@
     0 0 0 1px rgb(26 25 23 / 0.08), 0 24px 60px -16px rgb(26 25 23 / 0.28);
 }
 
-.dark:has([data-dashboard]) {
+.dark:has([data-dashboard]),
+.dark:has([data-app-shell]) {
   --canvas: #0d0d0c;
   --background: #161615;
   --foreground: #edebe6;

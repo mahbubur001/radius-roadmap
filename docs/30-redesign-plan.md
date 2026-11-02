@@ -1,6 +1,6 @@
 # 30 — Dashboard + operator redesign ("Signal")
 
-Status: **APPROVED 2026-11-02** (design preview `docs/design/redesign-preview.html`; all §2 decisions as recommended). Being built.
+Status: **APPROVED and BUILT 2026-11-02** (design preview `docs/design/redesign-preview.html`; §2 decisions as recommended, R7 changed by the owner). See §5.
 
 Scope: the team dashboard (`/dashboard/[workspace]/…`) and the operator console (`/admin`). **Public sites, embeds, the widget and emails keep their current look** (they carry the customer's brand).
 
@@ -37,8 +37,21 @@ Warm graphite neutrals, ink-black primary buttons, colour only where it means so
 
 ## 4. Done when
 
-- [ ] Every dashboard and admin screen uses the new shell and tokens, in light and dark.
-- [ ] Stage ticks on ideas, cards, search results and Home; Signal line numbers come from real data.
-- [ ] ⌘K works everywhere in the dashboard.
-- [ ] Public sites, embeds, widget and emails look exactly as before (except R4's new email).
-- [ ] Lint, typecheck, unit and e2e tests green.
+- [x] Every dashboard and admin screen uses the new shell and tokens, in light and dark.
+- [x] Stage ticks on ideas, cards, search results and Home; Signal line numbers come from real data.
+- [x] ⌘K works everywhere in the dashboard.
+- [x] Public sites, embeds, widget and emails look as before (except R4's new email and the public Ideas empty-state fix).
+- [x] Lint, typecheck, unit (308) and e2e (33 + 1 skipped) tests green.
+
+## 5. As built (2026-11-02)
+
+- **Shell:** tokens in `globals.css` scoped to `[data-dashboard]` (and `[data-app-shell]` for sign-in/onboarding); Schibsted Grotesk as `--font-display`; dimmed collapsible sidebar (switcher, public address, ⌘K button, nav with inbox count, plan note, avatar + theme), inset sheet that scrolls on its own (`main` is `relative`; the page itself never scrolls). **Owner change (R7): no workspace rail.** Full-bleed pages fill the sheet with `absolute inset-0` (never `has-[...]`: Next keeps earlier pages mounted hidden). Dropdowns size to their items.
+- **⌘K:** `CommandMenu` (pages + `quickSearch` over ideas/cards/articles, tenant-scoped).
+- **Stages:** `src/lib/stages.ts`, `<StageTick>`, `<StageJourney>`; `roadmap_columns.stage` (migration 0017, guessed from names, editable in Edit roadmap); Announced = in a published update (`services/stages.ts`, columns always table-qualified + snake_case). A pending idea the team already moved on shows its real stage.
+- **Home:** `services/signal.ts` (signal counts, shipped-not-announced, needs-you, loudest with weekly votes, outcomes, activity) + the new page; traffic stats kept.
+- **Feedback:** three panes (views / list / detail inline at ≥ 1440 px, drawer below), J/K/X/Enter (+ A/P/R in the inbox), review bar in the detail, likely duplicates with merge (`similarFeedback`). The inbox lists everything its count includes.
+- **Roadmap:** stage-coloured columns, new card face, stage journey in the drawer; More menu: Unpublish (draft) / Publish, Delete roadmap; Edit roadmap redesigned (section nav, title-left rows, fixed footer).
+- **Updates (R4):** voters of the shipped cards and their ideas get a `voted-shipped` email once (opt-out `/api/public/optout`), per-post `notify_voters` (migration 0018) with a "Closes the loop" note; list rows with stage ticks.
+- **Articles, Settings, Subscribers:** stats strips, % helpful meter, grouped settings nav, shared Selects instead of bare `<select>`s.
+- **Operator console:** same system, always dark (control room), amber for Pro.
+- **Not done (R5, later):** "people ask things your articles don't answer" (needs help-centre search logging).

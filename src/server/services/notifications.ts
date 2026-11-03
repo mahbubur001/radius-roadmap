@@ -11,6 +11,7 @@ import {
 } from "drizzle-orm";
 import { env } from "@/lib/env";
 import {
+  type AlertKind,
   type Frequency,
   type NotificationPrefs,
   notificationPrefsSchema,
@@ -39,8 +40,38 @@ import { type Role, toRole, type WorkspaceContext } from "./context";
 // scoped by the item's own account and workspace.
 
 export function defaultPrefs(role: Role): NotificationPrefs {
-  const f: Frequency = role === "member" ? "off" : "instant";
-  return { newFeedback: f, newComment: f, newSubscriber: "off" };
+  const lead = role !== "member";
+  return {
+    newFeedback: lead ? "instant" : "off",
+    newComment: lead ? "instant" : "off",
+    newSubscriber: "off",
+    // Doc 33: milestones, the review reminder and the weekly summary for
+    // owners and admins; replies to your own comments for everyone.
+    votes: lead ? "instant" : "off",
+    reviewReminder: lead ? "daily" : "off",
+    replies: "instant",
+    weeklySummary: lead ? "weekly" : "off",
+  };
+}
+
+/** A saved row: null columns (added later, doc 33) take the role default. */
+function withDefaults(
+  role: Role,
+  row: Partial<Record<AlertKind, Frequency | null>> | undefined,
+): NotificationPrefs {
+  const base = defaultPrefs(role);
+  if (!row) return base;
+  return {
+    newFeedback: row.newFeedback ?? base.newFeedback,
+    newComment: row.newComment ?? base.newComment,
+    newSubscriber: row.newSubscriber ?? base.newSubscriber,
+    votes: row.votes ?? base.votes,
+    reviewReminder: (row.reviewReminder ??
+      base.reviewReminder) as NotificationPrefs["reviewReminder"],
+    replies: row.replies ?? base.replies,
+    weeklySummary: (row.weeklySummary ??
+      base.weeklySummary) as NotificationPrefs["weeklySummary"],
+  };
 }
 
 export async function getMyPrefs(db: Db, ctx: WorkspaceContext) {
@@ -54,13 +85,7 @@ export async function getMyPrefs(db: Db, ctx: WorkspaceContext) {
       ),
     )
     .limit(1);
-  return row
-    ? {
-        newFeedback: row.newFeedback,
-        newComment: row.newComment,
-        newSubscriber: row.newSubscriber,
-      }
-    : defaultPrefs(ctx.role);
+  return withDefaults(ctx.role, row);
 }
 
 export async function setMyPrefs(
@@ -86,7 +111,7 @@ export async function setMyPrefs(
     });
 }
 
-type Kind = keyof NotificationPrefs;
+type Kind = AlertKind;
 
 /**
  * Team members of the account who can see the workspace (owners and admins
@@ -107,6 +132,10 @@ export async function recipients(
       newFeedback: notificationPreferences.newFeedback,
       newComment: notificationPreferences.newComment,
       newSubscriber: notificationPreferences.newSubscriber,
+      votes: notificationPreferences.votes,
+      reviewReminder: notificationPreferences.reviewReminder,
+      replies: notificationPreferences.replies,
+      weeklySummary: notificationPreferences.weeklySummary,
     })
     .from(member)
     .innerJoin(user, eq(user.id, member.userId))
@@ -137,10 +166,7 @@ export async function recipients(
         ) as SQL,
       ),
     );
-  return rows.filter((r) => {
-    const set = r[kind] ?? defaultPrefs(toRole(r.role))[kind];
-    return set === freq;
-  });
+  return rows.filter((r) => withDefaults(toRole(r.role), r)[kind] === freq);
 }
 
 function origin() {

@@ -76,6 +76,46 @@ export const votes = pgTable(
   ],
 );
 
+/**
+ * Vote milestones already announced to the team (doc 33): one row per card
+ * or idea and milestone, so voting, unvoting and voting again never emails
+ * twice.
+ */
+export const voteMilestones = pgTable(
+  "vote_milestones",
+  {
+    id: uuid().primaryKey().defaultRandom(),
+    accountId: text()
+      .notNull()
+      .references(() => organization.id, { onDelete: "cascade" }),
+    workspaceId: uuid()
+      .notNull()
+      .references(() => workspaces.id, { onDelete: "cascade" }),
+    cardId: uuid().references(() => roadmapCards.id, { onDelete: "cascade" }),
+    feedbackId: uuid().references(() => feedbackItems.id, {
+      onDelete: "cascade",
+    }),
+    milestone: integer().notNull(),
+    createdAt: timestamp({ withTimezone: true }).notNull().defaultNow(),
+  },
+  (t) => [
+    uniqueIndex("vote_milestones_card_uq")
+      .on(t.cardId, t.milestone)
+      .where(isNotNull(t.cardId)),
+    uniqueIndex("vote_milestones_feedback_uq")
+      .on(t.feedbackId, t.milestone)
+      .where(isNotNull(t.feedbackId)),
+    check(
+      "vote_milestones_one_target_check",
+      sql`num_nonnulls(${t.cardId}, ${t.feedbackId}) = 1`,
+    ),
+    index("vote_milestones_workspace_created_idx").on(
+      t.workspaceId,
+      t.createdAt,
+    ),
+  ],
+);
+
 export const eventType = pgEnum("event_type", [
   "page_view",
   "card_view",

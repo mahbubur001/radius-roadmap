@@ -134,6 +134,13 @@
       "when": 1793616248081,
       "tag": "0018_update_notify_voters",
       "breakpoints": true
+    },
+    {
+      "idx": 19,
+      "version": "7",
+      "when": 1793687799558,
+      "tag": "0019_email_alerts",
+      "breakpoints": true
     }
   ]
 }

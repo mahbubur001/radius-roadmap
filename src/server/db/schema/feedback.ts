@@ -69,6 +69,8 @@ export const notificationFrequency = pgEnum("notification_frequency", [
   "instant",
   "daily",
   "off",
+  /** Doc 33: the weekly digest (Monday 08:00 UTC). */
+  "weekly",
 ]);
 
 export const feedbackBoards = pgTable(
@@ -309,6 +311,14 @@ export const notificationPreferences = pgTable(
     newComment: notificationFrequency().notNull(),
     /** Phase 4 (doc 23): a new confirmed update subscriber. */
     newSubscriber: notificationFrequency().notNull().default("off"),
+    /**
+     * Doc 33. Null = the role default. votes: instant = milestone emails;
+     * reviewReminder: daily / weekly only; weeklySummary: weekly = on.
+     */
+    votes: notificationFrequency(),
+    reviewReminder: notificationFrequency(),
+    replies: notificationFrequency(),
+    weeklySummary: notificationFrequency(),
     updatedAt: timestamp({ withTimezone: true })
       .notNull()
       .defaultNow()

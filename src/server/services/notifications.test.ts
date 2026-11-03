@@ -87,12 +87,14 @@ async function visitorIdea(title: string) {
 describe("preferences", () => {
   it("defaults by role and saves per member", async () => {
     expect(await getMyPrefs(db, owner)).toEqual(defaultPrefs("owner"));
-    expect(await getMyPrefs(db, member)).toEqual({
+    expect(await getMyPrefs(db, member)).toEqual(defaultPrefs("member"));
+    expect(defaultPrefs("member")).toMatchObject({
       newFeedback: "off",
-      newComment: "off",
-      newSubscriber: "off",
+      votes: "off",
+      replies: "instant",
     });
     await setMyPrefs(db, member, {
+      ...defaultPrefs("member"),
       newFeedback: "instant",
       newComment: "off",
       newSubscriber: "off",
@@ -102,6 +104,7 @@ describe("preferences", () => {
 
   it("only reaches members who can see the workspace", async () => {
     await setMyPrefs(db, outsider, {
+      ...defaultPrefs("member"),
       newFeedback: "instant",
       newComment: "instant",
       newSubscriber: "off",
@@ -171,6 +174,7 @@ describe("instant alerts", () => {
 describe("daily digest", () => {
   it("collects the day's ideas and comments for daily subscribers", async () => {
     await setMyPrefs(db, admin, {
+      ...defaultPrefs("admin"),
       newFeedback: "daily",
       newComment: "daily",
       newSubscriber: "off",

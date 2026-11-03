@@ -11,7 +11,7 @@ import {
   type PublicContext,
   type WorkspaceContext,
 } from "./context";
-import { newSubscriberEmails, setMyPrefs } from "./notifications";
+import { defaultPrefs, newSubscriberEmails, setMyPrefs } from "./notifications";
 import {
   confirmSubscription,
   isSuppressed,
@@ -81,6 +81,7 @@ describe("subscribers", () => {
 
   it("verified voters are active at once and alert members who opted in", async () => {
     await setMyPrefs(db, ws, {
+      ...defaultPrefs("owner"),
       newFeedback: "instant",
       newComment: "instant",
       newSubscriber: "instant",

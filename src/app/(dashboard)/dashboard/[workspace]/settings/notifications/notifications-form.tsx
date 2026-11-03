@@ -21,17 +21,29 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import {
-  FREQUENCIES,
+  ALERT_OPTIONS,
+  type AlertKind,
   FREQUENCY_LABELS,
+  type Frequency,
   type NotificationPrefs,
   notificationPrefsSchema,
 } from "@/lib/schemas/notifications";
 
-const ROWS: { name: keyof NotificationPrefs; label: string; hint: string }[] = [
+const ROWS: { name: AlertKind; label: string; hint: string }[] = [
   {
     name: "newFeedback",
     label: "New ideas",
     hint: "When a visitor suggests an idea on your public site.",
+  },
+  {
+    name: "reviewReminder",
+    label: "Ideas waiting for review",
+    hint: "Ideas still in the inbox after 24 hours, oldest first.",
+  },
+  {
+    name: "votes",
+    label: "Votes",
+    hint: "Right away: when a card or idea reaches 10, 25, 50, 100… votes. Digest: new votes and the most voted items.",
   },
   {
     name: "newComment",
@@ -39,11 +51,25 @@ const ROWS: { name: keyof NotificationPrefs; label: string; hint: string }[] = [
     hint: "Comments from visitors and teammates on ideas and roadmap cards.",
   },
   {
+    name: "replies",
+    label: "Replies to you",
+    hint: "Someone comments where you commented before.",
+  },
+  {
     name: "newSubscriber",
     label: "New subscribers",
     hint: "When someone confirms they want your updates by email.",
   },
+  {
+    name: "weeklySummary",
+    label: "Weekly summary",
+    hint: "Ideas, votes, comments and what shipped in the last 7 days, every Monday.",
+  },
 ];
+
+/** Labels for the summary's On / Off. */
+const optionLabel = (name: AlertKind, f: Frequency) =>
+  name === "weeklySummary" ? (f === "off" ? "Off" : "On") : FREQUENCY_LABELS[f];
 
 /** The member's own email alerts for this workspace. */
 export function NotificationsForm({
@@ -68,7 +94,7 @@ export function NotificationsForm({
   return (
     <SettingsSection
       title="Email notifications"
-      description="For this workspace only. Daily digests arrive around 08:00 UTC."
+      description="For this workspace only. Daily digests arrive around 08:00 UTC, weekly digests on Mondays."
     >
       <form onSubmit={form.handleSubmit(onSubmit)} noValidate>
         <FieldGroup>
@@ -88,9 +114,9 @@ export function NotificationsForm({
                       <SelectValue />
                     </SelectTrigger>
                     <SelectContent>
-                      {FREQUENCIES.map((f) => (
+                      {ALERT_OPTIONS[row.name].map((f) => (
                         <SelectItem key={f} value={f}>
-                          {FREQUENCY_LABELS[f]}
+                          {optionLabel(row.name, f)}
                         </SelectItem>
                       ))}
                     </SelectContent>

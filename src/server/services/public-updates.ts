@@ -246,7 +246,7 @@ export async function updatePathStatus(
   slug: string | undefined,
 ): Promise<"ok" | "missing"> {
   const [workspace] = await db
-    .select({ id: workspaces.id })
+    .select({ id: workspaces.id, settings: workspaces.settings })
     .from(workspaces)
     .where(
       and(eq(workspaces.accountId, ctx.accountId), eq(workspaces.slug, ws)),
@@ -254,7 +254,8 @@ export async function updatePathStatus(
     .limit(1);
   if (!workspace) return "missing";
   if (!slug || slug === "feed.xml") {
-    return (await hasPublicUpdates(db, ctx, workspace.id)) ? "ok" : "missing";
+    // The list and feed exist whenever Updates is switched on (owner).
+    return workspace.settings.showUpdates !== false ? "ok" : "missing";
   }
   return (await getPublicUpdate(db, ctx, workspace.id, slug))
     ? "ok"

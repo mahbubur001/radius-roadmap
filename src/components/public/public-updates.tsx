@@ -63,7 +63,13 @@ export function PublicUpdates({
       )}
       <SubscribeBox justConfirmed={justSubscribed} />
 
-      <div className="mb-6 flex flex-wrap items-center gap-2.5">
+      {/* Nothing to filter before the first post. */}
+      <div
+        className={cn(
+          "mb-6 flex flex-wrap items-center gap-2.5",
+          !posts.length && !query && !category && "hidden",
+        )}
+      >
         <search className="w-full md:w-[280px]">
           <form
             action={base}
@@ -123,9 +129,16 @@ export function PublicUpdates({
           />
         ))
       ) : (
-        <p className="border-t py-16 text-center text-ink3">
-          {query || category ? "No updates match." : "No updates yet."}
-        </p>
+        <div className="rounded-[14px] border-[1.5px] border-dashed border-rule2 px-6 py-12 text-center">
+          <p className="font-t-display text-lg font-semibold">
+            {query || category ? "No updates match." : "Nothing shipped yet."}
+          </p>
+          <p className="mt-1 text-sm text-muted-foreground">
+            {query || category
+              ? "Try another search or category."
+              : "Get updates above and you'll hear first when something ships."}
+          </p>
+        </div>
       )}
     </div>
   );

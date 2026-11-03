@@ -39,6 +39,7 @@ Scope: every public page and embed (roadmap, ideas, updates, help, and their det
 | 16 | Updates are read in the journal itself, so a post title goes straight to its page (no drawer). |
 | 17 | (Owner, after the build) No scoreboard: the stations already show their counts. The hero is title + summary at full width, with one mono line under it: live dot · updated … · N shipped this year. |
 | 18 | (Owner) Objective colours as a small 8 px square (`ObjectiveMark`, same shape as the status squares) before the objective name on cards, topic chips, the card / idea ticket and the ideas ledger. Preview: `docs/design/public-objective-colors-preview.html` (option A). |
+| 19 | (Owner) The Updates tab shows whenever Updates is switched on in Public site settings, before the first post too (replaces doc 22 P2 for Updates). The empty journal shows the subscribe pill and "Nothing shipped yet"; search and categories hide until there's a post. The workspace root still opens Roadmap, then Updates only if it has posts, then Ideas. |
 
 ## 3. Steps (each: build, side-by-side check at both sizes, lint, typecheck, tests, commit)
 

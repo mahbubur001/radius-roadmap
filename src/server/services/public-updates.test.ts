@@ -61,12 +61,12 @@ async function post(title: string) {
 }
 
 describe("publishing", () => {
-  it("no Updates tab until something is published; slug follows the final title", async () => {
-    expect((await getPublicWorkspace(db, pub, "pup"))?.modules.updates).toBe(
-      false,
-    );
+  it("the Updates tab shows before the first post; slug follows the final title", async () => {
+    const before = await getPublicWorkspace(db, pub, "pup");
+    expect(before?.modules.updates).toBe(true);
+    expect(before?.hasPosts).toBe(false);
     const p = await post("Dark mode is live");
-    expect(await updatePathStatus(db, pub, "pup", undefined)).toBe("missing");
+    expect(await updatePathStatus(db, pub, "pup", undefined)).toBe("ok");
     const { post: live, scheduledFor } = await publishUpdate(db, ws, p.id);
     expect(scheduledFor).toBeNull();
     expect(live).toMatchObject({

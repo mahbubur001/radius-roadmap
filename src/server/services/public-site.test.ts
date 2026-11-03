@@ -71,9 +71,10 @@ describe("public site modules", () => {
   it("shows the roadmap by default", async () => {
     const ws = await getPublicWorkspace(db, pub, "mod");
     // New workspaces also get a public ideas board.
+    // Updates shows whenever it's switched on, before the first post too.
     expect(ws?.modules).toEqual({
       roadmap: true,
-      updates: false,
+      updates: true,
       ideas: true,
       articles: false,
     });
@@ -84,7 +85,7 @@ describe("public site modules", () => {
     await updatePublicSite(db, owner, { ...ON, showRoadmap: false });
     expect((await getPublicWorkspace(db, pub, "mod"))?.modules).toEqual({
       roadmap: false,
-      updates: false,
+      updates: true,
       ideas: true,
       articles: false,
     });
@@ -94,12 +95,12 @@ describe("public site modules", () => {
       redirect: "/mod/ideas",
     });
 
-    // With Ideas off too, the workspace isn't public at all.
+    // With Ideas and Updates off too, the workspace isn't public at all.
     await updatePublicSite(db, owner, {
       ...ON,
       showRoadmap: false,
       showIdeas: false,
-      showUpdates: true,
+      showUpdates: false,
     });
     expect(await getPublicWorkspace(db, pub, "mod")).toBeNull();
     expect(

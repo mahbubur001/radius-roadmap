@@ -36,7 +36,6 @@ import {
   roadmapColumns,
   roadmaps,
   tags,
-  updates,
   workspaces,
 } from "@/server/db/schema";
 import { fileUrl } from "@/server/storage/url";
@@ -51,11 +50,7 @@ import {
   hasPublicArticles,
 } from "./public-articles";
 import { boardIsPublic, hasPublicIdeas, ideaPathStatus } from "./public-ideas";
-import {
-  hasPublicUpdates,
-  postIsPublic,
-  updatePathStatus,
-} from "./public-updates";
+import { hasPublicUpdates, updatePathStatus } from "./public-updates";
 
 // Public site queries (doc 19 §4.1). The account comes from the URL path
 // (/<account>/…), never from an account id sent by the client. Only public roadmaps, public columns and public,
@@ -157,12 +152,8 @@ export async function listPublicWorkspaces(db: Db, ctx: PublicContext) {
                 ),
               ),
           ),
-          exists(
-            db
-              .select({ one: sql`1` })
-              .from(updates)
-              .where(and(eq(updates.workspaceId, workspaces.id), postIsPublic)),
-          ),
+          // Updates shows whenever it's switched on, posts or not (owner).
+          sql`coalesce(${workspaces.settings}->>'showUpdates', 'true') <> 'false'`,
           exists(
             db
               .select({ one: sql`1` })
@@ -224,7 +215,10 @@ async function publicWorkspace(db: Db, ctx: PublicContext, match: SQL) {
     hasPublicUpdates(db, ctx, ws.id),
     hasPublicArticles(db, ctx, ws.id),
   ]);
-  if (!boards.length && !ideas && !posts && !kb) return null;
+  // Updates shows whenever it's switched on, even before the first post
+  // (owner, 2026-11-03): an empty journal still takes subscribers.
+  const updatesOn = posts || ws.settings.showUpdates !== false;
+  if (!boards.length && !ideas && !updatesOn && !kb) return null;
   const plan = await getAccountPlan(db, ctx.accountId);
   return {
     id: ws.id,
@@ -241,9 +235,11 @@ async function publicWorkspace(db: Db, ctx: PublicContext, match: SQL) {
       logo: planIncludes(plan, "logo"),
     },
     roadmaps: boards,
+    /** At least one public post (the Updates tab shows without any). */
+    hasPosts: posts,
     modules: {
       roadmap: boards.length > 0,
-      updates: posts,
+      updates: updatesOn,
       ideas,
       articles: kb,
     },
@@ -702,14 +698,13 @@ export async function isSiteWorkspace(
 /** The first module a workspace shows: its tab when you open /<ws>. */
 function homeModule(ws: {
   modules: { roadmap: boolean; updates: boolean; ideas: boolean };
+  hasPosts: boolean;
 }) {
-  return ws.modules.roadmap
-    ? "roadmap"
-    : ws.modules.updates
-      ? "updates"
-      : ws.modules.ideas
-        ? "ideas"
-        : "articles";
+  // An Updates page without posts is a last resort, not a landing page.
+  if (ws.modules.roadmap) return "roadmap";
+  if (ws.modules.updates && ws.hasPosts) return "updates";
+  if (ws.modules.ideas) return "ideas";
+  return ws.modules.updates ? "updates" : "articles";
 }
 
 export type PublicPathStatus = "ok" | "missing" | { redirect: string };

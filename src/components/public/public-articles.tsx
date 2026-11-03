@@ -72,7 +72,7 @@ export function ArticleList({
             className="group flex items-center gap-4 px-1 py-[18px]"
           >
             <span className="min-w-0 flex-1">
-              <span className="block font-t-display text-[17px] leading-[1.3] font-semibold tracking-[-0.01em] group-hover:text-primary">
+              <span className="block font-t-display text-[17px] leading-[1.3] font-semibold tracking-[-0.01em] [overflow-wrap:anywhere] group-hover:text-primary">
                 {a.title}
               </span>
               {a.excerpt ? (

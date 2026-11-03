@@ -38,6 +38,7 @@ Scope: every public page and embed (roadmap, ideas, updates, help, and their det
 | 15 | (Owner, during the build) No "Share an idea" button in the desktop header: the Ideas page has the form ticket; phones keep the dock's "+". |
 | 16 | Updates are read in the journal itself, so a post title goes straight to its page (no drawer). |
 | 17 | (Owner, after the build) No scoreboard: the stations already show their counts. The hero is title + summary at full width, with one mono line under it: live dot · updated … · N shipped this year. |
+| 18 | (Owner) Objective colours as a small 8 px square (`ObjectiveMark`, same shape as the status squares) before the objective name on cards, topic chips, the card / idea ticket and the ideas ledger. Preview: `docs/design/public-objective-colors-preview.html` (option A). |
 
 ## 3. Steps (each: build, side-by-side check at both sizes, lint, typecheck, tests, commit)
 

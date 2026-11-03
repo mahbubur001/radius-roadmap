@@ -1,0 +1,256 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>Radius Roadmap · Objective colours on the public site (preview)</title>
+<link rel="preconnect" href="https://fonts.googleapis.com" />
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+<link href="https://fonts.googleapis.com/css2?family=Familjen+Grotesk:wght@500;600;700&family=Hanken+Grotesk:wght@400;500;600&family=JetBrains+Mono:wght@500;600;700&display=swap" rel="stylesheet" />
+<style>
+  /* Preview chrome */
+  * { box-sizing: border-box; }
+  body { margin: 0; font: 14px/1.45 ui-sans-serif, system-ui, sans-serif; background: #d9dce2; color: #111; }
+  .bar { position: sticky; top: 0; z-index: 50; display: flex; flex-wrap: wrap; gap: 14px; align-items: center; padding: 12px 24px; background: rgba(240,241,244,.94); backdrop-filter: blur(8px); border-bottom: 1px solid #c9cdd5; }
+  .bar h1 { margin: 0; font-size: 15px; }
+  .bar p { margin: 0; color: #555; font-size: 12.5px; max-width: 560px; }
+  .bar .grow { flex: 1; }
+  .seg { display: inline-flex; background: #fff; border-radius: 10px; padding: 3px; box-shadow: inset 0 0 0 1px #c9cdd5; }
+  .seg button { border: 0; background: none; padding: 6px 12px; border-radius: 7px; font: inherit; font-size: 13px; cursor: pointer; color: #444; }
+  .seg button.on { background: #111; color: #fff; }
+  .stage { padding: 24px; display: flex; flex-direction: column; gap: 24px; align-items: center; }
+  .label-row { width: min(1360px, 100%); display: flex; gap: 10px; align-items: baseline; }
+  .label-row b { font-size: 13px; } .label-row span { color: #555; font-size: 12.5px; }
+  .notes { width: min(1360px, 100%); background: #fff; border-radius: 14px; padding: 18px 22px; }
+  .notes h2 { margin: 0 0 8px; font-size: 15px; }
+  .notes ul { margin: 0; padding-left: 18px; line-height: 1.6; font-size: 13px; color: #333; }
+
+  /* ── The site (Transit tokens) ── */
+  .site { --brand: #2f5bff; --display: "Familjen Grotesk", system-ui, sans-serif; --body: "Hanken Grotesk", system-ui, sans-serif; --mono: "JetBrains Mono", ui-monospace, monospace;
+    font: 15px/1.5 var(--body); background: var(--paper); color: var(--ink); border-radius: 14px; overflow: hidden; box-shadow: 0 30px 70px -30px rgba(0,0,0,.45); -webkit-font-smoothing: antialiased; }
+  .site.light { --paper: #f4f5f7; --sheet: #fff; --ink: #0d1014; --ink2: #4a515c; --ink3: #8a919c; --rule: #e1e4e9; --rule2: #cfd3da; --mixbase: #fff; }
+  .site.dark { --paper: #0b0d10; --sheet: #13161b; --ink: #eef0f3; --ink2: #a7aeb9; --ink3: #6b7280; --rule: #22262d; --rule2: #313640; --mixbase: #13161b; }
+  .desk { width: min(1360px, 100%); padding: 28px 36px 40px; }
+  .phonewrap { display: flex; gap: 28px; width: min(1360px, 100%); justify-content: center; flex-wrap: wrap; }
+  .phone { width: 390px; padding: 22px 18px 28px; border-radius: 40px; }
+  svg.i { width: 16px; height: 16px; stroke: currentColor; fill: none; stroke-width: 1.8; stroke-linecap: round; stroke-linejoin: round; flex: none; }
+
+  /* Tools + topic chips */
+  .tools { display: flex; align-items: center; gap: 10px; margin: 0 0 22px; }
+  .tools .grow { flex: 1; }
+  .search { display: flex; align-items: center; gap: 8px; height: 40px; padding: 0 14px; width: 280px; border-radius: 99px; background: var(--sheet); box-shadow: 0 0 0 1px var(--rule); color: var(--ink3); }
+  .phone .search { width: auto; flex: 1; }
+  .chips { display: flex; gap: 10px; flex-wrap: wrap; }
+  .phone .chips { flex-wrap: nowrap; overflow-x: auto; margin: -8px -18px 18px; padding: 0 18px; scrollbar-width: none; }
+  .chip { height: 34px; padding: 0 14px; border-radius: 99px; font-size: 13.5px; font-weight: 500; box-shadow: inset 0 0 0 1px var(--rule2); color: var(--ink2); display: inline-flex; align-items: center; gap: 7px; white-space: nowrap; flex: none; }
+  .chip.on { background: var(--ink); color: var(--paper); box-shadow: none; }
+
+  /* The line */
+  .line { position: relative; display: grid; grid-template-columns: repeat(4, 1fr); gap: 22px; }
+  .line::before { content: ""; position: absolute; left: 0; right: 0; top: 13px; height: 4px; border-radius: 2px; background: linear-gradient(90deg, var(--brand) 0 50%, color-mix(in oklab, var(--brand) 30%, transparent) 50%); }
+  .phone .line { grid-template-columns: 1fr; gap: 0; padding-left: 44px; }
+  .phone .line::before { left: 13px; right: auto; top: 6px; bottom: 30px; width: 4px; height: auto; background: linear-gradient(180deg, var(--brand) 0 40%, color-mix(in oklab, var(--brand) 30%, transparent) 40%); }
+  .station { position: relative; }
+  .phone .station { padding-bottom: 22px; }
+  .stop { display: flex; flex-direction: column; align-items: flex-start; gap: 10px; margin-bottom: 18px; }
+  .phone .stop { flex-direction: row; align-items: center; gap: 12px; margin: 0 0 12px -44px; }
+  .stop > div { display: flex; align-items: baseline; gap: 10px; }
+  .node { position: relative; width: 30px; height: 30px; border-radius: 50%; background: var(--paper); box-shadow: inset 0 0 0 4px var(--brand); flex: none; }
+  .node.now::after { content: ""; position: absolute; inset: 8px; border-radius: 50%; background: var(--brand); }
+  .node.later { box-shadow: inset 0 0 0 4px color-mix(in oklab, var(--brand) 35%, transparent); }
+  .node.done { background: var(--brand); box-shadow: none; display: grid; place-items: center; color: #fff; }
+  .stop .t { font: 700 13px var(--mono); letter-spacing: .12em; text-transform: uppercase; }
+  .stop .s { font-size: 13px; color: var(--ink3); }
+  .stop .n { font: 700 12px var(--mono); color: var(--ink3); padding: 1px 7px; border-radius: 99px; box-shadow: inset 0 0 0 1px var(--rule2); }
+  .cars { display: flex; flex-direction: column; gap: 12px; }
+  .car { position: relative; display: grid; grid-template-columns: 56px 1fr; gap: 14px; padding: 16px; border-radius: 16px; background: var(--sheet); box-shadow: 0 0 0 1px var(--rule); overflow: hidden; }
+  .phone .car { grid-template-columns: 52px 1fr; padding: 14px; }
+  .vote { display: flex; flex-direction: column; align-items: center; justify-content: center; height: 62px; border-radius: 12px; background: var(--paper); font: 700 20px var(--mono); letter-spacing: -.03em; }
+  .phone .vote { height: 58px; font-size: 18px; }
+  .vote svg { width: 14px; height: 14px; color: var(--ink3); margin-bottom: 1px; }
+  .vote.on { background: var(--brand); color: #fff; } .vote.on svg { color: #fff; }
+  .tag { font: 600 10.5px var(--mono); letter-spacing: .12em; text-transform: uppercase; color: var(--ink3); display: inline-flex; align-items: center; gap: 7px; }
+  .tt { font: 600 16.5px/1.25 var(--display); letter-spacing: -.01em; margin: 5px 0 6px; }
+  .ds { font-size: 13.5px; color: var(--ink2); }
+  .ft { display: flex; gap: 14px; margin-top: 10px; font: 500 12px var(--mono); color: var(--ink3); }
+  .ft span { display: inline-flex; gap: 5px; align-items: center; } .ft svg { width: 13px; height: 13px; }
+  .shipped .tt { color: var(--ink2); }
+
+  /* Ticket + ledger samples */
+  .samples { display: grid; grid-template-columns: 1fr 1.25fr; gap: 28px; margin-top: 40px; align-items: start; }
+  .phone .samples { grid-template-columns: 1fr; gap: 22px; margin-top: 10px; }
+  .ticket { background: var(--sheet); border-radius: 22px; box-shadow: 0 0 0 1px var(--rule); overflow: hidden; }
+  .tk-head { padding: 24px 26px 20px; border-bottom: 2px dashed var(--rule2); }
+  .stamp { display: inline-flex; align-items: center; gap: 7px; height: 26px; padding: 0 10px; border-radius: 6px; font: 700 11px var(--mono); letter-spacing: .14em; text-transform: uppercase; color: var(--brand); box-shadow: inset 0 0 0 1.5px var(--brand); transform: rotate(-2deg); }
+  .tk-head h2 { font: 700 26px/1.1 var(--display); letter-spacing: -.025em; margin: 14px 0 10px; }
+  .meta { display: flex; flex-wrap: wrap; gap: 16px; font: 500 12.5px var(--mono); color: var(--ink3); }
+  .meta span { display: inline-flex; gap: 6px; align-items: center; }
+  .bigvote { margin-top: 16px; height: 52px; border-radius: 14px; background: var(--brand); color: #fff; display: flex; align-items: center; justify-content: center; gap: 10px; font: 700 16px var(--display); }
+  .bigvote b { font-family: var(--mono); font-size: 18px; }
+  .ledger { border-top: 2px solid var(--ink); }
+  .lrow { display: grid; grid-template-columns: 70px minmax(0, 1fr) 140px; gap: 16px; align-items: center; padding: 16px 4px; border-bottom: 1px solid var(--rule); }
+  .phone .lrow { grid-template-columns: 56px minmax(0, 1fr); }
+  .phone .lrow .stcol { display: none; }
+  .lvote { display: flex; align-items: center; gap: 8px; font: 700 24px var(--mono); letter-spacing: -.03em; }
+  .lvote svg { color: var(--ink3); }
+  .lrow .lt { font: 600 16px/1.3 var(--display); }
+  .lrow .sub { display: flex; gap: 12px; margin-top: 5px; flex-wrap: wrap; }
+  .st { font: 700 11px var(--mono); letter-spacing: .12em; text-transform: uppercase; display: inline-flex; align-items: center; gap: 8px; }
+  .st i { width: 8px; height: 8px; border-radius: 2px; background: var(--s); }
+  .cap { font: 700 11px var(--mono); letter-spacing: .14em; text-transform: uppercase; color: var(--ink3); margin: 0 0 10px; }
+
+  /* ═════ The three options ═════
+     Every element with an objective carries --c (its colour). */
+  .mk { display: none; flex: none; }
+
+  /* A · Marker: a small square in the colour, like the status squares. */
+  .site.A .mk { display: inline-block; width: 8px; height: 8px; border-radius: 2px; background: var(--c); }
+
+  /* B · Tinted tag: the objective as a soft pill; chips take the tint too. */
+  .site.B .tag[style], .site.B .meta .obj, .site.B .lrow .obj { color: color-mix(in oklab, var(--c) 78%, var(--ink)); background: color-mix(in oklab, var(--c) 13%, var(--mixbase)); padding: 3px 8px; border-radius: 6px; }
+  .site.B .chip[style]:not(.on) { color: color-mix(in oklab, var(--c) 78%, var(--ink)); background: color-mix(in oklab, var(--c) 10%, transparent); box-shadow: inset 0 0 0 1px color-mix(in oklab, var(--c) 35%, transparent); }
+  .site.B .chip[style].on { background: var(--c); color: #fff; }
+
+  /* C · Rail: a colour edge on the left of each card, plus the marker. */
+  .site.C .mk { display: inline-block; width: 8px; height: 8px; border-radius: 2px; background: var(--c); }
+  .site.C .car[style]::before, .site.C .ticket[style] .tk-head::before { content: ""; position: absolute; left: 0; top: 0; bottom: 0; width: 4px; background: var(--c); }
+  .site.C .tk-head { position: relative; }
+</style>
+</head>
+<body>
+
+<div class="bar">
+  <div>
+    <h1>Objective colours on the public site</h1>
+    <p>The objective colours you set in the dashboard, shown on public cards, topic chips, the ticket and the ideas list. Pick an option; the brand colour still owns the line and the vote buttons.</p>
+  </div>
+  <span class="grow"></span>
+  <div class="seg" id="opt"><button class="on" data-o="A">A · Marker</button><button data-o="B">B · Tinted tag</button><button data-o="C">C · Colour rail</button></div>
+  <div class="seg" id="theme"><button class="on" data-t="light">Light</button><button data-t="dark">Dark</button></div>
+</div>
+
+<div class="stage">
+  <div class="label-row"><b>Desktop · 1360 px</b><span id="optName">A · Marker: an 8 px square in the objective colour before its name (same shape as the status squares in Ideas).</span></div>
+  <div class="site desk light A" id="desk"></div>
+  <div class="label-row"><b>Phone · 390 px</b><span>Roadmap, then the ticket and the ideas list.</span></div>
+  <div class="phonewrap">
+    <div class="site phone light A" id="ph1"></div>
+    <div class="site phone light A" id="ph2"></div>
+  </div>
+  <div class="notes">
+    <h2>Where the colour goes (all options)</h2>
+    <ul>
+      <li><b>Roadmap cards:</b> the small-caps objective above the title.</li>
+      <li><b>Topic chips</b> above the line (one per objective).</li>
+      <li><b>Card ticket:</b> the objective in the meta line under the title.</li>
+      <li><b>Ideas list:</b> the idea's objective next to its status (ideas can have an objective too).</li>
+      <li>Not touched: the line, stations, vote buttons and stamps stay in the brand colour; status squares keep the status colours.</li>
+      <li>Dark mode: colours are the same; B mixes the tint with the dark sheet so text stays readable.</li>
+      <li><b>My pick: A.</b> It adds the meaning (which objective) without competing with the brand colour, and it matches the status squares already on the Ideas page. B is louder and fights the brand when colours clash; C is the strongest, but four colours on one line of cards gets busy.</li>
+    </ul>
+  </div>
+</div>
+
+<script>
+const ic = {
+  up: '<svg class="i" viewBox="0 0 24 24"><path d="m6 15 6-6 6 6"/></svg>',
+  msg: '<svg class="i" viewBox="0 0 24 24"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/></svg>',
+  bulb: '<svg class="i" viewBox="0 0 24 24"><path d="M9 18h6M10 22h4M12 2a7 7 0 0 0-4 12.7c.6.5 1 1.3 1 2.1V17h6v-.2c0-.8.4-1.6 1-2.1A7 7 0 0 0 12 2z"/></svg>',
+  cal: '<svg class="i" viewBox="0 0 24 24"><rect x="3" y="4" width="18" height="18" rx="2"/><path d="M16 2v4M8 2v4M3 10h18"/></svg>',
+  search: '<svg class="i" viewBox="0 0 24 24"><circle cx="11" cy="11" r="7"/><path d="m20 20-3.5-3.5"/></svg>',
+  check: '<svg class="i" viewBox="0 0 24 24"><path d="M20 6 9 17l-5-5"/></svg>',
+};
+// The objectives in your database, with their colours.
+const O = {
+  ob: ["Onboarding", "#7c3aed"],
+  ux: ["User Experience", "#ea580c"],
+  sp: ["Speed", "#65a30d"],
+  rg: ["Revenue Growth", "#16a34a"],
+  ie: ["Increase Engagement", "#2563eb"],
+};
+const S = [
+  { k: "Now", s: "In progress", node: "now", cars: [
+    ["ux", "Image upload limit based on membership", 148, true, "Bigger uploads on paid plans.", "Dec 12", 4, 2],
+    ["ie", "Performance improvement", 61, false, "Lists open twice as fast.", "", 2, 0],
+  ] },
+  { k: "Next", s: "Planned", node: "", cars: [
+    ["rg", "Google Analytics integration", 74, false, "Send page views and votes to GA4.", "Jan 20", 3, 1],
+    ["ob", "Guided first roadmap", 33, false, "A checklist for new workspaces.", "", 0, 0],
+  ] },
+  { k: "Later", s: "Considering", node: "later", cars: [
+    ["ux", "MailChimp integration", 52, false, "Sync voters to an audience.", "", 6, 0],
+    ["sp", "Faster search", 27, false, "Results while you type.", "", 1, 0],
+  ] },
+  { k: "Shipped", s: "Done", node: "done", cars: [
+    ["rg", "CSV export", 96, false, "Download any board.", "Nov 5", 12, 2],
+  ] },
+];
+const style = (o) => `style="--c:${O[o][1]}"`;
+const tag = (o) => `<span class="tag" ${style(o)}><i class="mk"></i>${O[o][0]}</span>`;
+
+function roadmap(phone) {
+  const chips = `<div class="chips"><span class="chip on">All</span>${Object.keys(O).map((k) => `<span class="chip" ${style(k)}><i class="mk"></i>${O[k][0]}</span>`).join("")}</div>`;
+  return `
+    <div class="tools"><div class="search">${ic.search}Search the roadmap</div>${phone ? "" : `<span class="grow"></span>${chips}`}</div>
+    ${phone ? chips : ""}
+    <div class="line">${S.map((st) => `
+      <div class="station">
+        <div class="stop"><span class="node ${st.node}">${st.node === "done" ? ic.check : ""}</span><div><span class="t">${st.k}</span><span class="s">${st.s}</span><span class="n">${String(st.cars.length).padStart(2, "0")}</span></div></div>
+        <div class="cars">${st.cars.map(([o, t, v, on, d, eta, c, ideas]) => `
+          <div class="car ${st.node === "done" ? "shipped" : ""}" ${style(o)}>
+            <span class="vote ${on ? "on" : ""}">${ic.up}${v}</span>
+            <span>${tag(o)}<div class="tt">${t}</div><div class="ds">${d}</div>
+            <div class="ft">${eta ? `<span>${ic.cal}${eta}</span>` : ""}<span>${ic.msg}${c}</span>${ideas ? `<span>${ic.bulb}${ideas}</span>` : ""}</div></span>
+          </div>`).join("")}
+        </div>
+      </div>`).join("")}
+    </div>`;
+}
+
+function samples() {
+  const L = [
+    ["Slack alerts for new feedback", 44, "Planned", "#7c5cf0", "ie"],
+    ["Let voters edit their own idea", 19, "Under review", "#d4920a", "ux"],
+    ["Weekly digest email", 12, "New", "#c9cdd5", "ob"],
+  ];
+  return `<div class="samples">
+    <div><div class="cap">Card ticket</div>
+      <div class="ticket" ${style("ux")}><div class="tk-head">
+        <span class="stamp">● Now</span>
+        <h2>Image upload limit based on membership</h2>
+        <div class="meta"><span>${ic.cal}ETA Dec 2026</span><span>${ic.msg}4 comments</span><span class="obj" ${style("ux")}><i class="mk"></i>User Experience</span></div>
+        <div class="bigvote">${ic.up}Vote <b>148</b></div>
+      </div></div>
+    </div>
+    <div><div class="cap">Ideas list</div>
+      <div class="ledger">${L.map(([t, v, st, sc, o]) => `
+        <div class="lrow"><span class="lvote">${ic.up}${v}</span>
+          <span><div class="lt">${t}</div><div class="sub"><span class="st" style="--s:${sc}"><i></i>${st}</span><span class="tag obj" ${style(o)}><i class="mk"></i>${O[o][0]}</span></div></span>
+          <span class="stcol"><span class="st" style="--s:${sc}"><i></i>${st}</span></span></div>`).join("")}
+      </div>
+    </div>
+  </div>`;
+}
+
+document.getElementById("desk").innerHTML = roadmap(false) + samples();
+document.getElementById("ph1").innerHTML = roadmap(true);
+document.getElementById("ph2").innerHTML = samples();
+
+const NAMES = {
+  A: "A · Marker: an 8 px square in the objective colour before its name (same shape as the status squares in Ideas).",
+  B: "B · Tinted tag: the objective as a soft pill in its colour; topic chips tinted, the active one filled.",
+  C: "C · Colour rail: a 4 px edge in the objective colour on each card and the ticket, plus the marker.",
+};
+function seg(id, fn) {
+  document.getElementById(id).addEventListener("click", (e) => {
+    const b = e.target.closest("button"); if (!b) return;
+    document.querySelectorAll(`#${id} button`).forEach((x) => x.classList.toggle("on", x === b));
+    fn(b);
+  });
+}
+const sites = () => document.querySelectorAll(".site");
+seg("opt", (b) => { sites().forEach((s) => s.classList.remove("A", "B", "C")); sites().forEach((s) => s.classList.add(b.dataset.o)); document.getElementById("optName").textContent = NAMES[b.dataset.o]; });
+seg("theme", (b) => { sites().forEach((s) => { s.classList.remove("light", "dark"); s.classList.add(b.dataset.t); }); });
+</script>
+</body>
+</html>

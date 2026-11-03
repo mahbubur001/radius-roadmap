@@ -5,6 +5,7 @@ import type { ReactNode } from "react";
 import { type StationKey, stampText } from "@/lib/stations";
 import { cn } from "@/lib/utils";
 import type { PublicCard } from "@/server/services/public-site";
+import { ObjectiveMark } from "./objective-mark";
 import {
   CommentCompose,
   type Comments,
@@ -40,7 +41,7 @@ export function CardDetail({
       head={
         <>
           <Stamp>{stampText(station)}</Stamp>
-          <h1 className="mt-4 mb-2.5 pr-10 font-t-display text-[25px] leading-[1.1] font-bold tracking-[-0.025em] md:text-[28px]">
+          <h1 className="mt-4 mb-2.5 pr-10 font-t-display text-[25px] leading-[1.1] font-bold tracking-[-0.025em] [overflow-wrap:anywhere] md:text-[28px]">
             {card.title}
           </h1>
           <Meta>
@@ -60,7 +61,12 @@ export function CardDetail({
                 {card.comments} {card.comments === 1 ? "comment" : "comments"}
               </span>
             ) : null}
-            {card.objective ? <span>{card.objective.name}</span> : null}
+            {card.objective ? (
+              <span className="inline-flex items-center gap-1.5">
+                <ObjectiveMark color={card.objective.color} />
+                {card.objective.name}
+              </span>
+            ) : null}
           </Meta>
           <VoteButton cardId={card.id} votes={card.votes} variant="ticket" />
         </>

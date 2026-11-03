@@ -87,7 +87,7 @@ async function PublicRoadmap(props: Props) {
             <h1
               className={
                 roadmap.display.showTitle
-                  ? "mt-2.5 mb-2.5 font-t-display text-[38px] leading-none font-bold tracking-[-0.035em] md:mt-3.5 md:mb-4 md:text-[clamp(40px,5.2vw,68px)]"
+                  ? "mt-2.5 mb-2.5 font-t-display text-[38px] leading-none font-bold tracking-[-0.035em] [overflow-wrap:anywhere] md:mt-3.5 md:mb-4 md:text-[clamp(40px,5.2vw,68px)]"
                   : "sr-only"
               }
             >

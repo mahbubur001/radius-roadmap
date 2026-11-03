@@ -8,6 +8,7 @@ import type { IdeaSort, PublicIdea } from "@/server/services/public-ideas";
 import { DetailSheet } from "./detail-sheet";
 import { IdeaDetail, StatusChip } from "./idea-detail";
 import { IdeaForm } from "./idea-form";
+import { ObjectiveMark } from "./objective-mark";
 import { Chip } from "./public-board";
 import { VoteButton } from "./vote-button";
 import { useVoter } from "./voter-provider";
@@ -296,7 +297,7 @@ export function PublicIdeas({
                   />
                 </div>
                 <div className="min-w-0">
-                  <h2 className="font-t-display text-[17px] leading-[1.3] font-semibold tracking-[-0.01em]">
+                  <h2 className="font-t-display text-[17px] leading-[1.3] font-semibold tracking-[-0.01em] [overflow-wrap:anywhere]">
                     <a
                       href={href(idea)}
                       onClick={(e) => {
@@ -317,13 +318,30 @@ export function PublicIdeas({
                     </a>
                   </h2>
                   {idea.preview ? (
-                    <p className="mt-[3px] line-clamp-2 text-[13.5px] text-muted-foreground">
+                    <p className="mt-[3px] line-clamp-2 text-[13.5px] text-muted-foreground [overflow-wrap:anywhere]">
                       {idea.preview}
                     </p>
                   ) : null}
-                  <div className="mt-1.5 flex gap-3 md:hidden">
-                    <StatusChip status={idea.status} />
-                    {commentsEnabled ? <Talk count={idea.comments} /> : null}
+                  <div
+                    className={cn(
+                      "mt-1.5 flex flex-wrap gap-x-3 gap-y-1",
+                      !idea.objective && "md:hidden",
+                    )}
+                  >
+                    <span className="md:hidden">
+                      <StatusChip status={idea.status} />
+                    </span>
+                    {idea.objective ? (
+                      <span className="inline-flex items-center gap-2 font-t-mono text-[11px] font-semibold tracking-[0.12em] text-ink3 uppercase">
+                        <ObjectiveMark color={idea.objective.color} />
+                        {idea.objective.name}
+                      </span>
+                    ) : null}
+                    {commentsEnabled ? (
+                      <span className="md:hidden">
+                        <Talk count={idea.comments} />
+                      </span>
+                    ) : null}
                   </div>
                 </div>
                 <div className="hidden md:block">

@@ -89,7 +89,7 @@ async function Article(props: Props) {
           {article.category?.name ?? "Help centre"}
         </BackLink>
         <article className="mt-5 overflow-hidden rounded-[22px] bg-sheet px-5 pt-[26px] pb-6 ring-1 ring-border md:px-10 md:pt-10 md:pb-8">
-          <h1 className="font-t-display text-[30px] leading-[1.1] font-bold tracking-[-0.03em] md:text-[40px]">
+          <h1 className="font-t-display text-[30px] leading-[1.1] font-bold tracking-[-0.03em] [overflow-wrap:anywhere] md:text-[40px]">
             {article.title}
           </h1>
           <p className="mt-3 mb-6 font-t-mono text-[12.5px] font-medium text-ink3">

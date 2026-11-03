@@ -60,7 +60,7 @@ export function UpdateEntry({
             {kind}
           </div>
         ) : null}
-        <Title className="mt-2.5 mb-3.5 font-t-display text-[25px] leading-[1.1] font-bold tracking-[-0.025em] md:text-[32px]">
+        <Title className="mt-2.5 mb-3.5 font-t-display text-[25px] leading-[1.1] font-bold tracking-[-0.025em] [overflow-wrap:anywhere] md:text-[32px]">
           {href ? (
             <a href={href} className="hover:text-primary">
               {post.title}
@@ -85,7 +85,7 @@ export function UpdateEntry({
             dangerouslySetInnerHTML={{ __html: post.html }}
           />
         ) : post.excerpt ? (
-          <p className="mb-4 text-base leading-[1.65] whitespace-pre-line text-muted-foreground">
+          <p className="mb-4 text-base leading-[1.65] whitespace-pre-line text-muted-foreground [overflow-wrap:anywhere]">
             {post.excerpt}
             {href && post.excerpt.length >= 280 ? "…" : ""}
           </p>

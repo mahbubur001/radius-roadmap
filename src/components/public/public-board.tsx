@@ -15,6 +15,7 @@ import { cn } from "@/lib/utils";
 import type { PublicCard } from "@/server/services/public-site";
 import { CardDetail } from "./card-detail";
 import { DetailSheet } from "./detail-sheet";
+import { ObjectiveMark } from "./objective-mark";
 import { VoteButton } from "./vote-button";
 
 type Column = { id: string; name: string; isDone: boolean; stage: ColumnStage };
@@ -75,12 +76,15 @@ export function PublicBoard({
   }, []);
 
   // Topic chips are the roadmap's objectives (decision 4).
-  const topics = useMemo(
-    () => [
-      ...new Set(cards.flatMap((c) => (c.objective ? [c.objective.name] : []))),
-    ],
-    [cards],
-  );
+  const topics = useMemo(() => {
+    const seen = new Map<string, string>();
+    for (const c of cards) {
+      if (c.objective && !seen.has(c.objective.name)) {
+        seen.set(c.objective.name, c.objective.color);
+      }
+    }
+    return [...seen].map(([name, color]) => ({ name, color }));
+  }, [cards]);
   const shown = topic
     ? cards.filter((c) => c.objective?.name === topic)
     : cards;
@@ -136,8 +140,13 @@ export function PublicBoard({
                 All
               </Chip>
               {topics.map((t) => (
-                <Chip key={t} on={topic === t} onClick={() => setTopic(t)}>
-                  {t}
+                <Chip
+                  key={t.name}
+                  on={topic === t.name}
+                  onClick={() => setTopic(t.name)}
+                >
+                  <ObjectiveMark color={t.color} />
+                  {t.name}
                 </Chip>
               ))}
             </div>
@@ -321,7 +330,6 @@ function Car({
   commentsEnabled: boolean;
   onOpen: () => void;
 }) {
-  const tag = [card.objective?.name, column].filter(Boolean).join(" · ");
   return (
     <article className="relative grid grid-cols-[52px_1fr] gap-3.5 overflow-hidden rounded-2xl bg-sheet p-3.5 ring-1 ring-border transition-[transform,box-shadow] duration-200 hover:-translate-y-0.5 hover:shadow-[0_18px_30px_-20px_rgba(0,0,0,.35)] hover:ring-rule2 md:grid-cols-[56px_1fr] md:p-4">
       {card.image ? (
@@ -337,14 +345,19 @@ function Car({
         <VoteButton cardId={card.id} votes={card.votes} variant="car" />
       </div>
       <div className="min-w-0">
-        {tag ? (
-          <div className="font-t-mono text-[10.5px] font-semibold tracking-[0.12em] text-ink3 uppercase">
-            {tag}
+        {card.objective || column ? (
+          <div className="flex items-center gap-[7px] font-t-mono text-[10.5px] font-semibold tracking-[0.12em] text-ink3 uppercase">
+            {card.objective ? (
+              <ObjectiveMark color={card.objective.color} />
+            ) : null}
+            <span className="min-w-0">
+              {[card.objective?.name, column].filter(Boolean).join(" · ")}
+            </span>
           </div>
         ) : null}
         <h3
           className={cn(
-            "mt-[5px] mb-1.5 font-t-display text-[16.5px] leading-[1.25] font-semibold tracking-[-0.01em]",
+            "mt-[5px] mb-1.5 font-t-display text-[16.5px] leading-[1.25] font-semibold tracking-[-0.01em] [overflow-wrap:anywhere]",
             shipped && "text-muted-foreground",
           )}
         >
@@ -363,7 +376,7 @@ function Car({
           </a>
         </h3>
         {card.preview ? (
-          <p className="line-clamp-2 text-[13.5px] text-muted-foreground">
+          <p className="line-clamp-2 text-[13.5px] text-muted-foreground [overflow-wrap:anywhere]">
             {card.preview}
           </p>
         ) : null}

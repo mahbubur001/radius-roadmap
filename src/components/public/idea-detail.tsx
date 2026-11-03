@@ -4,6 +4,7 @@ import { Calendar, Map as MapIcon, MessageSquare } from "lucide-react";
 import type { PublicIdea } from "@/server/services/public-ideas";
 import { Label, Meta, Stamp, Ticket } from "./card-detail";
 import { FollowButton } from "./follow-button";
+import { ObjectiveMark } from "./objective-mark";
 import { VoteButton } from "./vote-button";
 
 /**
@@ -34,7 +35,7 @@ export function IdeaDetail({
       head={
         <>
           <Stamp>{idea.status.name}</Stamp>
-          <h1 className="mt-4 mb-2.5 pr-10 font-t-display text-[25px] leading-[1.1] font-bold tracking-[-0.025em] md:text-[28px]">
+          <h1 className="mt-4 mb-2.5 pr-10 font-t-display text-[25px] leading-[1.1] font-bold tracking-[-0.025em] [overflow-wrap:anywhere] md:text-[28px]">
             {idea.title}
           </h1>
           <Meta>
@@ -52,7 +53,12 @@ export function IdeaDetail({
                 {idea.comments} {idea.comments === 1 ? "comment" : "comments"}
               </span>
             ) : null}
-            {idea.objective ? <span>{idea.objective.name}</span> : null}
+            {idea.objective ? (
+              <span className="inline-flex items-center gap-1.5">
+                <ObjectiveMark color={idea.objective.color} />
+                {idea.objective.name}
+              </span>
+            ) : null}
           </Meta>
           <VoteButton
             cardId={idea.id}

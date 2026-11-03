@@ -113,20 +113,20 @@ export function CategoryGrid({
   return (
     <ul
       aria-label="Categories"
-      className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3"
+      className="grid grid-cols-2 gap-3 sm:gap-4 lg:grid-cols-3"
     >
       {categories.map((c) => (
         <li key={c.id}>
           <Link
             href={`${base}/category/${c.slug}${suffix}`}
-            className="flex h-full flex-col gap-2 rounded-lg border bg-card p-5 transition-colors hover:border-primary/50 hover:bg-muted/30"
+            className="flex h-full flex-col gap-2 rounded-xl border bg-card p-4 transition-colors hover:border-primary/50 hover:bg-muted/30 sm:rounded-lg sm:p-5"
           >
             <span className="text-2xl" aria-hidden>
               {c.icon}
             </span>
             <span className="font-semibold">{c.name}</span>
             {c.description ? (
-              <span className="text-sm text-muted-foreground">
+              <span className="hidden text-sm text-muted-foreground sm:block">
                 {c.description}
               </span>
             ) : null}

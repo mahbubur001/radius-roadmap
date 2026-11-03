@@ -1,6 +1,15 @@
-import { Paperclip } from "lucide-react";
+"use client";
+
+import {
+  ArrowUp,
+  CalendarDays,
+  Lightbulb,
+  MessagesSquare,
+  Paperclip,
+} from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { PHONE, useMedia } from "@/lib/use-media";
 import type { PublicCard } from "@/server/services/public-site";
 import { PublicComments } from "./public-comments";
 import { VoteButton } from "./vote-button";
@@ -14,7 +23,10 @@ export function CardDetail({
   columnName,
   commentsEnabled,
   initialTab = "details",
+  ideasBase,
 }: {
+  /** Link base for "Requested in" ideas (null when Ideas is switched off). */
+  ideasBase?: string | null;
   card: PublicCard;
   columnName: string;
   commentsEnabled: boolean;
@@ -23,6 +35,17 @@ export function CardDetail({
 }) {
   const features = card.features ?? [];
   const progress = card.progress;
+  const phone = useMedia(PHONE);
+  if (phone) {
+    return (
+      <PhoneCard
+        card={card}
+        columnName={columnName}
+        commentsEnabled={commentsEnabled}
+        ideasBase={ideasBase ?? null}
+      />
+    );
+  }
   return (
     <article
       className="flex flex-col border-t-4"
@@ -178,7 +201,14 @@ export function CardDetail({
             </Field>
           ) : null}
 
-          {card.ideas ? (
+          {card.requestedIn?.length ? (
+            <Field label="Requested in">
+              <RequestedIn
+                ideas={card.requestedIn}
+                ideasBase={ideasBase ?? null}
+              />
+            </Field>
+          ) : card.ideas ? (
             <p className="text-sm text-muted-foreground">
               💡 Requested in {card.ideas} {card.ideas === 1 ? "idea" : "ideas"}
               .
@@ -208,5 +238,204 @@ function Field({
       <h2 className="text-sm text-muted-foreground">{label}</h2>
       {children}
     </section>
+  );
+}
+
+/** Linked ideas, most votes first; links when the Ideas page is on. */
+function RequestedIn({
+  ideas,
+  ideasBase,
+}: {
+  ideas: NonNullable<PublicCard["requestedIn"]>;
+  ideasBase: string | null;
+}) {
+  return (
+    <ul className="flex flex-col gap-1.5">
+      {ideas.map((i) => {
+        const body = (
+          <>
+            <Lightbulb className="size-4 shrink-0 text-muted-foreground" />
+            <span className="min-w-0 flex-1 truncate">{i.title}</span>
+            <span className="flex shrink-0 items-center gap-0.5 text-xs font-semibold text-muted-foreground">
+              <ArrowUp className="size-3.5" />
+              {i.votes}
+            </span>
+          </>
+        );
+        const row =
+          "flex items-center gap-2.5 rounded-xl bg-muted/60 px-3 py-3 text-sm";
+        return (
+          <li key={i.slug}>
+            {ideasBase ? (
+              <a
+                href={`${ideasBase}/${i.slug}`}
+                className={`${row} hover:bg-muted`}
+              >
+                {body}
+              </a>
+            ) : (
+              <span className={row}>{body}</span>
+            )}
+          </li>
+        );
+      })}
+    </ul>
+  );
+}
+
+/**
+ * The card on a phone (doc 31): one scrolling page, no tabs. Status, title
+ * and a short meta line, a full-width vote button, then the description,
+ * the ideas it was requested in, and the comments.
+ */
+function PhoneCard({
+  card,
+  columnName,
+  commentsEnabled,
+  ideasBase,
+}: {
+  card: PublicCard;
+  columnName: string;
+  commentsEnabled: boolean;
+  ideasBase: string | null;
+}) {
+  const section =
+    "mb-2 text-xs font-semibold tracking-wide text-muted-foreground uppercase";
+  return (
+    <article className="flex flex-col">
+      {card.image ? (
+        // biome-ignore lint/performance/noImgElement: tenant uploads on any host
+        <img
+          src={card.image}
+          alt=""
+          className="mx-4 mt-2 aspect-[3/1] rounded-xl object-cover"
+        />
+      ) : null}
+      <header className="flex flex-col gap-3 px-5 pt-4 pb-5">
+        <span className="inline-flex h-7 w-fit items-center gap-1.5 rounded-full bg-primary/10 px-3 text-xs font-medium text-primary">
+          <span className="size-1.5 rounded-full bg-primary" />
+          {card.completed ? "Done" : columnName}
+        </span>
+        {card.objective ? (
+          <span className="-mb-1 flex items-center gap-1.5 text-xs text-muted-foreground">
+            <span
+              className="size-2 rounded-full"
+              style={{ backgroundColor: card.objective.color }}
+            />
+            {card.objective.name}
+          </span>
+        ) : null}
+        <h1 className="pr-6 text-[22px] leading-tight font-semibold tracking-tight">
+          {card.title}
+        </h1>
+        {card.plannedFor || (commentsEnabled && card.comments) ? (
+          <p className="flex flex-wrap gap-x-4 gap-y-1 text-sm text-muted-foreground">
+            {card.plannedFor ? (
+              <span className="flex items-center gap-1.5">
+                <CalendarDays className="size-4" />
+                Planned for{" "}
+                {new Date(`${card.plannedFor}T00:00:00`).toLocaleDateString(
+                  "en",
+                  { month: "short", year: "numeric" },
+                )}
+              </span>
+            ) : null}
+            {commentsEnabled && card.comments ? (
+              <span className="flex items-center gap-1.5">
+                <MessagesSquare className="size-4" />
+                {card.comments} {card.comments === 1 ? "comment" : "comments"}
+              </span>
+            ) : null}
+          </p>
+        ) : null}
+        <VoteButton cardId={card.id} votes={card.votes} variant="big" />
+      </header>
+
+      <div className="flex flex-col gap-6 px-5 pb-8">
+        {card.html ? (
+          <div
+            className="rich-text text-[15px] leading-relaxed"
+            // Rendered from Tiptap JSON by the allow-list in src/lib/rich-text.ts.
+            // biome-ignore lint/security/noDangerouslySetInnerHtml: sanitized server-side
+            dangerouslySetInnerHTML={{ __html: card.html }}
+          />
+        ) : null}
+
+        {card.tags.length ? (
+          <div className="flex flex-wrap gap-1.5">
+            {card.tags.map((t) => (
+              <Badge key={t} variant="outline">
+                {t}
+              </Badge>
+            ))}
+          </div>
+        ) : null}
+
+        {card.progress || card.features?.length ? (
+          <section>
+            <h2 className={section}>
+              {card.progress
+                ? `Features · ${card.progress.done}/${card.progress.total} done`
+                : "Features"}
+            </h2>
+            <ul className="flex flex-col gap-2 text-[15px]">
+              {(card.features ?? []).map((f) => (
+                <li key={f.title} className="flex items-center gap-2.5">
+                  <span
+                    className={
+                      f.done
+                        ? "size-3.5 rounded-full bg-primary"
+                        : "size-3.5 rounded-full border"
+                    }
+                  />
+                  <span
+                    className={
+                      f.done ? "text-muted-foreground line-through" : ""
+                    }
+                  >
+                    {f.title}
+                  </span>
+                </li>
+              ))}
+            </ul>
+          </section>
+        ) : null}
+
+        {card.attachments?.length ? (
+          <section>
+            <h2 className={section}>Attachments</h2>
+            <ul className="flex flex-col gap-2 text-[15px]">
+              {card.attachments.map((a) => (
+                <li key={a.url}>
+                  <a
+                    href={a.url}
+                    target="_blank"
+                    rel="noreferrer"
+                    className="flex items-center gap-2 text-primary"
+                  >
+                    <Paperclip className="size-4 shrink-0" />
+                    {a.name}
+                  </a>
+                </li>
+              ))}
+            </ul>
+          </section>
+        ) : null}
+
+        {card.requestedIn?.length ? (
+          <section>
+            <h2 className={section}>Requested in</h2>
+            <RequestedIn ideas={card.requestedIn} ideasBase={ideasBase} />
+          </section>
+        ) : null}
+
+        {commentsEnabled ? (
+          <section>
+            <h2 className={section}>Comments</h2>
+            <PublicComments target={{ cardId: card.id }} />
+          </section>
+        ) : null}
+      </div>
+    </article>
   );
 }

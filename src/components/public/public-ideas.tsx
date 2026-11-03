@@ -68,6 +68,25 @@ export function PublicIdeas({
   const mine = pendingIdeas.filter((i) => i.boardId === board.id);
   const embedParam = embed ? "embed=1" : "";
 
+  /** This page with one filter changed (phone chips). */
+  function filterHref(change: { sort?: IdeaSort; status?: string }) {
+    const params = new URLSearchParams({ board: board.slug });
+    if (query) params.set("q", query);
+    const nextSort = change.sort ?? sort;
+    if (nextSort !== "trending") params.set("sort", nextSort);
+    const nextStatus = change.status ?? (change.sort ? "" : status);
+    if (nextStatus) params.set("status", nextStatus);
+    if (embed) params.set("embed", "1");
+    return `${base}?${params}`;
+  }
+  const chip = (on: boolean) =>
+    cn(
+      "flex h-8 shrink-0 items-center gap-1.5 rounded-full px-3 text-[13px] font-medium",
+      on
+        ? "bg-foreground text-background"
+        : "text-muted-foreground ring-1 ring-border ring-inset",
+    );
+
   useEffect(() => {
     const onPop = () => setOpen(null);
     window.addEventListener("popstate", onPop);
@@ -146,7 +165,7 @@ export function PublicIdeas({
               defaultValue={sort}
               aria-label="Sort"
               onChange={(e) => e.currentTarget.form?.requestSubmit()}
-              className="h-10 flex-1 cursor-pointer rounded-md border bg-transparent px-2 text-sm sm:h-9 sm:flex-none"
+              className="hidden h-9 cursor-pointer rounded-md border bg-transparent px-2 text-sm md:block"
             >
               {Object.entries(SORTS).map(([key, label]) => (
                 <option key={key} value={key}>
@@ -159,7 +178,7 @@ export function PublicIdeas({
               defaultValue={status}
               aria-label="Status"
               onChange={(e) => e.currentTarget.form?.requestSubmit()}
-              className="h-10 flex-1 cursor-pointer rounded-md border bg-transparent px-2 text-sm sm:h-9 sm:flex-none"
+              className="hidden h-9 cursor-pointer rounded-md border bg-transparent px-2 text-sm md:block"
             >
               <option value="">All statuses</option>
               {statuses.map((s) => (
@@ -178,6 +197,42 @@ export function PublicIdeas({
             </Button>
           </form>
         </search>
+
+        {/* Phones: sort and status as chips instead of dropdowns (doc 31). */}
+        <nav
+          aria-label="Sort and filter"
+          className="-mx-4 -mt-2 flex gap-1.5 overflow-x-auto px-4 [scrollbar-width:none] md:hidden [&::-webkit-scrollbar]:hidden"
+        >
+          {(Object.entries(SORTS) as [IdeaSort, string][]).map(
+            ([key, label]) => (
+              <a
+                key={key}
+                href={filterHref({ sort: key })}
+                aria-current={key === sort && !status ? "page" : undefined}
+                className={chip(key === sort && !status)}
+              >
+                {label}
+              </a>
+            ),
+          )}
+          {statuses.length ? (
+            <span aria-hidden className="mx-1 my-1.5 w-px shrink-0 bg-border" />
+          ) : null}
+          {statuses.map((st) => (
+            <a
+              key={st.id}
+              href={filterHref({ status: st.id === status ? "" : st.id })}
+              aria-current={st.id === status ? "page" : undefined}
+              className={chip(st.id === status)}
+            >
+              <span
+                className="size-1.5 rounded-full"
+                style={{ backgroundColor: st.color }}
+              />
+              {st.name}
+            </a>
+          ))}
+        </nav>
 
         {mine.length ? (
           <ul className="flex flex-col gap-2" aria-label="Your ideas">

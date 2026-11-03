@@ -2,6 +2,7 @@
 
 import { Lightbulb, MessagesSquare } from "lucide-react";
 import { useEffect, useState } from "react";
+import { PHONE, useMedia } from "@/lib/use-media";
 import { cn } from "@/lib/utils";
 import type { PublicCard } from "@/server/services/public-site";
 import { CardDetail } from "./card-detail";
@@ -23,7 +24,10 @@ export function PublicBoard({
   query,
   embed,
   commentsEnabled,
+  ideasBase,
 }: {
+  /** Link base for the ideas a card was requested in. */
+  ideasBase?: string | null;
   columns: Column[];
   cards: PublicCard[];
   /** Base path for card links, e.g. "/classified-listing/roadmap". */
@@ -34,6 +38,7 @@ export function PublicBoard({
   commentsEnabled: boolean;
 }) {
   const [open, setOpen] = useState<PublicCard | null>(null);
+  const phone = useMedia(PHONE);
   // Phones show one column at a time, picked with the chips (doc 31 M2).
   const [shown, setShown] = useState(
     () => columns.find((c) => !c.isDone)?.id ?? columns[0]?.id ?? "",
@@ -147,85 +152,104 @@ export function PublicBoard({
                           className="-mx-5 -mt-4 mb-1 aspect-[3/1] w-[calc(100%+2.5rem)] max-w-none object-cover"
                         />
                       ) : null}
-                      {card.objective ? (
-                        <span className="flex w-fit items-center gap-1.5 rounded border px-2 py-0.5 text-xs">
-                          <span
-                            className="size-2 rounded-full"
-                            style={{ backgroundColor: card.objective.color }}
-                          />
-                          {card.objective.name}
-                        </span>
-                      ) : null}
-                      <h3
-                        className={cn(
-                          "font-medium leading-snug",
-                          card.completed && "text-muted-foreground",
-                        )}
-                      >
-                        <a
-                          href={href(card)}
-                          onClick={(e) => {
-                            if (
-                              e.metaKey ||
-                              e.ctrlKey ||
-                              e.shiftKey ||
-                              e.button !== 0
-                            ) {
-                              return;
-                            }
-                            e.preventDefault();
-                            openCard(card);
-                          }}
-                          className="outline-none after:absolute after:inset-0 focus-visible:after:ring-2 focus-visible:after:ring-ring focus-visible:after:ring-inset"
-                        >
-                          {card.title}
-                        </a>
-                      </h3>
-                      {card.preview ? (
-                        <p className="line-clamp-3 text-sm text-muted-foreground">
-                          {card.preview}
-                        </p>
-                      ) : null}
-                      {card.progress ? (
-                        <FeatureBar progress={card.progress} />
-                      ) : null}
-                      <div className="relative z-10 flex items-center gap-3 text-sm text-muted-foreground">
-                        <VoteButton cardId={card.id} votes={card.votes} />
-                        {commentsEnabled ? (
-                          <>
-                            <span className="h-4 w-px bg-border" />
-                            <Hint label="Comments">
-                              <button
-                                type="button"
-                                aria-label={`Comments (${card.comments})`}
-                                onClick={(e) => {
-                                  e.preventDefault();
-                                  e.stopPropagation();
-                                  openCard(card, "comments");
+                      <div className="flex gap-3">
+                        {phone ? (
+                          <div className="relative z-10 pt-0.5">
+                            <VoteButton
+                              cardId={card.id}
+                              votes={card.votes}
+                              variant="box"
+                            />
+                          </div>
+                        ) : null}
+                        <div className="flex min-w-0 flex-1 flex-col gap-2.5">
+                          {card.objective ? (
+                            <span className="flex w-fit items-center gap-1.5 rounded border px-2 py-0.5 text-xs">
+                              <span
+                                className="size-2 rounded-full"
+                                style={{
+                                  backgroundColor: card.objective.color,
                                 }}
-                                className="-mx-1.5 flex h-7 items-center gap-1.5 rounded-md px-1.5 transition-colors hover:bg-muted hover:text-foreground focus-visible:ring-2 focus-visible:ring-ring focus-visible:outline-none"
-                              >
-                                <MessagesSquare className="size-4" />
-                                {card.comments}
-                              </button>
-                            </Hint>
-                          </>
-                        ) : null}
-                        {card.ideas ? (
-                          <Hint
-                            label={`Requested by your users (${card.ideas})`}
-                          >
-                            <span
-                              // biome-ignore lint/a11y/noNoninteractiveTabindex: focusable so keyboard users get the tooltip
-                              tabIndex={0}
-                              role="img"
-                              aria-label={`Requested by your users (${card.ideas})`}
-                              className="ml-auto flex size-7 items-center justify-center rounded-full bg-primary/10 text-primary outline-none focus-visible:ring-2 focus-visible:ring-ring"
-                            >
-                              <Lightbulb className="size-4" />
+                              />
+                              {card.objective.name}
                             </span>
-                          </Hint>
-                        ) : null}
+                          ) : null}
+                          <h3
+                            className={cn(
+                              "font-medium leading-snug",
+                              card.completed && "text-muted-foreground",
+                            )}
+                          >
+                            <a
+                              href={href(card)}
+                              onClick={(e) => {
+                                if (
+                                  e.metaKey ||
+                                  e.ctrlKey ||
+                                  e.shiftKey ||
+                                  e.button !== 0
+                                ) {
+                                  return;
+                                }
+                                e.preventDefault();
+                                openCard(card);
+                              }}
+                              className="outline-none after:absolute after:inset-0 focus-visible:after:ring-2 focus-visible:after:ring-ring focus-visible:after:ring-inset"
+                            >
+                              {card.title}
+                            </a>
+                          </h3>
+                          {card.preview ? (
+                            <p className="line-clamp-3 text-sm text-muted-foreground">
+                              {card.preview}
+                            </p>
+                          ) : null}
+                          {card.progress ? (
+                            <FeatureBar progress={card.progress} />
+                          ) : null}
+                          <div className="relative z-10 flex items-center gap-3 text-sm text-muted-foreground">
+                            {phone ? null : (
+                              <VoteButton cardId={card.id} votes={card.votes} />
+                            )}
+                            {commentsEnabled ? (
+                              <>
+                                {phone ? null : (
+                                  <span className="h-4 w-px bg-border" />
+                                )}
+                                <Hint label="Comments">
+                                  <button
+                                    type="button"
+                                    aria-label={`Comments (${card.comments})`}
+                                    onClick={(e) => {
+                                      e.preventDefault();
+                                      e.stopPropagation();
+                                      openCard(card, "comments");
+                                    }}
+                                    className="-mx-1.5 flex h-7 items-center gap-1.5 rounded-md px-1.5 transition-colors hover:bg-muted hover:text-foreground focus-visible:ring-2 focus-visible:ring-ring focus-visible:outline-none"
+                                  >
+                                    <MessagesSquare className="size-4" />
+                                    {card.comments}
+                                  </button>
+                                </Hint>
+                              </>
+                            ) : null}
+                            {card.ideas ? (
+                              <Hint
+                                label={`Requested by your users (${card.ideas})`}
+                              >
+                                <span
+                                  // biome-ignore lint/a11y/noNoninteractiveTabindex: focusable so keyboard users get the tooltip
+                                  tabIndex={0}
+                                  role="img"
+                                  aria-label={`Requested by your users (${card.ideas})`}
+                                  className="ml-auto flex size-7 items-center justify-center rounded-full bg-primary/10 text-primary outline-none focus-visible:ring-2 focus-visible:ring-ring"
+                                >
+                                  <Lightbulb className="size-4" />
+                                </span>
+                              </Hint>
+                            ) : null}
+                          </div>
+                        </div>
                       </div>
                     </article>
                   ))}
@@ -253,6 +277,7 @@ export function PublicBoard({
             card={open}
             columnName={columns.find((c) => c.id === open.columnId)?.name ?? ""}
             commentsEnabled={commentsEnabled}
+            ideasBase={ideasBase}
           />
         ) : null}
       </DetailSheet>

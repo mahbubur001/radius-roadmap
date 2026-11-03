@@ -79,6 +79,9 @@ async function PublicCard(props: Props) {
             card={card}
             columnName={columnName}
             commentsEnabled={!!ws.settings.commentsEnabled}
+            ideasBase={
+              ws.modules.ideas ? `${site.prefix}${wsPath(ws)}/ideas` : null
+            }
           />
         </div>
       </div>

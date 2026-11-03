@@ -1,6 +1,7 @@
 import {
   and,
   asc,
+  desc,
   eq,
   exists,
   getTableColumns,
@@ -274,6 +275,8 @@ export type PublicCard = {
   ideas: number;
   /** Approved public comments (team notes never count). */
   comments: number;
+  /** The visible ideas linked to the card, most votes first (drawer/page). */
+  requestedIn: { title: string; slug: string; votes: number }[] | null;
 };
 
 type CardFilter = { roadmapId: string; q?: string; slug?: string };
@@ -332,7 +335,7 @@ async function publicCards(
 
   const ids = rows.map((r) => r.id);
   const withAttachments = withHtml && display.showAttachments;
-  const [tagRows, featureRows, attachmentRows] = ids.length
+  const [tagRows, featureRows, attachmentRows, ideaRows] = ids.length
     ? await Promise.all([
         display.showTags
           ? db
@@ -364,8 +367,42 @@ async function publicCards(
               .where(inArray(cardAttachments.cardId, ids))
               .orderBy(asc(cardAttachments.createdAt))
           : [],
+        withHtml
+          ? db
+              .select({
+                cardId: cardFeedbackLinks.cardId,
+                title: feedbackItems.title,
+                slug: feedbackItems.slug,
+                votes: sql<number>`${feedbackItems.voteCount} + ${feedbackItems.importedVotes}`,
+              })
+              .from(cardFeedbackLinks)
+              .innerJoin(
+                feedbackItems,
+                eq(feedbackItems.id, cardFeedbackLinks.feedbackId),
+              )
+              .innerJoin(
+                feedbackBoards,
+                eq(feedbackBoards.id, feedbackItems.boardId),
+              )
+              .where(
+                and(
+                  eq(cardFeedbackLinks.accountId, ctx.accountId),
+                  inArray(cardFeedbackLinks.cardId, ids),
+                  boardIsPublic,
+                  eq(feedbackItems.isPublic, true),
+                  eq(feedbackItems.review, "approved"),
+                  isNull(feedbackItems.archivedAt),
+                  isNull(feedbackItems.mergedIntoId),
+                ),
+              )
+              .orderBy(
+                desc(
+                  sql`${feedbackItems.voteCount} + ${feedbackItems.importedVotes}`,
+                ),
+              )
+          : [],
       ])
-    : [[], [], []];
+    : [[], [], [], []];
 
   return rows.map((r) => ({
     id: r.id,
@@ -410,6 +447,16 @@ async function publicCards(
       : null,
     ideas: r.ideas,
     comments: r.comments,
+    requestedIn: withHtml
+      ? ideaRows
+          .filter((i) => i.cardId === r.id)
+          .slice(0, 5)
+          .map(({ title, slug, votes }) => ({
+            title,
+            slug,
+            votes: Number(votes),
+          }))
+      : null,
   }));
 }
 

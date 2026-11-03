@@ -139,6 +139,9 @@ async function PublicRoadmap(props: Props) {
           columns={roadmap.columns}
           cards={roadmap.cards}
           cardHref={base}
+          ideasBase={
+            ws.modules.ideas ? `${site.prefix}${wsPath(ws)}/ideas` : null
+          }
           query={q ?? ""}
           embed={embed}
           commentsEnabled={!!ws.settings.commentsEnabled}

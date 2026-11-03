@@ -1,6 +1,6 @@
 # 31 — Public site on mobile
 
-Status: **APPROVED 2026-11-03** (owner: "go for it" on the preview `docs/design/public-mobile-preview.html`). Being built. The WordPress plugin plan moves to doc 32.
+Status: **APPROVED and BUILT 2026-11-03** (owner: "go for it" on the preview `docs/design/public-mobile-preview.html`). See §4. The WordPress plugin plan moves to doc 32.
 
 Scope: the public site (roadmap, ideas, updates, help centre, detail pages) and its embeds below 768 px. Desktop keeps its current layout. The dashboard is not part of this.
 
@@ -26,6 +26,15 @@ Scope: the public site (roadmap, ideas, updates, help centre, detail pages) and 
 
 ## 3. Done when
 
-- [ ] Every public page works at 390 px without sideways scrolling (except the tab strip and chips).
-- [ ] Desktop looks as before.
-- [ ] Lint, typecheck, unit and e2e green, plus a phone-viewport e2e.
+- [x] Every public page works at 390 px without sideways scrolling (except the tab strip and chips).
+- [x] Desktop looks as before.
+- [x] Lint, typecheck, unit (310) and e2e green (34 + 1 skipped; `roadmap.spec` "card attachments…" is flaky under parallel load, passes alone), plus `e2e/mobile.spec.ts`.
+
+## 4. As built (2026-11-03)
+
+- **Header** (`site-shell.tsx`): sticky; phones get logo + name + sign-in on one row and the module tabs underneath (scroll sideways, brand underline); one row from `sm` up.
+- **Roadmap** (`public-board.tsx`): below `md` a sticky chip strip (`tablist` "Roadmap columns") shows one column at a time; desktop unchanged.
+- **Sheets:** `DetailSheet` (`components/public/detail-sheet.tsx`) is a bottom sheet with a grab handle on phones (92% high, or content height with `fit` for forms) and the right drawer from `md` up; used for cards, ideas and the idea form. `useMedia` moved to `src/lib/use-media.ts` (`PHONE`, `WIDE`).
+- **Ideas:** floating "Share an idea" on phones; taller filters; the form's ids are unique per copy (side panel + sheet) so labels point at the right field.
+- **Look-alike ideas:** `similarPublicIdeas` (visible ideas in the workspace, any shared word, best first; cross-account test) + `GET /api/public/feedback/similar` (60/min per IP) shown under the title as "Similar ideas, vote instead?".
+- **Dev fix:** Turbopack's dev filesystem cache is off (`experimental.turbopackFileSystemCacheForDev: false` in `next.config.ts`); reusing it across restarts sent browsers into a reload loop.

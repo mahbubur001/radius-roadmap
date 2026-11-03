@@ -95,6 +95,7 @@ export function PublicIdeas({
       termsUrl={termsUrl}
       privacyUrl={privacyUrl}
       onDone={() => setFormOpen(false)}
+      ideaHref={(slug) => `${base}/${slug}${embed ? "?embed=1" : ""}`}
     />
   );
 

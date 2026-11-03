@@ -1,7 +1,9 @@
 "use client";
 
 import { zodResolver } from "@hookform/resolvers/zod";
+import { ChevronUp, Lightbulb } from "lucide-react";
 import { useRouter } from "next/navigation";
+import { useEffect, useId, useState } from "react";
 import { useForm } from "react-hook-form";
 import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
@@ -14,6 +16,8 @@ import { guestSignInSchema } from "@/lib/schemas/voting";
 import { turnstileToken } from "./turnstile";
 import { publicApi, useVoter, type Voter } from "./voter-provider";
 
+type SimilarIdea = { id: string; slug: string; title: string; votes: number };
+
 /**
  * "Add new" idea form (doc 22 step 4, LoopedIn layout). Logged-out visitors
  * give a name and email and continue as a guest (doc 20 D6); ideas go to the
@@ -24,8 +28,11 @@ export function IdeaForm({
   termsUrl,
   privacyUrl,
   onDone,
+  ideaHref,
 }: {
   board: { id: string; slug: string };
+  /** Link to an idea page, for the look-alike suggestions. */
+  ideaHref?: (slug: string) => string;
   termsUrl: string | null;
   privacyUrl: string | null;
   onDone?: () => void;
@@ -45,6 +52,35 @@ export function IdeaForm({
     defaultValues: { title: "", details: "", name: "", email: "" },
   });
   const { errors, isSubmitting } = form.formState;
+  const title = form.watch("title");
+  // The form renders twice on the Ideas page (side panel + phone sheet), so
+  // ids must be unique for labels to point at the right input.
+  const uid = useId();
+  const [similar, setSimilar] = useState<SimilarIdea[]>([]);
+  const canLink = !!ideaHref;
+
+  // Look-alike ideas after a short pause in typing (doc 31 M5): people vote
+  // instead of posting a duplicate.
+  useEffect(() => {
+    const q = title.trim();
+    if (q.length < 4 || !canLink) {
+      setSimilar([]);
+      return;
+    }
+    let stale = false;
+    const timer = setTimeout(async () => {
+      const params = new URLSearchParams({ workspaceId, q });
+      const res = await publicApi<{ items: SimilarIdea[] }>(
+        `/api/public/feedback/similar?${params}`,
+        { site, embed },
+      );
+      if (!stale && res.ok) setSimilar(res.data.items ?? []);
+    }, 350);
+    return () => {
+      stale = true;
+      clearTimeout(timer);
+    };
+  }, [title, workspaceId, site, embed, canLink]);
   const needsTerms = !!(termsUrl || privacyUrl);
 
   async function onSubmit(values: IdeaFormInput) {
@@ -136,22 +172,49 @@ export function IdeaForm({
       aria-label="Add new idea"
       className="flex flex-col gap-4"
     >
-      <Field id="idea-title" label="Title" error={errors.title?.message}>
+      <Field id={`${uid}-title`} label="Title" error={errors.title?.message}>
         <Input
-          id="idea-title"
+          id={`${uid}-title`}
           placeholder="Required"
           maxLength={200}
           aria-invalid={!!errors.title}
           {...form.register("title")}
         />
       </Field>
+      {similar.length && ideaHref ? (
+        <section
+          aria-label="Similar ideas"
+          className="-mt-1 rounded-lg bg-primary/5 p-3 ring-1 ring-primary/15"
+        >
+          <p className="mb-1.5 text-xs font-semibold text-muted-foreground">
+            Similar ideas, vote instead?
+          </p>
+          <ul className="flex flex-col">
+            {similar.map((i) => (
+              <li key={i.id}>
+                <a
+                  href={ideaHref(i.slug)}
+                  className="flex items-center gap-2 py-1.5 text-sm hover:underline"
+                >
+                  <Lightbulb className="size-3.5 shrink-0 text-muted-foreground" />
+                  <span className="min-w-0 flex-1 truncate">{i.title}</span>
+                  <span className="flex shrink-0 items-center gap-0.5 text-xs font-semibold text-primary">
+                    <ChevronUp className="size-3.5" />
+                    {i.votes}
+                  </span>
+                </a>
+              </li>
+            ))}
+          </ul>
+        </section>
+      ) : null}
       <Field
-        id="idea-details"
+        id={`${uid}-details`}
         label="More details"
         error={errors.details?.message}
       >
         <Textarea
-          id="idea-details"
+          id={`${uid}-details`}
           placeholder="Optional"
           rows={4}
           maxLength={5000}
@@ -164,9 +227,9 @@ export function IdeaForm({
         </p>
       ) : (
         <>
-          <Field id="idea-name" label="Name" error={errors.name?.message}>
+          <Field id={`${uid}-name`} label="Name" error={errors.name?.message}>
             <Input
-              id="idea-name"
+              id={`${uid}-name`}
               placeholder="Required"
               autoComplete="name"
               aria-invalid={!!errors.name}
@@ -174,12 +237,12 @@ export function IdeaForm({
             />
           </Field>
           <Field
-            id="idea-email"
+            id={`${uid}-email`}
             label="Email address"
             error={errors.email?.message}
           >
             <Input
-              id="idea-email"
+              id={`${uid}-email`}
               type="email"
               placeholder="Required"
               autoComplete="email"
@@ -193,7 +256,7 @@ export function IdeaForm({
         <div className="flex flex-col gap-1">
           <div className="flex items-start gap-2 text-sm">
             <Checkbox
-              id="idea-terms"
+              id={`${uid}-terms`}
               className="mt-0.5"
               checked={!!form.watch("acceptTerms")}
               onCheckedChange={(on) =>
@@ -203,7 +266,7 @@ export function IdeaForm({
               }
             />
             <Label
-              htmlFor="idea-terms"
+              htmlFor={`${uid}-terms`}
               className="block font-normal leading-snug"
             >
               I agree to the{" "}

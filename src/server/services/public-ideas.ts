@@ -219,6 +219,43 @@ export async function getPublicIdeas(
   return { board, boards, statuses, sort, items: rows.map(toIdea) };
 }
 
+/**
+ * "Similar ideas, vote instead?" while a visitor types a title (doc 31 M5):
+ * visible ideas in the workspace sharing words with `q`, best match first.
+ */
+export async function similarPublicIdeas(
+  db: Db,
+  ctx: PublicContext,
+  workspaceId: string,
+  q: string,
+  limit = 3,
+) {
+  const term = q.trim().slice(0, 120);
+  if (term.length < 4) return [];
+  // Any of the words (plainto_tsquery joins them with &; use | instead).
+  const anyWord = sql`to_tsquery('english', replace(plainto_tsquery('english', ${term})::text, '&', '|'))`;
+  const rows = await db
+    .select({
+      id: feedbackItems.id,
+      slug: feedbackItems.slug,
+      title: feedbackItems.title,
+      votes: sql<number>`${feedbackItems.voteCount} + ${feedbackItems.importedVotes}`,
+    })
+    .from(feedbackItems)
+    .innerJoin(feedbackBoards, eq(feedbackBoards.id, feedbackItems.boardId))
+    .where(
+      and(
+        eq(feedbackItems.accountId, ctx.accountId),
+        eq(feedbackItems.workspaceId, workspaceId),
+        ideaIsPublic,
+        sql`${feedbackItems.search} @@ ${anyWord}`,
+      ),
+    )
+    .orderBy(sql`ts_rank(${feedbackItems.search}, ${anyWord}) desc`)
+    .limit(limit);
+  return rows.map((r) => ({ ...r, votes: Number(r.votes) }));
+}
+
 /** One visible idea with its tags and the public roadmap card it's on. */
 export async function getPublicIdea(
   db: Db,

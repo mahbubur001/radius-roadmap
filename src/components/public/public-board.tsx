@@ -2,16 +2,10 @@
 
 import { Lightbulb, MessagesSquare } from "lucide-react";
 import { useEffect, useState } from "react";
-import {
-  Sheet,
-  SheetContent,
-  SheetDescription,
-  SheetHeader,
-  SheetTitle,
-} from "@/components/ui/sheet";
 import { cn } from "@/lib/utils";
 import type { PublicCard } from "@/server/services/public-site";
 import { CardDetail } from "./card-detail";
+import { DetailSheet } from "./detail-sheet";
 import { Hint } from "./hint";
 import { VoteButton } from "./vote-button";
 
@@ -40,6 +34,10 @@ export function PublicBoard({
   commentsEnabled: boolean;
 }) {
   const [open, setOpen] = useState<PublicCard | null>(null);
+  // Phones show one column at a time, picked with the chips (doc 31 M2).
+  const [shown, setShown] = useState(
+    () => columns.find((c) => !c.isDone)?.id ?? columns[0]?.id ?? "",
+  );
   const [tab, setTab] = useState<"details" | "comments">("details");
 
   // Back button closes the drawer.
@@ -72,16 +70,58 @@ export function PublicBoard({
         </p>
       ) : null}
 
-      <div className="flex gap-6 overflow-x-auto pb-4">
+      <div
+        role="tablist"
+        aria-label="Roadmap columns"
+        className={cn(
+          "sticky z-20 -mx-4 flex gap-1.5 overflow-x-auto bg-background/95 px-4 py-2.5 backdrop-blur [scrollbar-width:none] md:hidden [&::-webkit-scrollbar]:hidden",
+          // Below the sticky site header; embeds have no header.
+          embed ? "top-0" : "top-[94px]",
+        )}
+      >
+        {columns.map((column) => {
+          const on = column.id === shown;
+          return (
+            <button
+              key={column.id}
+              type="button"
+              role="tab"
+              aria-selected={on}
+              onClick={() => setShown(column.id)}
+              className={cn(
+                "flex h-9 shrink-0 items-center gap-1.5 rounded-full px-3.5 text-sm font-medium transition-colors",
+                on
+                  ? "bg-foreground text-background"
+                  : "bg-muted text-muted-foreground",
+              )}
+            >
+              {column.name}
+              <span
+                className={cn(
+                  "text-xs font-semibold",
+                  on ? "text-background/60" : "text-muted-foreground/70",
+                )}
+              >
+                {cards.filter((c) => c.columnId === column.id).length}
+              </span>
+            </button>
+          );
+        })}
+      </div>
+
+      <div className="flex gap-6 pb-4 md:overflow-x-auto">
         {columns.map((column) => {
           const items = cards.filter((c) => c.columnId === column.id);
           return (
             <section
               key={column.id}
               aria-label={column.name}
-              className="flex w-80 shrink-0 flex-col gap-3"
+              className={cn(
+                "w-full shrink-0 flex-col gap-3 md:flex md:w-80",
+                column.id === shown ? "flex" : "hidden",
+              )}
             >
-              <h2 className="flex items-center gap-2 text-lg font-medium">
+              <h2 className="hidden items-center gap-2 text-lg font-medium md:flex">
                 {column.name}
                 <span className="rounded-full bg-primary/10 px-2 py-0.5 text-xs font-semibold text-primary">
                   {items.length}
@@ -200,25 +240,22 @@ export function PublicBoard({
         })}
       </div>
 
-      <Sheet open={!!open} onOpenChange={(next) => !next && close()}>
-        <SheetContent className="gap-0 overflow-y-auto p-0 data-[side=right]:w-full data-[side=right]:sm:max-w-xl">
-          <SheetHeader className="sr-only">
-            <SheetTitle>{open?.title}</SheetTitle>
-            <SheetDescription>Roadmap card</SheetDescription>
-          </SheetHeader>
-          {open ? (
-            <CardDetail
-              key={`${open.id}-${tab}`}
-              initialTab={tab}
-              card={open}
-              columnName={
-                columns.find((c) => c.id === open.columnId)?.name ?? ""
-              }
-              commentsEnabled={commentsEnabled}
-            />
-          ) : null}
-        </SheetContent>
-      </Sheet>
+      <DetailSheet
+        open={!!open}
+        onClose={close}
+        title={open?.title ?? ""}
+        description="Roadmap card"
+      >
+        {open ? (
+          <CardDetail
+            key={`${open.id}-${tab}`}
+            initialTab={tab}
+            card={open}
+            columnName={columns.find((c) => c.id === open.columnId)?.name ?? ""}
+            commentsEnabled={commentsEnabled}
+          />
+        ) : null}
+      </DetailSheet>
     </div>
   );
 }

@@ -30,7 +30,6 @@ import {
 } from "@/app/(dashboard)/_actions/feedback";
 import { StageTick } from "@/components/dashboard/stage-tick";
 import { useActionError } from "@/components/dashboard/use-action-error";
-import { useMedia, WIDE } from "@/components/dashboard/use-media";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Checkbox } from "@/components/ui/checkbox";
@@ -65,6 +64,7 @@ import {
   type ReviewAction,
 } from "@/lib/schemas/feedback";
 import { feedbackStage } from "@/lib/stages";
+import { useMedia, WIDE } from "@/lib/use-media";
 import { cn } from "@/lib/utils";
 import { BoardSettingsDialog } from "./board-settings-dialog";
 import { FeedbackDrawer } from "./feedback-drawer";

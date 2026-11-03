@@ -17,3 +17,6 @@ export function useMedia(query: string) {
 
 /** Wide enough for a list and a detail pane side by side (doc 30 R8). */
 export const WIDE = "(min-width: 1440px)";
+
+/** Phone width: details open as bottom sheets (doc 31 M3). */
+export const PHONE = "(max-width: 767px)";

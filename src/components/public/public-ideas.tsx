@@ -4,15 +4,9 @@ import { Lightbulb, MessagesSquare, Plus, Search } from "lucide-react";
 import { useEffect, useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import {
-  Sheet,
-  SheetContent,
-  SheetDescription,
-  SheetHeader,
-  SheetTitle,
-} from "@/components/ui/sheet";
 import { cn } from "@/lib/utils";
 import type { IdeaSort, PublicIdea } from "@/server/services/public-ideas";
+import { DetailSheet } from "./detail-sheet";
 import { Hint } from "./hint";
 import { IdeaDetail, StatusChip } from "./idea-detail";
 import { IdeaForm } from "./idea-form";
@@ -135,7 +129,7 @@ export function PublicIdeas({
           >
             <input type="hidden" name="board" value={board.slug} />
             {embedParam ? <input type="hidden" name="embed" value="1" /> : null}
-            <div className="relative min-w-48 flex-1">
+            <div className="relative w-full min-w-48 flex-1 sm:w-auto">
               <Search className="pointer-events-none absolute top-1/2 left-3 size-4 -translate-y-1/2 text-muted-foreground" />
               <Input
                 type="search"
@@ -143,7 +137,7 @@ export function PublicIdeas({
                 defaultValue={query}
                 aria-label="Search ideas"
                 placeholder="Search…"
-                className="pl-9"
+                className="h-10 pl-9 sm:h-9"
               />
             </div>
             <select
@@ -151,7 +145,7 @@ export function PublicIdeas({
               defaultValue={sort}
               aria-label="Sort"
               onChange={(e) => e.currentTarget.form?.requestSubmit()}
-              className="h-9 cursor-pointer rounded-md border bg-transparent px-2 text-sm"
+              className="h-10 flex-1 cursor-pointer rounded-md border bg-transparent px-2 text-sm sm:h-9 sm:flex-none"
             >
               {Object.entries(SORTS).map(([key, label]) => (
                 <option key={key} value={key}>
@@ -164,7 +158,7 @@ export function PublicIdeas({
               defaultValue={status}
               aria-label="Status"
               onChange={(e) => e.currentTarget.form?.requestSubmit()}
-              className="h-9 cursor-pointer rounded-md border bg-transparent px-2 text-sm"
+              className="h-10 flex-1 cursor-pointer rounded-md border bg-transparent px-2 text-sm sm:h-9 sm:flex-none"
             >
               <option value="">All statuses</option>
               {statuses.map((s) => (
@@ -175,7 +169,7 @@ export function PublicIdeas({
             </select>
             <Button
               type="button"
-              className="lg:hidden"
+              className="hidden md:inline-flex lg:hidden"
               onClick={() => setFormOpen(true)}
             >
               <Plus />
@@ -299,33 +293,48 @@ export function PublicIdeas({
         {form}
       </aside>
 
-      <Sheet open={formOpen} onOpenChange={setFormOpen}>
-        <SheetContent className="overflow-y-auto p-6 data-[side=right]:w-full data-[side=right]:sm:max-w-md lg:hidden">
-          <SheetHeader className="p-0 pb-4">
-            <SheetTitle>Suggest an idea</SheetTitle>
-            <SheetDescription>The team reads every idea.</SheetDescription>
-          </SheetHeader>
-          {formOpen ? form : null}
-        </SheetContent>
-      </Sheet>
+      {/* Phones: one floating button to share an idea (doc 31 M4). */}
+      <Button
+        type="button"
+        onClick={() => setFormOpen(true)}
+        className="fixed right-4 bottom-[max(1.25rem,env(safe-area-inset-bottom))] z-30 h-12 rounded-full px-5 text-[15px] shadow-lg md:hidden"
+      >
+        <Plus />
+        Share an idea
+      </Button>
 
-      <Sheet open={!!open} onOpenChange={(next) => !next && close()}>
-        <SheetContent className="gap-0 overflow-y-auto p-0 data-[side=right]:w-full data-[side=right]:sm:max-w-xl">
-          <SheetHeader className="sr-only">
-            <SheetTitle>{open?.title}</SheetTitle>
-            <SheetDescription>Idea</SheetDescription>
-          </SheetHeader>
-          {open ? (
-            <IdeaDetail
-              key={`${open.id}-${tab}`}
-              initialTab={tab}
-              idea={open}
-              commentsEnabled={commentsEnabled}
-              followsEnabled={followsEnabled}
-            />
-          ) : null}
-        </SheetContent>
-      </Sheet>
+      <DetailSheet
+        open={formOpen}
+        onClose={() => setFormOpen(false)}
+        title="Suggest an idea"
+        description="The team reads every idea."
+        wide="md"
+        fit
+        className="p-6 pt-2 lg:hidden"
+      >
+        <h2 className="mb-1 text-lg font-semibold">Share an idea</h2>
+        <p className="mb-4 text-sm text-muted-foreground">
+          The team reads every idea.
+        </p>
+        {formOpen ? form : null}
+      </DetailSheet>
+
+      <DetailSheet
+        open={!!open}
+        onClose={close}
+        title={open?.title ?? ""}
+        description="Idea"
+      >
+        {open ? (
+          <IdeaDetail
+            key={`${open.id}-${tab}`}
+            initialTab={tab}
+            idea={open}
+            commentsEnabled={commentsEnabled}
+            followsEnabled={followsEnabled}
+          />
+        ) : null}
+      </DetailSheet>
     </div>
   );
 }

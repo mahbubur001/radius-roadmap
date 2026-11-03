@@ -93,25 +93,27 @@ export async function SiteShell({
             </div>
           </>
         ) : (
-          <header className="border-b">
-            <div className="mx-auto flex h-16 max-w-7xl items-center gap-6 px-4">
+          <header className="sticky top-0 z-30 border-b bg-background/90 backdrop-blur supports-[backdrop-filter]:bg-background/80">
+            {/* Phones: logo + sign-in on one row, tabs scrolling underneath
+                (doc 31 M1). From sm up: one row, as before. */}
+            <div className="mx-auto flex max-w-7xl flex-wrap items-center gap-x-6 px-4 sm:h-16 sm:flex-nowrap">
               <Link
                 href={`${prefix}${wsPath(workspace)}/${home}`}
-                className="flex items-center gap-2 font-semibold"
+                className="flex h-13 min-w-0 items-center gap-2 font-semibold sm:h-auto"
               >
                 {workspace.settings.showLogo !== false ? (
-                  <Avatar className="size-7 rounded-md">
+                  <Avatar className="size-7 shrink-0 rounded-md">
                     {logoUrl ? <AvatarImage src={logoUrl} alt="" /> : null}
                     <AvatarFallback className="rounded-md text-xs">
                       {initials(workspace.name)}
                     </AvatarFallback>
                   </Avatar>
                 ) : null}
-                {workspace.name}
+                <span className="truncate">{workspace.name}</span>
               </Link>
               <nav
                 aria-label="Site"
-                className="flex items-center gap-1 text-sm font-medium"
+                className="order-last -mx-4 flex w-[calc(100%+2rem)] items-center gap-1 overflow-x-auto px-2 text-sm font-medium [scrollbar-width:none] sm:order-none sm:mx-0 sm:w-auto sm:overflow-visible sm:px-0 [&::-webkit-scrollbar]:hidden"
               >
                 {MODULES.filter((m) => workspace.modules[m.key]).map((m) => (
                   <Link
@@ -119,15 +121,17 @@ export async function SiteShell({
                     href={`${prefix}${wsPath(workspace)}/${m.key}`}
                     aria-current={m.key === active ? "page" : undefined}
                     className={cn(
-                      "rounded-md px-3 py-1.5 hover:bg-muted",
-                      m.key === active ? "bg-muted" : "text-muted-foreground",
+                      "relative shrink-0 rounded-md px-3 py-2.5 sm:py-1.5 sm:hover:bg-muted",
+                      m.key === active
+                        ? "text-foreground after:absolute after:inset-x-3 after:-bottom-px after:h-0.5 after:rounded-full after:bg-primary sm:bg-muted sm:after:hidden"
+                        : "text-muted-foreground",
                     )}
                   >
                     {workspace.settings[`${m.key}Label`] || m.label}
                   </Link>
                 ))}
               </nav>
-              <div className="ml-auto">
+              <div className="ml-auto shrink-0">
                 <VoterMenu />
               </div>
             </div>
@@ -136,7 +140,7 @@ export async function SiteShell({
         <main
           className={cn(
             "mx-auto w-full max-w-7xl flex-1 px-4",
-            embed ? "py-3" : "py-8",
+            embed ? "py-3" : "py-5 sm:py-8",
           )}
         >
           {embed && !workspace.features.embed ? (
@@ -156,7 +160,7 @@ export async function SiteShell({
           )}
         </main>
         {brand?.poweredBy !== false ? (
-          <footer className="py-4 text-center text-xs text-muted-foreground">
+          <footer className="py-4 pb-[max(1rem,env(safe-area-inset-bottom))] text-center text-xs text-muted-foreground">
             Powered by Radius Roadmap
           </footer>
         ) : null}

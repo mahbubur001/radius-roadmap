@@ -1,0 +1,503 @@
+<!doctype html>
+<html lang="en" data-theme="light">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>Radius Roadmap · Public site on mobile (preview)</title>
+<link rel="preconnect" href="https://fonts.googleapis.com" />
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+<link href="https://fonts.googleapis.com/css2?family=Geist:wght@400;500;600;700&family=Geist+Mono:wght@500&display=swap" rel="stylesheet" />
+<style>
+/* Public site tokens: slate greys + the customer's brand colour (white-label). */
+:root { --brand: #4f46e5; --brand-ink: #fff; --font: "Geist", system-ui, sans-serif; }
+[data-theme="light"] {
+  --page: #e9ecf2; --bg: #ffffff; --soft: #f4f6fa; --ink: #0f172a; --ink2: #475569; --ink3: #94a3b8;
+  --line: #e2e8f0; --line2: #cbd5e1; --frame: #0b0d12; --shadow: 0 30px 60px -30px rgb(15 23 42 / .35);
+}
+[data-theme="dark"] {
+  --page: #05070c; --bg: #0b1120; --soft: #131c2e; --ink: #f1f5f9; --ink2: #a3b1c6; --ink3: #64748b;
+  --line: #1e293b; --line2: #334155; --frame: #000; --shadow: 0 30px 60px -30px rgb(0 0 0 / .8);
+}
+* { box-sizing: border-box; }
+html, body { margin: 0; }
+body { font: 14px/1.45 var(--font); background: var(--page); color: var(--ink); -webkit-font-smoothing: antialiased; }
+button { font: inherit; color: inherit; background: none; border: 0; padding: 0; cursor: pointer; }
+svg.i { width: 16px; height: 16px; stroke: currentColor; fill: none; stroke-width: 1.8; stroke-linecap: round; stroke-linejoin: round; flex: none; }
+
+/* Preview chrome */
+.top { position: sticky; top: 0; z-index: 10; display: flex; flex-wrap: wrap; align-items: center; gap: 16px; padding: 14px 28px; background: color-mix(in oklab, var(--page) 85%, transparent); backdrop-filter: blur(8px); }
+.top h1 { font-size: 16px; margin: 0; font-weight: 600; letter-spacing: -.01em; }
+.top p { margin: 0; color: var(--ink2); font-size: 13px; }
+.top .grow { flex: 1; }
+.sw { width: 22px; height: 22px; border-radius: 50%; background: var(--c); box-shadow: inset 0 0 0 1px rgb(0 0 0 / .12); }
+.sw.on { box-shadow: 0 0 0 2px var(--page), 0 0 0 4px var(--c); }
+.ctl { display: flex; gap: 8px; align-items: center; }
+.pill-btn { height: 30px; padding: 0 12px; border-radius: 99px; background: var(--bg); box-shadow: inset 0 0 0 1px var(--line2); font-size: 13px; font-weight: 500; }
+.gallery { display: flex; gap: 36px; overflow-x: auto; padding: 18px 28px 40px; scroll-snap-type: x mandatory; scroll-padding-left: 28px; }
+.shot { flex: none; scroll-snap-align: start; display: flex; flex-direction: column; gap: 12px; }
+.shot h2 { margin: 0; font-size: 13px; font-weight: 600; }
+.shot .note { margin: 0; font-size: 12px; color: var(--ink2); max-width: 360px; line-height: 1.5; min-height: 54px; }
+
+/* Phone */
+.phone { width: 390px; height: 844px; border-radius: 52px; background: var(--frame); padding: 12px; box-shadow: var(--shadow); position: relative; }
+.screen { width: 100%; height: 100%; border-radius: 41px; background: var(--bg); overflow: hidden; position: relative; display: flex; flex-direction: column; }
+.status { height: 46px; flex: none; display: flex; align-items: center; justify-content: space-between; padding: 0 28px 0 32px; font-size: 14px; font-weight: 600; }
+.island { position: absolute; top: 11px; left: 50%; transform: translateX(-50%); width: 120px; height: 34px; border-radius: 20px; background: #000; z-index: 30; }
+.scroll { flex: 1; overflow-y: auto; position: relative; scrollbar-width: none; }
+.scroll::-webkit-scrollbar { display: none; }
+
+/* Site header (compact on mobile) */
+.sh { position: sticky; top: 0; z-index: 5; background: color-mix(in oklab, var(--bg) 92%, transparent); backdrop-filter: blur(10px); border-bottom: 1px solid var(--line); }
+.sh-row { display: flex; align-items: center; gap: 10px; height: 52px; padding: 0 16px; }
+.logo { width: 28px; height: 28px; border-radius: 8px; display: grid; place-items: center; background: var(--brand); color: var(--brand-ink); font-weight: 700; font-size: 12px; }
+.sh-name { font-weight: 600; font-size: 15px; letter-spacing: -.01em; }
+.sh-row .grow { flex: 1; }
+.avatar { width: 30px; height: 30px; border-radius: 50%; display: grid; place-items: center; font-size: 11px; font-weight: 600; background: var(--soft); color: var(--ink2); box-shadow: inset 0 0 0 1px var(--line); }
+.signin { height: 30px; padding: 0 12px; border-radius: 99px; font-size: 13px; font-weight: 500; box-shadow: inset 0 0 0 1px var(--line2); }
+.tabs { display: flex; gap: 4px; padding: 0 12px; overflow-x: auto; scrollbar-width: none; }
+.tabs::-webkit-scrollbar { display: none; }
+.tab { flex: none; height: 40px; padding: 0 10px; font-size: 14px; font-weight: 500; color: var(--ink2); position: relative; }
+.tab.on { color: var(--ink); }
+.tab.on::after { content: ""; position: absolute; left: 8px; right: 8px; bottom: -1px; height: 2px; border-radius: 2px; background: var(--brand); }
+
+.pad { padding: 16px; }
+.h1 { font-size: 24px; font-weight: 700; letter-spacing: -.02em; margin: 4px 0 4px; }
+.sub { color: var(--ink2); font-size: 13.5px; margin: 0 0 14px; }
+
+/* Roadmap */
+.picker { display: flex; align-items: center; gap: 6px; font-size: 13px; color: var(--ink2); margin-bottom: 4px; }
+.cols { position: sticky; top: 92px; z-index: 4; display: flex; gap: 6px; padding: 10px 16px; overflow-x: auto; background: var(--bg); scrollbar-width: none; border-bottom: 1px solid var(--line); }
+.cols::-webkit-scrollbar { display: none; }
+.colchip { flex: none; display: flex; align-items: center; gap: 6px; height: 32px; padding: 0 12px; border-radius: 99px; font-size: 13px; font-weight: 500; background: var(--soft); color: var(--ink2); }
+.colchip b { font-weight: 600; font-size: 12px; color: var(--ink3); }
+.colchip.on { background: var(--ink); color: var(--bg); }
+.colchip.on b { color: color-mix(in oklab, var(--bg) 60%, transparent); }
+.dot { width: 7px; height: 7px; border-radius: 50%; background: var(--c); flex: none; }
+.list { display: flex; flex-direction: column; gap: 10px; padding: 14px 16px 24px; }
+.card { display: flex; gap: 12px; padding: 14px; border-radius: 14px; background: var(--bg); box-shadow: 0 0 0 1px var(--line), 0 1px 2px rgb(15 23 42 / .04); text-align: left; width: 100%; }
+.vote { width: 46px; flex: none; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 1px; height: 52px; border-radius: 12px; box-shadow: inset 0 0 0 1px var(--line2); font-weight: 700; font-size: 14px; }
+.vote svg { width: 15px; height: 15px; color: var(--ink3); }
+.vote.on { background: color-mix(in oklab, var(--brand) 10%, var(--bg)); box-shadow: inset 0 0 0 1.5px var(--brand); color: var(--brand); }
+.vote.on svg { color: var(--brand); }
+.card .body { flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 5px; }
+.obj { display: flex; align-items: center; gap: 6px; font-size: 12px; color: var(--ink2); }
+.card .t { font-weight: 600; font-size: 15px; line-height: 1.3; letter-spacing: -.005em; }
+.card .d { font-size: 13px; color: var(--ink2); display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; }
+.meta { display: flex; gap: 12px; color: var(--ink3); font-size: 12px; align-items: center; }
+.meta span { display: inline-flex; gap: 4px; align-items: center; }
+.meta svg { width: 13px; height: 13px; }
+.swipe { display: flex; justify-content: center; gap: 6px; padding: 0 0 20px; }
+.swipe i { width: 6px; height: 6px; border-radius: 3px; background: var(--line2); }
+.swipe i.on { width: 18px; background: var(--ink); }
+.foot { text-align: center; font-size: 11.5px; color: var(--ink3); padding: 6px 0 28px; }
+
+/* Bottom sheet */
+.sheet-scrim { position: absolute; inset: 0; background: rgb(2 6 23 / .45); z-index: 20; }
+.sheet { position: absolute; left: 0; right: 0; bottom: 0; z-index: 21; background: var(--bg); border-radius: 26px 26px 0 0; display: flex; flex-direction: column; box-shadow: 0 -20px 40px -20px rgb(0 0 0 / .4); }
+.grab { width: 38px; height: 5px; border-radius: 3px; background: var(--line2); margin: 8px auto 4px; flex: none; }
+.sheet-top { display: flex; align-items: center; gap: 8px; padding: 6px 16px 10px; }
+.sheet-top .grow { flex: 1; }
+.iconbtn { width: 32px; height: 32px; border-radius: 50%; display: grid; place-items: center; background: var(--soft); color: var(--ink2); }
+.status-pill { display: inline-flex; align-items: center; gap: 6px; height: 26px; padding: 0 10px; border-radius: 99px; font-size: 12.5px; font-weight: 500; background: color-mix(in oklab, var(--c) 12%, var(--bg)); color: color-mix(in oklab, var(--c) 80%, var(--ink)); }
+.bigvote { display: flex; align-items: center; justify-content: center; gap: 8px; height: 50px; border-radius: 14px; background: var(--brand); color: var(--brand-ink); font-weight: 600; font-size: 15px; width: 100%; }
+.bigvote.ghost { background: var(--soft); color: var(--ink); box-shadow: inset 0 0 0 1px var(--line); }
+.section-t { font-size: 12px; font-weight: 600; color: var(--ink3); text-transform: uppercase; letter-spacing: .06em; margin: 18px 0 8px; }
+.linked { display: flex; align-items: center; gap: 10px; padding: 11px 12px; border-radius: 12px; background: var(--soft); font-size: 13.5px; }
+.linked + .linked { margin-top: 6px; }
+.linked b { margin-left: auto; font-size: 12.5px; color: var(--ink2); font-weight: 600; }
+.comment { display: flex; gap: 10px; }
+.comment + .comment { margin-top: 14px; }
+.comment .avatar { width: 28px; height: 28px; flex: none; }
+.comment .who { font-size: 13px; font-weight: 600; }
+.comment .who span { font-weight: 400; color: var(--ink3); margin-left: 6px; font-size: 12px; }
+.comment .tx { font-size: 13.5px; color: var(--ink); margin-top: 2px; }
+.team { font-size: 10.5px; font-weight: 600; padding: 1px 6px; border-radius: 4px; background: color-mix(in oklab, var(--brand) 12%, var(--bg)); color: var(--brand); margin-left: 6px; vertical-align: 1px; }
+.composer { display: flex; align-items: center; gap: 8px; padding: 10px 12px 26px; border-top: 1px solid var(--line); background: var(--bg); }
+.composer .in { flex: 1; height: 40px; border-radius: 99px; background: var(--soft); display: flex; align-items: center; padding: 0 14px; color: var(--ink3); font-size: 13.5px; }
+.send { width: 40px; height: 40px; border-radius: 50%; background: var(--brand); color: var(--brand-ink); display: grid; place-items: center; }
+
+/* Ideas */
+.searchbar { display: flex; align-items: center; gap: 8px; height: 42px; padding: 0 14px; border-radius: 12px; background: var(--soft); color: var(--ink3); font-size: 14px; }
+.chips { display: flex; gap: 6px; margin: 10px 0 2px; overflow-x: auto; scrollbar-width: none; }
+.chip { flex: none; height: 30px; padding: 0 12px; border-radius: 99px; font-size: 12.5px; font-weight: 500; box-shadow: inset 0 0 0 1px var(--line2); color: var(--ink2); display: inline-flex; align-items: center; gap: 6px; }
+.chip.on { background: var(--ink); color: var(--bg); box-shadow: none; }
+.mine { margin: 14px 0 4px; padding: 12px; border-radius: 14px; border: 1px dashed var(--line2); background: var(--soft); }
+.mine .row { display: flex; align-items: center; gap: 8px; font-size: 13.5px; font-weight: 500; }
+.mine .row + .row { margin-top: 8px; }
+.wait { margin-left: auto; font-size: 11.5px; font-weight: 500; color: var(--ink2); background: var(--bg); padding: 2px 8px; border-radius: 99px; box-shadow: inset 0 0 0 1px var(--line); white-space: nowrap; }
+.fab { position: absolute; right: 16px; bottom: 26px; z-index: 6; display: flex; align-items: center; gap: 8px; height: 50px; padding: 0 18px 0 16px; border-radius: 99px; background: var(--brand); color: var(--brand-ink); font-weight: 600; box-shadow: 0 12px 24px -10px color-mix(in oklab, var(--brand) 70%, transparent); }
+
+/* Form */
+.field { display: flex; flex-direction: column; gap: 6px; margin-bottom: 14px; }
+.field label { font-size: 13px; font-weight: 600; }
+.input { min-height: 46px; border-radius: 12px; box-shadow: inset 0 0 0 1px var(--line2); padding: 12px 14px; font-size: 15px; color: var(--ink); background: var(--bg); }
+.input.ph { color: var(--ink3); }
+.input.area { min-height: 110px; }
+.input.focus { box-shadow: inset 0 0 0 2px var(--brand); }
+.similar { padding: 12px; border-radius: 12px; background: color-mix(in oklab, var(--brand) 6%, var(--bg)); box-shadow: inset 0 0 0 1px color-mix(in oklab, var(--brand) 20%, transparent); margin-bottom: 14px; }
+.similar p { margin: 0 0 8px; font-size: 12.5px; font-weight: 600; color: var(--ink2); }
+.sim { display: flex; align-items: center; gap: 10px; font-size: 13.5px; padding: 6px 0; }
+.sim b { margin-left: auto; display: inline-flex; gap: 4px; align-items: center; font-size: 12.5px; color: var(--brand); }
+.as { font-size: 12.5px; color: var(--ink2); margin: 4px 0 14px; }
+.keyboard { height: 250px; background: color-mix(in oklab, var(--soft) 80%, var(--line)); border-top: 1px solid var(--line); display: grid; grid-template-rows: repeat(4, 1fr); gap: 8px; padding: 10px 6px 30px; }
+.keyboard div { display: flex; gap: 6px; justify-content: center; }
+.keyboard span { flex: 1; max-width: 34px; border-radius: 6px; background: var(--bg); box-shadow: 0 1px 0 var(--line2); }
+
+/* Updates */
+.subscribe { display: flex; gap: 8px; align-items: center; padding: 12px; border-radius: 14px; background: var(--soft); margin-bottom: 14px; }
+.subscribe .in { flex: 1; height: 40px; border-radius: 10px; background: var(--bg); box-shadow: inset 0 0 0 1px var(--line); display: flex; align-items: center; padding: 0 12px; color: var(--ink3); font-size: 13.5px; }
+.btn { height: 40px; padding: 0 14px; border-radius: 10px; background: var(--brand); color: var(--brand-ink); font-weight: 600; font-size: 13.5px; }
+.post { border-radius: 16px; overflow: hidden; box-shadow: 0 0 0 1px var(--line); margin-bottom: 14px; }
+.cover { height: 150px; background: radial-gradient(120% 120% at 0% 0%, color-mix(in oklab, var(--brand) 55%, var(--bg)), transparent 60%), radial-gradient(100% 100% at 100% 100%, color-mix(in oklab, #f97316 40%, var(--bg)), transparent 60%), var(--soft); }
+.post .in { padding: 14px; }
+.lbl { display: inline-block; font-size: 10.5px; font-weight: 700; letter-spacing: .05em; text-transform: uppercase; padding: 3px 7px; border-radius: 5px; color: var(--c); background: color-mix(in oklab, var(--c) 12%, var(--bg)); margin-right: 4px; }
+.date { font-size: 12px; color: var(--ink3); }
+.post .t { font-size: 17px; font-weight: 700; letter-spacing: -.01em; margin: 8px 0 4px; }
+.post p { margin: 0; font-size: 13.5px; color: var(--ink2); }
+.reacts { display: flex; gap: 6px; margin-top: 12px; }
+.react { height: 32px; padding: 0 10px; border-radius: 99px; box-shadow: inset 0 0 0 1px var(--line); font-size: 13px; display: inline-flex; align-items: center; gap: 5px; }
+.react.on { box-shadow: inset 0 0 0 1.5px var(--brand); background: color-mix(in oklab, var(--brand) 8%, var(--bg)); }
+
+/* Help centre */
+.hero { padding: 22px 16px 18px; background: linear-gradient(180deg, color-mix(in oklab, var(--brand) 9%, var(--bg)), var(--bg)); }
+.cats { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
+.cat { padding: 14px; border-radius: 14px; box-shadow: 0 0 0 1px var(--line); text-align: left; }
+.cat .e { font-size: 22px; }
+.cat .t { font-weight: 600; font-size: 14px; margin-top: 8px; }
+.cat .n { font-size: 12px; color: var(--ink3); }
+.art { display: flex; align-items: center; gap: 10px; padding: 13px 0; border-bottom: 1px solid var(--line); font-size: 14.5px; font-weight: 500; }
+.art svg { margin-left: auto; color: var(--ink3); }
+.reader h3 { font-size: 22px; letter-spacing: -.02em; margin: 6px 0 8px; }
+.reader p { font-size: 15px; line-height: 1.65; color: var(--ink); margin: 0 0 12px; }
+.crumb { font-size: 12.5px; color: var(--ink2); display: flex; gap: 6px; align-items: center; }
+.helpful { margin: 18px 0 8px; padding: 14px; border-radius: 14px; background: var(--soft); text-align: center; }
+.helpful p { margin: 0 0 10px; font-size: 13.5px; font-weight: 600; }
+.faces { display: flex; justify-content: center; gap: 10px; }
+.faces button { width: 48px; height: 48px; border-radius: 50%; background: var(--bg); box-shadow: inset 0 0 0 1px var(--line); font-size: 22px; }
+
+.rules { max-width: 1100px; margin: 0 28px 48px; padding: 18px 22px; border-radius: 16px; background: var(--bg); box-shadow: 0 0 0 1px var(--line); }
+.rules h2 { font-size: 15px; margin: 0 0 10px; }
+.rules ul { margin: 0; padding-left: 18px; color: var(--ink2); font-size: 13.5px; line-height: 1.6; columns: 2; column-gap: 40px; }
+.rules li { break-inside: avoid; margin-bottom: 6px; }
+.rules b { color: var(--ink); }
+</style>
+</head>
+<body>
+
+<svg width="0" height="0" style="position:absolute">
+  <symbol id="up" viewBox="0 0 24 24"><path d="m6 15 6-6 6 6"/></symbol>
+  <symbol id="msg" viewBox="0 0 24 24"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/></symbol>
+  <symbol id="bulb" viewBox="0 0 24 24"><path d="M9 18h6M10 22h4M12 2a7 7 0 0 0-4 12.7c.6.5 1 1.3 1 2.1V17h6v-.2c0-.8.4-1.6 1-2.1A7 7 0 0 0 12 2z"/></symbol>
+  <symbol id="search" viewBox="0 0 24 24"><circle cx="11" cy="11" r="7"/><path d="m20 20-3.5-3.5"/></symbol>
+  <symbol id="x" viewBox="0 0 24 24"><path d="M18 6 6 18M6 6l12 12"/></symbol>
+  <symbol id="plus" viewBox="0 0 24 24"><path d="M12 5v14M5 12h14"/></symbol>
+  <symbol id="share" viewBox="0 0 24 24"><path d="M4 12v7a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2v-7M16 6l-4-4-4 4M12 2v13"/></symbol>
+  <symbol id="bell" viewBox="0 0 24 24"><path d="M6 8a6 6 0 0 1 12 0c0 7 3 9 3 9H3s3-2 3-9"/><path d="M10.3 21a1.94 1.94 0 0 0 3.4 0"/></symbol>
+  <symbol id="send" viewBox="0 0 24 24"><path d="m22 2-7 20-4-9-9-4 20-7z"/></symbol>
+  <symbol id="right" viewBox="0 0 24 24"><path d="m9 18 6-6-6-6"/></symbol>
+  <symbol id="down" viewBox="0 0 24 24"><path d="m6 9 6 6 6-6"/></symbol>
+  <symbol id="back" viewBox="0 0 24 24"><path d="m15 18-6-6 6-6"/></symbol>
+  <symbol id="cal" viewBox="0 0 24 24"><rect x="3" y="4" width="18" height="18" rx="2"/><path d="M16 2v4M8 2v4M3 10h18"/></symbol>
+</svg>
+
+<div class="top">
+  <div>
+    <h1>Public site on mobile</h1>
+    <p>Six screens at iPhone size (390 × 844). Scroll sideways. Tap a roadmap card, or “Share an idea”.</p>
+  </div>
+  <span class="grow"></span>
+  <div class="ctl" id="brands" aria-label="Brand colour"></div>
+  <button class="pill-btn" id="theme">Dark</button>
+</div>
+
+<div class="gallery">
+
+  <!-- 1. Roadmap -->
+  <div class="shot">
+    <h2>1 · Roadmap</h2>
+    <p class="note">One column at a time: chips switch columns (or swipe). Votes sit on the left where the thumb reaches. Header and chips stay pinned.</p>
+    <div class="phone"><div class="screen">
+      <div class="island"></div>
+      <div class="status"><span>9:41</span><span>● ● ▮</span></div>
+      <div class="scroll" id="rmScroll">
+        <div class="sh">
+          <div class="sh-row"><span class="logo">A</span><span class="sh-name">Acme</span><span class="grow"></span><button class="signin">Sign in</button></div>
+          <nav class="tabs"><button class="tab on">Roadmap</button><button class="tab">Ideas</button><button class="tab">Updates</button><button class="tab">Help</button></nav>
+        </div>
+        <div class="pad" style="padding-bottom:6px">
+          <div class="picker">Product roadmap <svg class="i" style="width:14px;height:14px"><use href="#down"/></svg></div>
+          <div class="h1">What we're building</div>
+          <p class="sub">Vote for what matters to you. We read every one.</p>
+        </div>
+        <div class="cols" id="cols"></div>
+        <div class="list" id="rmList"></div>
+        <div class="swipe" id="swipe"></div>
+        <div class="foot">Powered by Radius Roadmap</div>
+      </div>
+      <div id="sheetHost"></div>
+    </div></div>
+  </div>
+
+  <!-- 2. Card detail -->
+  <div class="shot">
+    <h2>2 · Card detail (bottom sheet)</h2>
+    <p class="note">Opens over the list, so you never lose your place. A big full-width vote button, linked ideas, and comments with a pinned reply box.</p>
+    <div class="phone"><div class="screen">
+      <div class="island"></div>
+      <div class="status"><span>9:41</span><span>● ● ▮</span></div>
+      <div class="scroll" style="filter: blur(1px); opacity:.6">
+        <div class="sh"><div class="sh-row"><span class="logo">A</span><span class="sh-name">Acme</span></div></div>
+      </div>
+      <div class="sheet-scrim"></div>
+      <div class="sheet" style="top:70px">
+        <div class="grab"></div>
+        <div class="sheet-top">
+          <span class="status-pill" style="--c:#2563eb"><span class="dot" style="--c:#2563eb"></span>In progress</span>
+          <span class="grow"></span>
+          <button class="iconbtn" aria-label="Share"><svg class="i"><use href="#share"/></svg></button>
+          <button class="iconbtn" aria-label="Close"><svg class="i"><use href="#x"/></svg></button>
+        </div>
+        <div class="scroll" style="padding:0 16px">
+          <div class="obj"><span class="dot" style="--c:#7c3aed"></span>Win enterprise deals</div>
+          <div class="h1" style="font-size:22px">Single sign-on with Okta and Azure AD</div>
+          <div class="meta" style="margin-bottom:14px"><span><svg class="i"><use href="#cal"/></svg>Planned for Q1</span><span><svg class="i"><use href="#msg"/></svg>4 comments</span></div>
+          <button class="bigvote"><svg class="i"><use href="#up"/></svg>Vote · 148</button>
+          <button class="bigvote ghost" style="margin-top:8px;height:44px;font-size:14px"><svg class="i"><use href="#bell"/></svg>Follow for updates</button>
+          <p style="font-size:15px;line-height:1.6;margin:16px 0 0">Sign in to Acme with your company's identity provider. We're starting with Okta and Azure AD, with Google Workspace next.</p>
+          <div class="section-t">Requested in</div>
+          <div class="linked"><svg class="i" style="color:var(--ink3)"><use href="#bulb"/></svg>SAML login for our team<b>62</b></div>
+          <div class="linked"><svg class="i" style="color:var(--ink3)"><use href="#bulb"/></svg>Azure AD support<b>31</b></div>
+          <div class="section-t">Comments</div>
+          <div class="comment"><span class="avatar">PN</span><div><div class="who">Priya N.<span>2d</span></div><div class="tx">Our renewal is in January and SSO is the blocker. Any timeline?</div></div></div>
+          <div class="comment"><span class="avatar" style="background:var(--brand);color:var(--brand-ink)">SK</span><div><div class="who">Sara<span class="team">Team</span><span>1d</span></div><div class="tx">Targeting early Q1. We'll post here the day it ships.</div></div></div>
+          <div style="height:16px"></div>
+        </div>
+        <div class="composer"><div class="in">Add a comment…</div><button class="send" aria-label="Send"><svg class="i"><use href="#send"/></svg></button></div>
+      </div>
+    </div></div>
+  </div>
+
+  <!-- 3. Ideas -->
+  <div class="shot">
+    <h2>3 · Ideas</h2>
+    <p class="note">Search and sort as chips. Your own ideas waiting for review show on top, without a misleading “No ideas yet”. One floating button to share an idea.</p>
+    <div class="phone"><div class="screen">
+      <div class="island"></div>
+      <div class="status"><span>9:41</span><span>● ● ▮</span></div>
+      <div class="scroll">
+        <div class="sh">
+          <div class="sh-row"><span class="logo">A</span><span class="sh-name">Acme</span><span class="grow"></span><span class="avatar">MR</span></div>
+          <nav class="tabs"><button class="tab">Roadmap</button><button class="tab on">Ideas</button><button class="tab">Updates</button><button class="tab">Help</button></nav>
+        </div>
+        <div class="pad">
+          <div class="searchbar"><svg class="i"><use href="#search"/></svg>Search ideas</div>
+          <div class="chips"><span class="chip on">Trending</span><span class="chip">Top</span><span class="chip">New</span><span class="chip">Planned</span><span class="chip">Shipped</span></div>
+          <div class="mine">
+            <div class="row">Export my board to Notion<span class="wait">Waiting for review</span></div>
+            <div class="row">Keyboard shortcuts<span class="wait">Waiting for review</span></div>
+          </div>
+        </div>
+        <div class="list" style="padding-top:0" id="ideaList"></div>
+        <div style="height:80px"></div>
+      </div>
+      <button class="fab" data-open-form><svg class="i"><use href="#plus"/></svg>Share an idea</button>
+    </div></div>
+  </div>
+
+  <!-- 4. Share an idea -->
+  <div class="shot">
+    <h2>4 · Share an idea (full-screen form)</h2>
+    <p class="note">Big inputs (16px, no zoom on iOS). While you type, look-alike ideas appear so people vote instead of posting duplicates.</p>
+    <div class="phone"><div class="screen">
+      <div class="island"></div>
+      <div class="status"><span>9:41</span><span>● ● ▮</span></div>
+      <div class="sheet-top" style="padding-top:4px;border-bottom:1px solid var(--line)">
+        <button class="iconbtn" aria-label="Close"><svg class="i"><use href="#x"/></svg></button>
+        <span class="grow" style="text-align:center;font-weight:600">Share an idea</span>
+        <button class="btn" style="height:34px;border-radius:99px">Post</button>
+      </div>
+      <div class="scroll pad">
+        <div class="field"><label>Title</label><div class="input focus">Export to CSV|</div></div>
+        <div class="similar">
+          <p>Similar ideas, vote instead?</p>
+          <div class="sim"><svg class="i" style="color:var(--ink3)"><use href="#bulb"/></svg>Download board as spreadsheet<b><svg class="i" style="width:13px;height:13px"><use href="#up"/></svg>96</b></div>
+          <div class="sim"><svg class="i" style="color:var(--ink3)"><use href="#bulb"/></svg>CSV export for votes<b><svg class="i" style="width:13px;height:13px"><use href="#up"/></svg>12</b></div>
+        </div>
+        <div class="field"><label>More details <span style="font-weight:400;color:var(--ink3)">(optional)</span></label><div class="input area ph">What problem would this solve for you?</div></div>
+        <div class="as">Posting as <b>Mahbubur</b> · <span style="color:var(--brand)">not you?</span></div>
+      </div>
+      <div class="keyboard"><div><span></span><span></span><span></span><span></span><span></span><span></span><span></span><span></span><span></span><span></span></div><div><span></span><span></span><span></span><span></span><span></span><span></span><span></span><span></span><span></span></div><div><span></span><span></span><span></span><span></span><span></span><span></span><span></span></div><div><span style="max-width:220px"></span></div></div>
+    </div></div>
+  </div>
+
+  <!-- 5. Updates -->
+  <div class="shot">
+    <h2>5 · Updates</h2>
+    <p class="note">A readable feed: cover, label, title, short excerpt and reactions. Email sign-up sits at the top, one tap from the keyboard.</p>
+    <div class="phone"><div class="screen">
+      <div class="island"></div>
+      <div class="status"><span>9:41</span><span>● ● ▮</span></div>
+      <div class="scroll">
+        <div class="sh">
+          <div class="sh-row"><span class="logo">A</span><span class="sh-name">Acme</span><span class="grow"></span><button class="signin">Sign in</button></div>
+          <nav class="tabs"><button class="tab">Roadmap</button><button class="tab">Ideas</button><button class="tab on">Updates</button><button class="tab">Help</button></nav>
+        </div>
+        <div class="pad">
+          <div class="h1">What's new</div>
+          <div class="subscribe"><div class="in">you@company.com</div><button class="btn">Subscribe</button></div>
+          <article class="post"><div class="cover"></div><div class="in">
+            <span class="lbl" style="--c:#16a34a">New</span><span class="date">Nov 5</span>
+            <div class="t">Dark mode is here</div>
+            <p>Dark mode is on for every board, the roadmap and the widget. It follows your system setting by default.</p>
+            <div class="reacts"><span class="react on">👍 42</span><span class="react">🎉 18</span><span class="react">❤️ 9</span><span class="react">👀 3</span></div>
+          </div></article>
+          <article class="post"><div class="in">
+            <span class="lbl" style="--c:#2563eb">Improved</span><span class="date">Oct 28</span>
+            <div class="t">Faster roadmap loading</div>
+            <p>Big boards now open twice as fast, especially on phones.</p>
+            <div class="reacts"><span class="react">👍 12</span><span class="react">🎉 4</span></div>
+          </div></article>
+        </div>
+      </div>
+    </div></div>
+  </div>
+
+  <!-- 6. Help centre + article -->
+  <div class="shot">
+    <h2>6 · Help centre and article</h2>
+    <p class="note">Search first, then categories as large tiles. Articles read like a book page, with “Was this helpful?” as big tap targets.</p>
+    <div style="display:flex;gap:24px">
+    <div class="phone"><div class="screen">
+      <div class="island"></div>
+      <div class="status"><span>9:41</span><span>● ● ▮</span></div>
+      <div class="scroll">
+        <div class="sh">
+          <div class="sh-row"><span class="logo">A</span><span class="sh-name">Acme</span><span class="grow"></span><button class="signin">Sign in</button></div>
+          <nav class="tabs"><button class="tab">Roadmap</button><button class="tab">Ideas</button><button class="tab">Updates</button><button class="tab on">Help</button></nav>
+        </div>
+        <div class="hero">
+          <div class="h1">How can we help?</div>
+          <div class="searchbar" style="background:var(--bg);box-shadow:0 0 0 1px var(--line);margin-top:10px"><svg class="i"><use href="#search"/></svg>Search articles</div>
+        </div>
+        <div class="pad" style="padding-top:4px">
+          <div class="cats">
+            <button class="cat"><div class="e">🚀</div><div class="t">Getting started</div><div class="n">8 articles</div></button>
+            <button class="cat"><div class="e">🔌</div><div class="t">Integrations</div><div class="n">14 articles</div></button>
+            <button class="cat"><div class="e">💳</div><div class="t">Billing</div><div class="n">6 articles</div></button>
+            <button class="cat"><div class="e">🔒</div><div class="t">Security</div><div class="n">5 articles</div></button>
+          </div>
+          <div class="section-t">Popular</div>
+          <div class="art">Install the widget<svg class="i"><use href="#right"/></svg></div>
+          <div class="art">Invite your team<svg class="i"><use href="#right"/></svg></div>
+          <div class="art">Connect a custom domain<svg class="i"><use href="#right"/></svg></div>
+        </div>
+      </div>
+    </div></div>
+    <div class="phone"><div class="screen">
+      <div class="island"></div>
+      <div class="status"><span>9:41</span><span>● ● ▮</span></div>
+      <div class="sheet-top" style="padding-top:4px;border-bottom:1px solid var(--line)">
+        <button class="iconbtn" aria-label="Back"><svg class="i"><use href="#back"/></svg></button>
+        <span class="grow" style="font-weight:600">Getting started</span>
+        <button class="iconbtn" aria-label="Search"><svg class="i"><use href="#search"/></svg></button>
+      </div>
+      <div class="scroll pad reader">
+        <div class="crumb">Help <svg class="i" style="width:12px;height:12px"><use href="#right"/></svg> Getting started</div>
+        <h3>Install the widget</h3>
+        <div class="date" style="margin-bottom:14px">3 min read · Updated Oct 29</div>
+        <p>Paste one line of code before the closing <code>&lt;/body&gt;</code> tag of your site, and a small button appears in the corner.</p>
+        <p>People can share ideas, vote and read your updates without leaving your app.</p>
+        <div style="border-radius:12px;background:var(--soft);padding:12px;font:500 12px/1.6 'Geist Mono',monospace;color:var(--ink2);margin-bottom:12px">&lt;script src="…/widget.js" async&gt;&lt;/script&gt;</div>
+        <p>Using WordPress? Install our plugin instead and paste your site key.</p>
+        <div class="helpful"><p>Was this helpful?</p><div class="faces"><button>😞</button><button>😐</button><button>😀</button></div></div>
+      </div>
+    </div></div>
+    </div>
+  </div>
+
+</div>
+
+<div class="rules">
+  <h2>Mobile rules behind these screens</h2>
+  <ul>
+    <li><b>Compact header:</b> logo + name + sign-in in one 52px row; module tabs underneath scroll sideways and stay pinned.</li>
+    <li><b>Roadmap, one column at a time:</b> column chips (with counts) or swipe; no sideways-scrolling board on a phone.</li>
+    <li><b>Thumb-first:</b> vote on the left of each card, primary actions full-width at the bottom, floating “Share an idea”.</li>
+    <li><b>Sheets, not new pages:</b> card and idea details open as a bottom sheet over the list; back/close keeps your place.</li>
+    <li><b>Tap targets ≥ 44px</b>, inputs at 16px so iOS doesn't zoom, safe-area padding under the home bar.</li>
+    <li><b>Look-alike ideas while typing</b> so people vote instead of posting duplicates (same search as the dashboard's duplicates).</li>
+    <li><b>White-label stays:</b> the customer's brand colour drives buttons, active tab, votes and links; light/dark follows the site setting.</li>
+    <li><b>Embeds and widget</b> use the same mobile components at their container width.</li>
+  </ul>
+</div>
+
+<script>
+const $ = (s) => document.querySelector(s);
+const COLS = [
+  { name: "Planned", c: "#7c3aed", cards: [
+    ["Single sign-on with Okta and Azure AD", "Win enterprise deals", 148, true, "Sign in with your company's identity provider.", 4, 2],
+    ["Zapier integration", "Integrations", 61, false, "Send new ideas and votes to 5,000+ apps.", 2, 1],
+    ["Roadmap timeline view", "Power users", 33, false, "See cards on a calendar by quarter.", 0, 0],
+  ]},
+  { name: "In progress", c: "#2563eb", cards: [
+    ["Mobile app for iOS and Android", "Reach", 203, false, "Vote and follow ideas from your phone.", 9, 3],
+    ["Public API v2", "Integrations", 74, true, "Webhooks and write access for cards.", 3, 1],
+  ]},
+  { name: "Done", c: "#16a34a", cards: [
+    ["Dark mode", "Delight", 218, false, "Everywhere, following your system setting.", 12, 2],
+    ["CSV export", "Power users", 96, false, "Export any board as a spreadsheet.", 1, 3],
+  ]},
+];
+let col = 0;
+const card = ([t, o, v, mine, d, c, ideas], color) => `
+  <button class="card" data-open-card>
+    <span class="vote ${mine ? "on" : ""}"><svg class="i"><use href="#up"/></svg>${v}</span>
+    <span class="body">
+      <span class="obj"><span class="dot" style="--c:${color}"></span>${o}</span>
+      <span class="t">${t}</span>
+      <span class="d">${d}</span>
+      <span class="meta"><span><svg class="i"><use href="#msg"/></svg>${c}</span>${ideas ? `<span><svg class="i"><use href="#bulb"/></svg>${ideas}</span>` : ""}</span>
+    </span>
+  </button>`;
+function renderRoadmap() {
+  $("#cols").innerHTML = COLS.map((x, i) => `<button class="colchip ${i === col ? "on" : ""}" data-col="${i}"><span class="dot" style="--c:${x.c}"></span>${x.name}<b>${x.cards.length}</b></button>`).join("");
+  $("#rmList").innerHTML = COLS[col].cards.map((c) => card(c, COLS[col].c)).join("");
+  $("#swipe").innerHTML = COLS.map((_, i) => `<i class="${i === col ? "on" : ""}"></i>`).join("");
+}
+renderRoadmap();
+$("#cols").addEventListener("click", (e) => { const b = e.target.closest("[data-col]"); if (b) { col = +b.dataset.col; renderRoadmap(); } });
+
+const IDEAS = [
+  ["Custom fields on ideas", "Power users", 52, false, "Add your own fields like plan or company size.", 6, 0],
+  ["Let voters edit their idea", "Delight", 19, true, "Fix typos after posting.", 1, 0],
+  ["Slack alerts for new feedback", "Integrations", 44, false, "Post new ideas to a channel.", 3, 0],
+  ["Sort the roadmap by votes", "Delight", 17, false, "Most-wanted first in every column.", 0, 0],
+];
+$("#ideaList").innerHTML = IDEAS.map((c) => card(c, "#94a3b8")).join("");
+
+/* Card detail sheet inside phone 1 */
+document.addEventListener("click", (e) => {
+  if (e.target.closest("[data-open-card]") && e.target.closest("#rmList")) {
+    const t = e.target.closest("[data-open-card]").querySelector(".t").textContent;
+    $("#sheetHost").innerHTML = `<div class="sheet-scrim" data-close></div><div class="sheet" style="top:120px"><div class="grab"></div><div class="sheet-top"><span class="status-pill" style="--c:${COLS[col].c}"><span class="dot" style="--c:${COLS[col].c}"></span>${COLS[col].name}</span><span class="grow"></span><button class="iconbtn" data-close aria-label="Close"><svg class="i"><use href="#x"/></svg></button></div><div class="scroll" style="padding:0 16px 30px"><div class="h1" style="font-size:22px">${t}</div><button class="bigvote" style="margin-top:12px"><svg class="i"><use href="#up"/></svg>Vote</button><p style="font-size:15px;line-height:1.6">Tap outside or ✕ to close. Your place in the list is kept.</p></div></div>`;
+  }
+  if (e.target.closest("[data-close]")) $("#sheetHost").innerHTML = "";
+  if (e.target.closest("[data-open-form]")) document.querySelectorAll(".shot")[3].scrollIntoView({ behavior: "smooth", inline: "start" });
+});
+
+/* Brand + theme */
+const BRANDS = ["#4f46e5", "#f2541b", "#0891b2", "#16a34a", "#db2777", "#0f172a"];
+$("#brands").innerHTML = BRANDS.map((c, i) => `<button class="sw ${i === 0 ? "on" : ""}" style="--c:${c}" data-brand="${c}" aria-label="Brand ${c}"></button>`).join("");
+$("#brands").addEventListener("click", (e) => {
+  const b = e.target.closest("[data-brand]"); if (!b) return;
+  document.querySelectorAll(".sw").forEach((s) => s.classList.toggle("on", s === b));
+  document.documentElement.style.setProperty("--brand", b.dataset.brand);
+});
+$("#theme").addEventListener("click", () => {
+  const r = document.documentElement;
+  r.dataset.theme = r.dataset.theme === "dark" ? "light" : "dark";
+  $("#theme").textContent = r.dataset.theme === "dark" ? "Light" : "Dark";
+});
+</script>
+</body>
+</html>

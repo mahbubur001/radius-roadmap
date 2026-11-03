@@ -45,7 +45,8 @@ export const defaultDisplay: RoadmapDisplaySettings = {
   showDescriptions: true,
   showFeatures: true,
   showFeatureProgress: true,
-  showDates: false,
+  // On for new roadmaps (owner, 2026-11-04): cards show their planned date.
+  showDates: true,
   showImageHeaders: true,
   showCompleted: true,
 };

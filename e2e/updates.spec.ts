@@ -231,11 +231,11 @@ test("a follower hears when the idea ships, and can stop following", async ({
   const id = randomUUID().slice(0, 8);
   const { slug } = await signUpOwner(page, id);
 
-  // Follows on; an idea pushed to the roadmap.
+  // Follows are on for new workspaces; an idea pushed to the roadmap.
   await page.goto(`/dashboard/${slug}/public-settings`);
-  await page.getByRole("switch", { name: "Follows", exact: true }).click();
-  await page.getByRole("button", { name: "Save changes" }).click();
-  await expect(page.getByText("Public site saved.")).toBeVisible();
+  await expect(
+    page.getByRole("switch", { name: "Follows", exact: true }),
+  ).toBeChecked();
   await page.goto(`/dashboard/${slug}/feedback`);
   await page.getByRole("button", { name: "New feedback" }).click();
   await page

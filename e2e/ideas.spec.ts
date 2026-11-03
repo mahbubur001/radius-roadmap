@@ -156,11 +156,14 @@ test("with comments on: a visitor comments, the team approves, replies and leave
   const { slug } = await signUpOwner(page, id);
   const url = await ideasUrl(page, slug);
 
-  // Comments + approval + follows on; one idea.
+  // Comments and follows are on for new workspaces; turn on approval.
   await page.goto(`/dashboard/${slug}/public-settings`);
-  for (const name of ["Comments", "Approve comments first", "Follows"]) {
-    await page.getByRole("switch", { name, exact: true }).click();
+  for (const name of ["Comments", "Follows"]) {
+    await expect(page.getByRole("switch", { name, exact: true })).toBeChecked();
   }
+  await page
+    .getByRole("switch", { name: "Approve comments first", exact: true })
+    .click();
   await page.getByRole("button", { name: "Save changes" }).click();
   await expect(page.getByText("Public site saved.")).toBeVisible();
   await page.goto(`/dashboard/${slug}/feedback`);

@@ -12,6 +12,7 @@ import {
   ForbiddenError,
   NotFoundError,
 } from "./context";
+import { listRoadmaps } from "./roadmaps";
 import {
   createWorkspace,
   deleteWorkspace,
@@ -94,6 +95,26 @@ describe("workspace tenant isolation", () => {
     await expect(deleteWorkspace(db, ctxA, beta.id)).rejects.toBeInstanceOf(
       NotFoundError,
     );
+  });
+});
+
+describe("new workspace defaults", () => {
+  it("comments, follows and public card dates are on", async () => {
+    const ws = await createWorkspace(db, ctxA, {
+      name: "Defaults",
+      slug: "defaults",
+    });
+    expect(ws.settings).toMatchObject({
+      commentsEnabled: true,
+      followsEnabled: true,
+    });
+    const [roadmap] = await listRoadmaps(db, {
+      ...ctxA,
+      workspaceId: ws.id,
+      workspaceSlug: ws.slug,
+    });
+    expect(roadmap?.display.showDates).toBe(true);
+    await deleteWorkspace(db, ctxA, ws.id);
   });
 });
 

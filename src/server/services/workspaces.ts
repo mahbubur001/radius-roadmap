@@ -102,7 +102,14 @@ export async function createWorkspace(
     return await db.transaction(async (tx) => {
       const [row] = await tx
         .insert(workspaces)
-        .values({ accountId: ctx.accountId, name: data.name, slug: data.slug })
+        .values({
+          accountId: ctx.accountId,
+          name: data.name,
+          slug: data.slug,
+          // Comments and follows on for new workspaces (owner, 2026-11-04;
+          // reverses doc 20 D3's "off by default").
+          settings: { commentsEnabled: true, followsEnabled: true },
+        })
         .returning();
       if (!row) throw new Error("Failed to create workspace.");
       await seedWorkspace(tx, ctx.accountId, row.id);

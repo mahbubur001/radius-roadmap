@@ -329,7 +329,8 @@ test("card attachments, team comments, follow and CSV export", async ({
   await drawer
     .getByRole("textbox", { name: "New comment" })
     .fill("See https://example.com/spec");
-  // Public comments are off, so this is a team note.
+  // Public comments are on (new workspaces); keep this one a team note.
+  await drawer.getByRole("switch", { name: "Internal note" }).click();
   await drawer.getByRole("button", { name: "Add note" }).click();
   await expect(
     drawer.getByRole("link", { name: "https://example.com/spec" }),

@@ -1,12 +1,11 @@
 "use client";
 
+import { Send } from "lucide-react";
 import { useEffect, useState } from "react";
 import { toast } from "sonner";
 import { Linkified } from "@/components/linkified";
-import { Badge } from "@/components/ui/badge";
-import { Button } from "@/components/ui/button";
-import { Textarea } from "@/components/ui/textarea";
-import { ago } from "@/lib/time";
+import { agoShort } from "@/lib/time";
+import { cn } from "@/lib/utils";
 import { turnstileToken } from "./turnstile";
 import { publicApi, useVoter } from "./voter-provider";
 
@@ -19,15 +18,14 @@ type PublicComment = {
   edited: boolean;
 };
 
+type Target = { feedbackId: string } | { cardId: string };
+
 /**
- * Comments tab on the public card and idea views (doc 20 D3). Loaded on open
- * (not cached with the page); logged-in visitors can add one.
+ * Public comments on a card or idea (doc 20 D3), loaded on open (never
+ * cached with the page). The ticket (doc 32) shows the thread in its body
+ * and pins the reply box at the bottom, so the state lives in this hook.
  */
-export function PublicComments({
-  target,
-}: {
-  target: { feedbackId: string } | { cardId: string };
-}) {
+export function useComments(target: Target) {
   const { site, embed, voter, openSignIn } = useVoter();
   const [items, setItems] = useState<PublicComment[] | null>(null);
   const [body, setBody] = useState("");
@@ -79,66 +77,140 @@ export function PublicComments({
     else setItems((all) => [...(all ?? []), res.data.comment]);
   }
 
+  return {
+    items,
+    held,
+    body,
+    setBody,
+    busy,
+    post,
+    signedIn: !!voter,
+    openSignIn,
+  };
+}
+
+export type Comments = ReturnType<typeof useComments>;
+
+function initials(name: string) {
+  const parts = name.trim().split(/\s+/);
   return (
-    <div className="flex flex-col gap-4">
+    (parts[0]?.[0] ?? "") + (parts.length > 1 ? (parts.at(-1)?.[0] ?? "") : "")
+  ).toUpperCase();
+}
+
+/** The conversation: avatar, name, TEAM badge, time, text. */
+export function CommentThread({ comments }: { comments: Comments }) {
+  const { items, held } = comments;
+  return (
+    <div>
       {items === null ? (
-        <p className="text-sm text-muted-foreground">Loading comments…</p>
+        <p className="mt-4 text-sm text-ink3">Loading comments…</p>
       ) : items.length ? (
-        <ul className="flex flex-col gap-3" aria-label="Comments">
+        <ul aria-label="Comments">
           {items.map((c) => (
-            <li key={c.id} className="rounded-md border p-3 text-sm">
-              <div className="mb-1 flex items-center gap-2 text-xs text-muted-foreground">
-                <span className="font-medium text-foreground">{c.author}</span>
-                {c.team ? <Badge variant="secondary">Team</Badge> : null}
-                <span suppressHydrationWarning>
-                  {ago(new Date(c.createdAt))}
-                </span>
-                {c.edited ? <span>(edited)</span> : null}
+            <li key={c.id} className="mt-4 flex gap-3">
+              <span
+                aria-hidden
+                className={cn(
+                  "grid size-8 shrink-0 place-items-center rounded-full font-t-mono text-[11px] font-semibold",
+                  c.team ? "bg-primary text-white" : "bg-paper",
+                )}
+              >
+                {initials(c.author)}
+              </span>
+              <div className="min-w-0">
+                <div className="text-[13.5px] font-semibold">
+                  {c.author}
+                  {c.team ? (
+                    <span className="ml-1.5 rounded px-[5px] py-0.5 font-t-mono text-[9.5px] font-bold tracking-[0.1em] text-white uppercase [background:var(--primary)]">
+                      Team
+                    </span>
+                  ) : null}
+                  <span
+                    className="ml-2 font-t-mono text-[11.5px] font-medium text-ink3"
+                    suppressHydrationWarning
+                  >
+                    {agoShort(new Date(c.createdAt))}
+                    {c.edited ? " · edited" : ""}
+                  </span>
+                </div>
+                <p className="mt-0.5 text-[14.5px] break-words whitespace-pre-wrap">
+                  <Linkified text={c.body} />
+                </p>
               </div>
-              <p className="break-words whitespace-pre-wrap">
-                <Linkified text={c.body} />
-              </p>
             </li>
           ))}
         </ul>
       ) : (
-        <p className="text-sm text-muted-foreground">No comments yet.</p>
+        <p className="mt-4 text-sm text-ink3">
+          No comments yet. Start the conversation.
+        </p>
       )}
-
       {held ? (
-        <p className="rounded-md bg-muted px-3 py-2 text-sm">
+        <p className="mt-4 rounded-xl bg-paper px-3.5 py-3 text-sm">
           Thanks! Your comment will show once the team approves it.
         </p>
       ) : null}
+    </div>
+  );
+}
 
-      {voter ? (
-        <form
-          className="flex flex-col gap-2"
-          onSubmit={(e) => {
-            e.preventDefault();
-            void post();
-          }}
-        >
-          <Textarea
-            aria-label="Write a comment"
-            placeholder="Write a comment…"
-            value={body}
-            maxLength={5000}
-            onChange={(e) => setBody(e.target.value)}
-          />
-          <Button
-            type="submit"
-            className="self-end"
-            disabled={busy || !body.trim()}
-          >
-            Post comment
-          </Button>
-        </form>
+/** The reply box: a pill input and a round send button. */
+export function CommentCompose({
+  comments,
+  className,
+}: {
+  comments: Comments;
+  className?: string;
+}) {
+  const { body, setBody, busy, post, signedIn, openSignIn } = comments;
+  return (
+    <form
+      className={cn("flex gap-2.5", className)}
+      onSubmit={(e) => {
+        e.preventDefault();
+        void post();
+      }}
+    >
+      {signedIn ? (
+        <input
+          aria-label="Write a comment"
+          placeholder="Add to the conversation…"
+          value={body}
+          maxLength={5000}
+          onChange={(e) => setBody(e.target.value)}
+          className="h-11 min-w-0 flex-1 rounded-full bg-paper px-4 outline-none placeholder:text-ink3 focus-visible:ring-2 focus-visible:ring-ring"
+        />
       ) : (
-        <Button variant="outline" className="self-start" onClick={openSignIn}>
-          Log in to comment
-        </Button>
+        <button
+          type="button"
+          onClick={openSignIn}
+          aria-label="Log in to comment"
+          className="flex h-11 min-w-0 flex-1 items-center rounded-full bg-paper px-4 text-left text-ink3"
+        >
+          Add to the conversation…
+        </button>
       )}
+      <button
+        type={signedIn ? "submit" : "button"}
+        aria-label="Post comment"
+        disabled={signedIn && (busy || !body.trim())}
+        onClick={signedIn ? undefined : openSignIn}
+        className="grid size-11 shrink-0 place-items-center rounded-full bg-foreground text-background disabled:opacity-50"
+      >
+        <Send strokeWidth={1.8} className="size-4" />
+      </button>
+    </form>
+  );
+}
+
+/** Thread and reply box together, for places without a pinned footer. */
+export function PublicComments({ target }: { target: Target }) {
+  const comments = useComments(target);
+  return (
+    <div className="flex flex-col gap-4">
+      <CommentThread comments={comments} />
+      <CommentCompose comments={comments} />
     </div>
   );
 }

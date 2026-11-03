@@ -57,7 +57,7 @@ export default function PublicCardPage(props: Props) {
 async function PublicCard(props: Props) {
   const data = await load(props);
   if (!data) notFound();
-  const { site, ws, card, columnName, embed } = data;
+  const { site, ws, card, station, embed } = data;
   return (
     <SiteShell
       account={site.slug}
@@ -66,24 +66,22 @@ async function PublicCard(props: Props) {
       embed={embed}
     >
       <PageView cardId={card.id} />
-      <div className="mx-auto flex max-w-2xl flex-col gap-6">
+      <div className="mx-auto flex max-w-2xl flex-col gap-5 pt-6 pb-10 md:pt-12">
         <Link
           href={`${site.prefix}${wsPath(ws)}/roadmap${embed ? "?embed=1" : ""}`}
-          className="flex items-center gap-1 text-sm text-muted-foreground hover:text-foreground"
+          className="flex w-fit items-center gap-1.5 font-t-mono text-xs font-semibold tracking-[0.12em] text-ink3 uppercase hover:text-foreground"
         >
-          <ArrowLeft className="size-4" />
+          <ArrowLeft strokeWidth={1.8} className="size-4" />
           Back to roadmap
         </Link>
-        <div className="overflow-hidden rounded-lg border bg-card">
-          <CardDetail
-            card={card}
-            columnName={columnName}
-            commentsEnabled={!!ws.settings.commentsEnabled}
-            ideasBase={
-              ws.modules.ideas ? `${site.prefix}${wsPath(ws)}/ideas` : null
-            }
-          />
-        </div>
+        <CardDetail
+          card={card}
+          station={station}
+          commentsEnabled={!!ws.settings.commentsEnabled}
+          ideasBase={
+            ws.modules.ideas ? `${site.prefix}${wsPath(ws)}/ideas` : null
+          }
+        />
       </div>
     </SiteShell>
   );

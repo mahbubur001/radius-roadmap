@@ -18,6 +18,7 @@ import {
   defaultDisplay,
   type RoadmapDisplaySettings,
 } from "@/lib/schemas/roadmap";
+import { stationOf } from "@/lib/stations";
 import type { Db } from "@/server/db/client";
 import {
   accountSettings,
@@ -610,13 +611,18 @@ export async function getPublicCard(
   );
   if (!card) return null;
   const [column] = await db
-    .select({ name: roadmapColumns.name })
+    .select({
+      name: roadmapColumns.name,
+      stage: roadmapColumns.stage,
+      isDone: roadmapColumns.isDone,
+    })
     .from(roadmapColumns)
     .where(eq(roadmapColumns.id, card.columnId))
     .limit(1);
   return {
     card,
     columnName: column?.name ?? "",
+    station: column ? stationOf(column) : ("next" as const),
     roadmap: { slug: own.slug, title: own.publicTitle ?? own.internalTitle },
     display,
   };

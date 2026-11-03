@@ -1,6 +1,6 @@
 "use client";
 
-import { ArrowUp, ChevronUp } from "lucide-react";
+import { ArrowUp, Check, ChevronUp } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { Hint } from "./hint";
 import { useVoter, type VoteKind } from "./voter-provider";
@@ -20,7 +20,7 @@ export function VoteButton({
   /** The card's or idea's id. `big`: full-width phone button (doc 31). */
   cardId: string;
   votes: number | null;
-  variant?: "inline" | "pill" | "plain" | "big" | "box" | "car";
+  variant?: "inline" | "pill" | "plain" | "big" | "box" | "car" | "ticket";
   kind?: VoteKind;
 }) {
   const { voted, totals, toggleVote } = useVoter();
@@ -50,6 +50,31 @@ export function VoteButton({
           className={cn("mb-px size-3.5", active ? "text-white" : "text-ink3")}
         />
         {total !== null ? <span data-testid="vote-count">{total}</span> : null}
+      </button>
+    );
+  }
+
+  // The ticket's big brand button (doc 32): "↑ Vote 148" / "✓ Voted 149".
+  if (variant === "ticket") {
+    const Icon = active ? Check : ChevronUp;
+    return (
+      <button
+        type="button"
+        aria-pressed={active}
+        aria-label={active ? "Remove your vote" : "Vote for this"}
+        onClick={(e) => {
+          e.preventDefault();
+          void toggleVote(cardId, kind);
+        }}
+        className="mt-[18px] flex h-14 w-full items-center justify-center gap-2.5 rounded-[14px] bg-primary font-t-display text-base font-bold text-white transition-opacity hover:opacity-95 focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:outline-none"
+      >
+        <Icon strokeWidth={1.8} className="size-4" />
+        {active ? "Voted" : "Vote"}
+        {total !== null ? (
+          <b data-testid="vote-count" className="font-t-mono text-lg">
+            {total}
+          </b>
+        ) : null}
       </button>
     );
   }

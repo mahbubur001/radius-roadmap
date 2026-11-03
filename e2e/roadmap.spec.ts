@@ -430,9 +430,12 @@ test("public site shows only public cards; drawer, card page and search work", a
       .getByRole("heading", { level: 1, name: "Public idea" }),
   ).toBeVisible();
   await expect(guest).toHaveURL(/\/roadmap\/public-idea$/);
-  const details = guest.getByRole("dialog").getByRole("tabpanel");
-  await expect(details.getByText("Status")).toBeVisible();
-  await expect(details.getByText("Untagged")).toBeVisible();
+  // The ticket: the station stamp and the big vote button (doc 32).
+  const ticket = guest.getByRole("dialog");
+  await expect(ticket.getByText("Next", { exact: true })).toBeVisible();
+  await expect(
+    ticket.getByRole("button", { name: "Vote for this" }),
+  ).toBeVisible();
   await guest.goBack();
   await expect(guest.getByRole("dialog")).toHaveCount(0);
 

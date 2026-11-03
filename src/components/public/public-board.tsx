@@ -10,6 +10,7 @@ import {
 import Link from "next/link";
 import { useEffect, useMemo, useState } from "react";
 import type { ColumnStage } from "@/lib/stages";
+import { STATIONS, type StationKey, stationOf } from "@/lib/stations";
 import { cn } from "@/lib/utils";
 import type { PublicCard } from "@/server/services/public-site";
 import { CardDetail } from "./card-detail";
@@ -17,36 +18,6 @@ import { DetailSheet } from "./detail-sheet";
 import { VoteButton } from "./vote-button";
 
 type Column = { id: string; name: string; isDone: boolean; stage: ColumnStage };
-
-type StationKey = "now" | "next" | "later" | "done";
-
-/** The four stops of the line (doc 32 decision 2): stages, in travel order. */
-const STATIONS: {
-  key: StationKey;
-  label: string;
-  sub: string;
-  holds: (c: Column) => boolean;
-}[] = [
-  {
-    key: "now",
-    label: "Now",
-    sub: "In progress",
-    holds: (c) => !c.isDone && c.stage === "in_progress",
-  },
-  {
-    key: "next",
-    label: "Next",
-    sub: "Planned",
-    holds: (c) => !c.isDone && c.stage === "planned",
-  },
-  {
-    key: "later",
-    label: "Later",
-    sub: "Considering",
-    holds: (c) => !c.isDone && c.stage === "review",
-  },
-  { key: "done", label: "Shipped", sub: "Done", holds: (c) => c.isDone },
-];
 
 /** Shipped shows the latest few, then "+N more shipped" (decision 5). */
 const SHIPPED_SHOWN = 3;
@@ -93,7 +64,6 @@ export function PublicBoard({
   board?: string;
 }) {
   const [open, setOpen] = useState<PublicCard | null>(null);
-  const [tab, setTab] = useState<"details" | "comments">("details");
   const [topic, setTopic] = useState<string | null>(null);
   const [allShipped, setAllShipped] = useState(false);
 
@@ -116,7 +86,7 @@ export function PublicBoard({
     : cards;
 
   const stations = STATIONS.map((station) => {
-    const own = columns.filter(station.holds);
+    const own = columns.filter((c) => stationOf(c) === station.key);
     const ids = new Set(own.map((c) => c.id));
     return {
       ...station,
@@ -131,7 +101,6 @@ export function PublicBoard({
 
   function openCard(card: PublicCard) {
     setOpen(card);
-    setTab("details");
     window.history.pushState({ card: card.id }, "", href(card));
   }
 
@@ -258,15 +227,19 @@ export function PublicBoard({
         onClose={close}
         title={open?.title ?? ""}
         description="Roadmap card"
+        ticket
       >
         {open ? (
           <CardDetail
-            key={`${open.id}-${tab}`}
-            initialTab={tab}
+            key={open.id}
             card={open}
-            columnName={columns.find((c) => c.id === open.columnId)?.name ?? ""}
+            station={(() => {
+              const column = columns.find((c) => c.id === open.columnId);
+              return column ? stationOf(column) : "next";
+            })()}
             commentsEnabled={commentsEnabled}
             ideasBase={ideasBase}
+            inSheet
           />
         ) : null}
       </DetailSheet>

@@ -32,6 +32,13 @@ await notifyQueue.upsertJobScheduler(
   { name: "digest", data: { type: "digest" } },
 );
 
+// Weekly digests and summaries (doc 33): Mondays 08:00 UTC.
+await notifyQueue.upsertJobScheduler(
+  "weekly-digest",
+  { pattern: "0 0 8 * * 1" },
+  { name: "digest", data: { type: "digest", period: "weekly" } },
+);
+
 // Custom domain DNS checks (doc 26 D4): pending ones, and active ones daily.
 await notifyQueue.upsertJobScheduler(
   "verify-domains",

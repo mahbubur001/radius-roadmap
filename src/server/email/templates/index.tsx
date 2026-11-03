@@ -164,53 +164,142 @@ export const templates: { [T in EmailTemplate]: TemplateDef<T> } = {
     ),
   },
   "feedback-digest": {
-    subject: ({ workspaceName, ideas, comments }) =>
-      `${workspaceName}: ${count(ideas.length, "new idea")}, ${count(comments.length, "comment")}`,
-    render: ({
+    subject: ({
       workspaceName,
+      period,
       ideas,
       comments,
+      replies,
+      votes,
+      review,
+    }) => {
+      const parts = [
+        ideas.length ? count(ideas.length, "new idea") : "",
+        votes?.total ? count(votes.total, "vote") : "",
+        comments.length + (replies?.length ?? 0)
+          ? count(comments.length + (replies?.length ?? 0), "comment")
+          : "",
+        review?.total ? `${review.total} waiting for review` : "",
+      ].filter(Boolean);
+      const when = period === "weekly" ? "This week" : "Today";
+      return parts.length
+        ? `${workspaceName}: ${parts.join(", ")}`
+        : `${when} in ${workspaceName}`;
+    },
+    render: ({
+      workspaceName,
+      period,
+      ideas,
+      comments,
+      replies,
       subscribers,
+      votes,
+      review,
+      summary,
       url,
       settingsUrl,
-    }) => (
-      <EmailLayout
-        preview={`What happened in ${workspaceName} today`}
-        heading={`Today in ${workspaceName}`}
-        action={{ label: "Open feedback", url }}
-      >
-        {ideas.length ? (
-          <>
-            <Text style={{ fontWeight: 600 }}>
-              {count(ideas.length, "new idea")}
-            </Text>
-            {ideas.map((i) => (
-              <Text key={i.url}>
-                • <a href={i.url}>{i.title}</a> by {i.author}
+    }) => {
+      const weekly = period === "weekly";
+      return (
+        <EmailLayout
+          preview={`What happened in ${workspaceName} ${weekly ? "this week" : "today"}`}
+          heading={`${weekly ? "This week" : "Today"} in ${workspaceName}`}
+          action={{ label: "Open feedback", url }}
+        >
+          {summary ? (
+            <>
+              <Text style={{ fontWeight: 600 }}>The week in numbers</Text>
+              <Text>
+                {count(summary.ideas, "new idea")} ·{" "}
+                {count(summary.votes, "vote")} ·{" "}
+                {count(summary.comments, "comment")} ·{" "}
+                {count(summary.subscribers, "new subscriber")} ·{" "}
+                {count(summary.completed, "card")} completed ·{" "}
+                {count(summary.published, "post")} published
               </Text>
-            ))}
-          </>
-        ) : null}
-        {comments.length ? (
-          <>
-            <Text style={{ fontWeight: 600 }}>
-              {count(comments.length, "new comment")}
-            </Text>
-            {comments.map((c) => (
-              <Text key={c.url + c.excerpt}>
-                • {c.author} on <a href={c.url}>{c.target}</a>: {c.excerpt}
+            </>
+          ) : null}
+          {review ? (
+            <>
+              <Text style={{ fontWeight: 600 }}>
+                {count(review.total, "idea")} waiting for review
               </Text>
-            ))}
-          </>
-        ) : null}
-        {subscribers ? (
-          <Text style={{ fontWeight: 600 }}>
-            {count(subscribers, "new update subscriber")}
-          </Text>
-        ) : null}
-        <Unsubscribe url={settingsUrl} />
-      </EmailLayout>
-    ),
+              {review.items.map((i) => (
+                <Text key={i.url}>
+                  • <a href={i.url}>{i.title}</a> ({count(i.days, "day")})
+                </Text>
+              ))}
+              {review.total > review.items.length ? (
+                <Text>
+                  <a href={review.url}>
+                    And {review.total - review.items.length} more in the inbox
+                  </a>
+                </Text>
+              ) : null}
+            </>
+          ) : null}
+          {ideas.length ? (
+            <>
+              <Text style={{ fontWeight: 600 }}>
+                {count(ideas.length, "new idea")}
+              </Text>
+              {ideas.map((i) => (
+                <Text key={i.url}>
+                  • <a href={i.url}>{i.title}</a> by {i.author}
+                </Text>
+              ))}
+            </>
+          ) : null}
+          {votes ? (
+            <>
+              <Text style={{ fontWeight: 600 }}>
+                {count(votes.total, "new vote")}
+              </Text>
+              {votes.top.map((t) => (
+                <Text key={t.url}>
+                  • <a href={t.url}>{t.title}</a> +{t.votes}
+                </Text>
+              ))}
+              {votes.milestones.map((m) => (
+                <Text key={`${m.url}-${m.milestone}`}>
+                  🎯 <a href={m.url}>{m.title}</a> reached {m.milestone} votes
+                </Text>
+              ))}
+            </>
+          ) : null}
+          {replies?.length ? (
+            <>
+              <Text style={{ fontWeight: 600 }}>
+                {count(replies.length, "reply", "replies")} to you
+              </Text>
+              {replies.map((c) => (
+                <Text key={c.url + c.excerpt}>
+                  • {c.author} on <a href={c.url}>{c.target}</a>: {c.excerpt}
+                </Text>
+              ))}
+            </>
+          ) : null}
+          {comments.length ? (
+            <>
+              <Text style={{ fontWeight: 600 }}>
+                {count(comments.length, "new comment")}
+              </Text>
+              {comments.map((c) => (
+                <Text key={c.url + c.excerpt}>
+                  • {c.author} on <a href={c.url}>{c.target}</a>: {c.excerpt}
+                </Text>
+              ))}
+            </>
+          ) : null}
+          {subscribers ? (
+            <Text style={{ fontWeight: 600 }}>
+              {count(subscribers, "new update subscriber")}
+            </Text>
+          ) : null}
+          <Unsubscribe url={settingsUrl} />
+        </EmailLayout>
+      );
+    },
   },
   "subscribe-confirm": {
     subject: ({ siteName }) =>
@@ -549,8 +638,8 @@ function day(iso: string) {
   }).format(new Date(iso));
 }
 
-function count(n: number, noun: string) {
-  return `${n} ${noun}${n === 1 ? "" : "s"}`;
+function count(n: number, noun: string, plural = `${noun}s`) {
+  return `${n} ${n === 1 ? noun : plural}`;
 }
 
 function FollowFooter({ siteName, url }: { siteName: string; url: string }) {

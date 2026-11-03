@@ -124,6 +124,14 @@ export async function recipients(
   kind: Kind,
   freq: Frequency,
 ) {
+  return (await teamPrefs(db, scope)).filter((r) => r.prefs[kind] === freq);
+}
+
+/** Everyone who can see the workspace, with their alert settings. */
+export async function teamPrefs(
+  db: Db,
+  scope: { accountId: string; workspaceId: string },
+) {
   const rows = await db
     .select({
       userId: user.id,
@@ -167,19 +175,24 @@ export async function recipients(
         ) as SQL,
       ),
     );
-  return rows.filter((r) => withDefaults(toRole(r.role), r)[kind] === freq);
+  return rows.map((r) => ({
+    userId: r.userId,
+    email: r.email,
+    name: r.name,
+    prefs: withDefaults(toRole(r.role), r),
+  }));
 }
 
-function origin() {
+export function origin() {
   return new URL(env.NEXT_PUBLIC_APP_URL).origin;
 }
 
-function excerpt(text: string, max = 240) {
+export function excerpt(text: string, max = 240) {
   const t = text.replace(/\s+/g, " ").trim();
   return t.length > max ? `${t.slice(0, max - 1)}…` : t;
 }
 
-function links(workspaceSlug: string) {
+export function links(workspaceSlug: string) {
   const base = `${origin()}/dashboard/${workspaceSlug}`;
   return {
     base,
@@ -303,162 +316,6 @@ export async function newCommentEmails(
       settingsUrl: l.settings,
     },
   }));
-}
-
-/**
- * Daily digests: for every member + workspace with "daily" for either kind,
- * the visitors' ideas and the comments (not their own) since `since`.
- */
-export async function digestEmails(
-  db: Db,
-  since: Date,
-): Promise<(EmailJob & { userId: string; workspaceId: string })[]> {
-  const pairs = await db
-    .select({
-      accountId: notificationPreferences.accountId,
-      workspaceId: notificationPreferences.workspaceId,
-    })
-    .from(notificationPreferences)
-    .where(
-      or(
-        eq(notificationPreferences.newFeedback, "daily"),
-        eq(notificationPreferences.newComment, "daily"),
-        eq(notificationPreferences.newSubscriber, "daily"),
-      ),
-    )
-    .groupBy(
-      notificationPreferences.accountId,
-      notificationPreferences.workspaceId,
-    );
-
-  const out: (EmailJob & { userId: string; workspaceId: string })[] = [];
-  for (const scope of pairs) {
-    const [ws] = await db
-      .select({ name: workspaces.name, slug: workspaces.slug })
-      .from(workspaces)
-      .where(eq(workspaces.id, scope.workspaceId))
-      .limit(1);
-    if (!ws) continue;
-    const l = links(ws.slug);
-    const [ideas, recent] = await Promise.all([
-      db
-        .select({
-          id: feedbackItems.id,
-          title: feedbackItems.title,
-          review: feedbackItems.review,
-          visitorName: trackedUsers.name,
-        })
-        .from(feedbackItems)
-        .leftJoin(
-          trackedUsers,
-          eq(trackedUsers.id, feedbackItems.authorTrackedUserId),
-        )
-        .where(
-          and(
-            eq(feedbackItems.accountId, scope.accountId),
-            eq(feedbackItems.workspaceId, scope.workspaceId),
-            isNull(feedbackItems.authorUserId),
-            gt(feedbackItems.createdAt, since),
-          ),
-        ),
-      db
-        .select({
-          body: comments.body,
-          authorUserId: comments.authorUserId,
-          memberName: user.name,
-          visitorName: trackedUsers.name,
-          feedbackId: comments.feedbackId,
-          cardId: comments.cardId,
-          ideaTitle: feedbackItems.title,
-          cardTitle: roadmapCards.title,
-          roadmapSlug: roadmaps.slug,
-        })
-        .from(comments)
-        .leftJoin(user, eq(user.id, comments.authorUserId))
-        .leftJoin(
-          trackedUsers,
-          eq(trackedUsers.id, comments.authorTrackedUserId),
-        )
-        .leftJoin(feedbackItems, eq(feedbackItems.id, comments.feedbackId))
-        .leftJoin(roadmapCards, eq(roadmapCards.id, comments.cardId))
-        .leftJoin(roadmaps, eq(roadmaps.id, roadmapCards.roadmapId))
-        .where(
-          and(
-            eq(comments.accountId, scope.accountId),
-            eq(comments.workspaceId, scope.workspaceId),
-            isNull(comments.deletedAt),
-            gt(comments.createdAt, since),
-          ),
-        ),
-    ]);
-
-    const [forIdeas, forComments, forSubscribers, [subs]] = await Promise.all([
-      recipients(db, scope, "newFeedback", "daily"),
-      recipients(db, scope, "newComment", "daily"),
-      recipients(db, scope, "newSubscriber", "daily"),
-      db
-        .select({ n: sql<number>`count(*)::int` })
-        .from(updateSubscribers)
-        .where(
-          and(
-            eq(updateSubscribers.accountId, scope.accountId),
-            eq(updateSubscribers.workspaceId, scope.workspaceId),
-            eq(updateSubscribers.status, "active"),
-            gt(updateSubscribers.confirmedAt, since),
-          ),
-        ),
-    ]);
-    const people = new Map(
-      [...forIdeas, ...forComments, ...forSubscribers].map((r) => [
-        r.userId,
-        r,
-      ]),
-    );
-    for (const r of people.values()) {
-      const wantsIdeas = forIdeas.some((x) => x.userId === r.userId);
-      const wantsComments = forComments.some((x) => x.userId === r.userId);
-      const myIdeas = wantsIdeas
-        ? ideas.map((i) => ({
-            title: i.title,
-            author: i.visitorName?.trim() || "A visitor",
-            url: l.idea(i.id, i.review === "pending"),
-          }))
-        : [];
-      const myComments = wantsComments
-        ? recent
-            .filter((c) => c.authorUserId !== r.userId)
-            .map((c) => ({
-              target: c.ideaTitle ?? c.cardTitle ?? "",
-              author: c.authorUserId
-                ? (c.memberName ?? "A teammate")
-                : c.visitorName?.trim() || "A visitor",
-              excerpt: excerpt(c.body, 160),
-              url: c.feedbackId
-                ? l.idea(c.feedbackId, false)
-                : l.card(c.roadmapSlug ?? "", c.cardId ?? ""),
-            }))
-        : [];
-      const mySubscribers = forSubscribers.some((x) => x.userId === r.userId)
-        ? (subs?.n ?? 0)
-        : 0;
-      if (!myIdeas.length && !myComments.length && !mySubscribers) continue;
-      out.push({
-        userId: r.userId,
-        workspaceId: scope.workspaceId,
-        template: "feedback-digest",
-        to: r.email,
-        props: {
-          workspaceName: ws.name,
-          ideas: myIdeas,
-          comments: myComments,
-          subscribers: mySubscribers,
-          url: `${l.base}/feedback`,
-          settingsUrl: l.settings,
-        },
-      });
-    }
-  }
-  return out;
 }
 
 /** Instant alerts for a newly confirmed update subscriber (doc 23). */

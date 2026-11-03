@@ -1,7 +1,7 @@
 import { eq } from "drizzle-orm";
 import { afterAll, beforeAll, describe, expect, it } from "vitest";
 import { db } from "@/server/db/client";
-import { voteMilestones } from "@/server/db/schema";
+import { feedbackItems, voteMilestones, votes } from "@/server/db/schema";
 import {
   addTestMember,
   cleanup,
@@ -10,10 +10,10 @@ import {
 } from "@/test/factories";
 import { addPublicComment, addTeamComment } from "./comments";
 import type { PublicContext, WorkspaceContext } from "./context";
+import { digestEmails } from "./digests";
 import { createFeedback, listBoards } from "./feedback";
 import {
   defaultPrefs,
-  digestEmails,
   getMyPrefs,
   newCommentEmails,
   newFeedbackEmails,
@@ -223,5 +223,99 @@ describe("daily digest", () => {
     expect(digests.map((d) => d.userId)).toEqual([admin.userId]);
     const props = digests[0]?.props as { ideas: { title: string }[] };
     expect(props.ideas.map((i) => i.title)).toContain("Digest me");
+  });
+});
+
+describe("digest sections (doc 33)", () => {
+  const ours = (list: Awaited<ReturnType<typeof digestEmails>>) =>
+    list.filter((d) => d.workspaceId === owner.workspaceId);
+  type Props = {
+    review?: { total: number; items: { title: string }[] };
+    votes?: { total: number; top: { title: string; votes: number }[] };
+    replies?: { target: string; excerpt: string }[];
+    comments: { excerpt: string }[];
+    summary?: { ideas: number; votes: number };
+  };
+  const propsFor = (
+    list: Awaited<ReturnType<typeof digestEmails>>,
+    userId: string,
+  ) => ours(list).find((d) => d.userId === userId)?.props as Props | undefined;
+
+  it("reminds owners about ideas waiting more than a day", async () => {
+    const idea = await visitorIdea("Old waiting idea");
+    await db
+      .update(feedbackItems)
+      .set({ createdAt: new Date(Date.now() - 3 * 24 * 3600 * 1000) })
+      .where(eq(feedbackItems.id, idea.id));
+    const list = await digestEmails(db, new Date(Date.now() - 60_000));
+    const props = propsFor(list, owner.userId);
+    expect(props?.review?.items.map((i) => i.title)).toContain(
+      "Old waiting idea",
+    );
+    // Members don't get it by default; another account never does.
+    expect(propsFor(list, member.userId)?.review).toBeUndefined();
+    expect(list.map((d) => d.userId)).not.toContain(otherOwner);
+  });
+
+  it("puts new votes in the digest of members who chose it", async () => {
+    await setMyPrefs(db, member, { ...defaultPrefs("member"), votes: "daily" });
+    const idea = await visitorIdea("Voted idea");
+    await db.insert(votes).values(
+      ["v1", "v2", "v3"].map((v) => ({
+        accountId: owner.accountId,
+        workspaceId: owner.workspaceId,
+        feedbackId: idea.id,
+        visitorId: `${v}-${idea.id}`,
+      })),
+    );
+    const list = await digestEmails(db, new Date(Date.now() - 60_000));
+    const props = propsFor(list, member.userId);
+    expect(props?.votes?.total).toBeGreaterThanOrEqual(3);
+    expect(props?.votes?.top[0]).toMatchObject({
+      title: "Voted idea",
+      votes: 3,
+    });
+    await setMyPrefs(db, member, defaultPrefs("member"));
+  });
+
+  it("lists replies to your comments once, not also as new comments", async () => {
+    await setMyPrefs(db, admin, {
+      ...defaultPrefs("admin"),
+      newComment: "daily",
+      replies: "daily",
+    });
+    const idea = await visitorIdea("Thread idea");
+    await addTeamComment(db, admin, {
+      target: { feedbackId: idea.id },
+      body: "We're on it",
+      internal: false,
+    });
+    const since = new Date(Date.now() - 60_000);
+    await addPublicComment(db, pub, {
+      target: { feedbackId: idea.id },
+      workspaceId: owner.workspaceId,
+      body: "Thanks, any date?",
+      trackedUserId: visitorId,
+      holdForApproval: false,
+    });
+    const props = propsFor(await digestEmails(db, since), admin.userId);
+    expect(props?.replies?.map((r) => r.excerpt)).toContain(
+      "Thanks, any date?",
+    );
+    expect(props?.comments.map((c) => c.excerpt)).not.toContain(
+      "Thanks, any date?",
+    );
+    await setMyPrefs(db, admin, defaultPrefs("admin"));
+  });
+
+  it("sends the weekly summary to owners and admins", async () => {
+    const list = await digestEmails(
+      db,
+      new Date(Date.now() - 7 * 24 * 3600 * 1000),
+      "weekly",
+    );
+    const props = propsFor(list, owner.userId);
+    expect(props?.summary?.ideas).toBeGreaterThan(0);
+    expect(propsFor(list, member.userId)?.summary).toBeUndefined();
   });
 });

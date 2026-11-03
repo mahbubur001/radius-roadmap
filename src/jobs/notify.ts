@@ -11,9 +11,9 @@ import {
   domainsDue,
   verifyDomain,
 } from "@/server/services/custom-domains";
+import { digestEmails } from "@/server/services/digests";
 import { shippedEmails, statusSweep } from "@/server/services/follow-emails";
 import {
-  digestEmails,
   newCommentEmails,
   newFeedbackEmails,
   newSubscriberEmails,
@@ -193,12 +193,16 @@ export async function notifyJob(job: Job<NotifyJob>) {
       email,
     }));
   } else {
-    // The last 24 hours; one digest per member, workspace and day.
+    // The last 24 hours (or 7 days); one digest per member, workspace and
+    // period.
+    const period = data.period ?? "daily";
     const day = new Date().toISOString().slice(0, 10);
-    const since = new Date(Date.now() - 24 * 3600 * 1000);
-    emails = (await digestEmails(db, since)).map(
+    const since = new Date(
+      Date.now() - (period === "weekly" ? 7 : 1) * 24 * 3600 * 1000,
+    );
+    emails = (await digestEmails(db, since, period)).map(
       ({ userId, workspaceId, ...email }) => ({
-        id: `digest-${day}-${workspaceId}-${userId}`,
+        id: `digest-${period}-${day}-${workspaceId}-${userId}`,
         email,
       }),
     );

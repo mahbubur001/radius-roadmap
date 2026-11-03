@@ -53,18 +53,37 @@ export type EmailTemplateProps = {
     url: string;
     settingsUrl: string;
   };
-  /** Daily digest of new ideas and comments for one workspace. */
+  /** Daily or weekly digest for one workspace (doc 20 step 8, doc 33). */
   "feedback-digest": {
     workspaceName: string;
+    /** Missing on jobs queued before doc 33 = daily. */
+    period?: "daily" | "weekly";
     ideas: { title: string; author: string; url: string }[];
-    comments: {
-      target: string;
-      author: string;
-      excerpt: string;
-      url: string;
-    }[];
+    comments: DigestComment[];
+    /** Comments where this member commented before (doc 33). */
+    replies?: DigestComment[];
     /** New confirmed update subscribers (doc 23). */
     subscribers?: number;
+    votes?: {
+      total: number;
+      top: { title: string; votes: number; url: string }[];
+      milestones: { title: string; milestone: number; url: string }[];
+    };
+    /** Ideas waiting in the inbox for more than a day. */
+    review?: {
+      total: number;
+      items: { title: string; days: number; url: string }[];
+      url: string;
+    };
+    /** Weekly only. */
+    summary?: {
+      ideas: number;
+      votes: number;
+      comments: number;
+      subscribers: number;
+      completed: number;
+      published: number;
+    };
     url: string;
     settingsUrl: string;
   };
@@ -182,6 +201,13 @@ export type EmailTemplateProps = {
 };
 
 export type EmailTemplate = keyof EmailTemplateProps;
+
+type DigestComment = {
+  target: string;
+  author: string;
+  excerpt: string;
+  url: string;
+};
 
 /** Job payload for the email queue. Must stay JSON-serialisable. */
 export type EmailJob = {

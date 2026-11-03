@@ -351,13 +351,26 @@ test("card attachments, team comments, follow and CSV export", async ({
   await expect(again.getByRole("tab", { name: "Comments (1)" })).toBeVisible();
   await closeDrawer(page);
 
-  // Filters see the new data.
-  await page.getByRole("button", { name: "Toggle filters" }).click();
+  // Filters see the new data. Under parallel load the dev server sometimes
+  // reloads the page (a failed background refresh), which closes the panel
+  // (the filter itself lives in the URL), so retry until the radio sticks.
   const filters = page.getByRole("complementary", { name: "Filters" });
-  await filters.getByText("Comments", { exact: true }).click();
-  await filters.getByRole("radio", { name: "No comments" }).check();
+  const noComments = filters.getByRole("radio", { name: "No comments" });
+  await expect(async () => {
+    if (!(await filters.isVisible())) {
+      await page.getByRole("button", { name: "Toggle filters" }).click();
+    }
+    if (!(await noComments.isVisible())) {
+      await filters.getByText("Comments", { exact: true }).click();
+    }
+    await noComments.check({ timeout: 2_000 });
+  }).toPass({ timeout: 20_000 });
+  const reset = filters.getByRole("button", { name: "Reset" });
+  // Enabled = the filter is really applied (not just a board mid-render).
+  await expect(reset).toBeEnabled();
   await expect(cardButton(page, "Dark mode")).toHaveCount(0);
-  await filters.getByRole("button", { name: "Reset" }).click();
+  await reset.click();
+  await expect(cardButton(page, "Dark mode")).toBeVisible();
 
   // Export CSV downloads the roadmap.
   await page.getByRole("button", { name: "More" }).click();

@@ -208,6 +208,17 @@ export function PublicIdeas({
             </form>
           </search>
           <div className="hidden gap-2.5 md:flex">{sortChips}</div>
+          {/* Tablets and embeds: no form ticket beside the list, no dock. */}
+          <button
+            type="button"
+            onClick={() => setFormOpen(true)}
+            className={cn(
+              "h-10 shrink-0 items-center rounded-full bg-foreground px-4 font-semibold text-background lg:hidden",
+              embed ? "flex" : "hidden md:flex",
+            )}
+          >
+            Share an idea
+          </button>
         </div>
 
         <nav

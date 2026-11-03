@@ -1,6 +1,6 @@
 # 32 — Public site "Transit"
 
-Status: **APPROVED 2026-11-03** (owner: build exactly like `docs/design/public-transit-preview.html`; the 14 decisions below agreed before starting). Being built.
+Status: **APPROVED + BUILT 2026-11-03** (owner: build exactly like `docs/design/public-transit-preview.html`; the 14 decisions below agreed before starting, 15–16 added during the build).
 
 Scope: every public page and embed (roadmap, ideas, updates, help, and their detail pages), desktop and phone. Replaces the look of doc 22 and the phone layout of doc 31. Behaviour (voting, sign-in, review, emails, links, SEO, custom domains) and the dashboard don't change.
 
@@ -50,6 +50,20 @@ Scope: every public page and embed (roadmap, ideas, updates, help, and their det
 
 ## 4. Done when
 
-- [ ] Every public page matches the preview side by side at 1360 px and 390 px, light and dark.
-- [ ] The 14 decisions hold; behaviour unchanged.
-- [ ] Lint, typecheck, unit and e2e green.
+- [x] Every public page matches the preview side by side at 1360 px and 390 px, light and dark.
+- [x] The 16 decisions hold; behaviour unchanged.
+- [x] Lint, typecheck, unit and e2e green (one known flaky dashboard test aside).
+
+## 5. As built
+
+| Step | Commit | Notes |
+|------|--------|-------|
+| 1 Tokens, fonts, header, footer, dock | 8e91726 | Familjen Grotesk / Hanken Grotesk / JetBrains Mono via next/font (`--t-display`, `--t-text`, `--t-mono`; a Branding font replaces the first two). Tokens `paper`, `sheet`, `ink3`, `rule2`, `tint` in `globals.css`. `PublicDock` (phones only, enabled modules, "+" → `ideas?share=1`). |
+| 2 Roadmap | 3cf1b42 | `src/lib/stations.ts` maps columns to stations. Scoreboard counts come from `getPublicRoadmap().stats` (ignores the search); "updated …" is rendered client-side (`UpdatedLabel`, no `new Date()` while prerendering). Vote box = `VoteButton variant="car"`. |
+| 3 Card ticket | 83fe222 | `DetailSheet ticket` (floating drawer / 92% sheet, own close button, darker scrim). `Ticket`, `Stamp`, `Meta`, `Label`, `From` in `card-detail.tsx`; comments split into `useComments` + `CommentThread` + `CommentCompose`. |
+| 4 Ideas | 10f1c47 | Ledger (`VoteButton variant="ledger"`), waiting box, form ticket (`IdeaForm` restyled, button "Post idea"), idea ticket. Sort + status + boards as chips. The floating phone button is gone: the dock's "+" opens the form sheet. A "Share an idea" pill shows on tablets and in embeds, where there is neither the form ticket nor the dock. |
+| 5 Updates | 3807141 | Journal entries (`UpdateEntry`); "Shipped from the roadmap" now carries card votes (hidden when that roadmap hides votes) and "N people asked". Decisions 15, 16. |
+| 6 Help | d33ed9a | Numbered index, Most read (`events` article views in 90 days → featured → newest), ledger rows, category chips, article sheet. |
+| 7 Sign-in, embeds, dark, docs | this commit | Sign-in dialog as a ticket (same labels). Embeds hide the heroes and keep the rest. Dark mode checked on every page. |
+
+Side-by-side screenshots were made with throwaway Playwright scripts (preview rendered from the `<textarea id="site">` source with the same hash parameters).

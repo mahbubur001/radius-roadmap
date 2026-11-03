@@ -2,7 +2,6 @@
 
 import { useState } from "react";
 import { toast } from "sonner";
-import { Button } from "@/components/ui/button";
 import {
   Dialog,
   DialogContent,
@@ -10,8 +9,6 @@ import {
   DialogHeader,
   DialogTitle,
 } from "@/components/ui/dialog";
-import { Input } from "@/components/ui/input";
-import { Label } from "@/components/ui/label";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { turnstileToken } from "./turnstile";
 import { publicApi, useVoter, type Voter } from "./voter-provider";
@@ -89,24 +86,36 @@ export function SignInDialog({
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="sm:max-w-sm">
-        <DialogHeader>
-          <DialogTitle>Log in</DialogTitle>
-          <DialogDescription>
-            No password needed. Your votes and ideas are saved to your name so
-            the team can follow up.
+      <DialogContent className="gap-0 overflow-hidden rounded-[22px] border-0 bg-sheet p-0 text-[15px] sm:max-w-[400px]">
+        <DialogHeader className="gap-0 border-b-2 border-dashed border-rule2 px-[22px] pt-6 pb-5 text-left">
+          <div className="font-t-mono text-xs font-semibold tracking-[0.12em] text-ink3 uppercase">
+            No password needed
+          </div>
+          <DialogTitle className="mt-1.5 font-t-display text-[26px] font-bold tracking-[-0.02em]">
+            Log in
+          </DialogTitle>
+          <DialogDescription className="mt-1.5 text-sm text-muted-foreground">
+            Your votes and ideas are saved to your name so the team can follow
+            up.
           </DialogDescription>
         </DialogHeader>
-        <Tabs defaultValue="email">
-          <TabsList className="w-full">
-            <TabsTrigger value="email">Email code</TabsTrigger>
-            <TabsTrigger value="guest">Guest</TabsTrigger>
+        <Tabs
+          defaultValue="email"
+          className="gap-0 px-[22px] pt-[18px] pb-[22px]"
+        >
+          <TabsList className="mb-3 h-auto w-full gap-2 bg-transparent p-0">
+            <TabsTrigger value="email" className={TAB}>
+              Email code
+            </TabsTrigger>
+            <TabsTrigger value="guest" className={TAB}>
+              Guest
+            </TabsTrigger>
           </TabsList>
 
           <TabsContent value="email">
             {sent ? (
               <form
-                className="flex flex-col gap-3 pt-2"
+                className="flex flex-col gap-3.5"
                 onSubmit={(e) => {
                   e.preventDefault();
                   void verify();
@@ -115,8 +124,11 @@ export function SignInDialog({
                 <p className="text-sm text-muted-foreground">
                   We sent a 6-digit code to <strong>{email}</strong>.
                 </p>
-                <Label htmlFor="voter-code">Code</Label>
-                <Input
+                <label htmlFor="voter-code" className={LABEL}>
+                  Code
+                </label>
+                <input
+                  className={INPUT}
                   id="voter-code"
                   inputMode="numeric"
                   autoComplete="one-time-code"
@@ -124,28 +136,34 @@ export function SignInDialog({
                   value={code}
                   onChange={(e) => setCode(e.target.value.replace(/\D/g, ""))}
                 />
-                <Button type="submit" disabled={busy || code.length !== 6}>
+                <button
+                  type="submit"
+                  className={SUBMIT}
+                  disabled={busy || code.length !== 6}
+                >
                   {busy ? "Checking…" : "Log in"}
-                </Button>
-                <Button
+                </button>
+                <button
                   type="button"
-                  variant="link"
-                  className="h-auto p-0"
+                  className="font-t-mono text-xs font-semibold tracking-[0.12em] text-ink3 uppercase hover:text-foreground"
                   onClick={() => setSent(false)}
                 >
                   Use a different email
-                </Button>
+                </button>
               </form>
             ) : (
               <form
-                className="flex flex-col gap-3 pt-2"
+                className="flex flex-col gap-3.5"
                 onSubmit={(e) => {
                   e.preventDefault();
                   void sendCode();
                 }}
               >
-                <Label htmlFor="voter-email">Email</Label>
-                <Input
+                <label htmlFor="voter-email" className={LABEL}>
+                  Email
+                </label>
+                <input
+                  className={INPUT}
                   id="voter-email"
                   type="email"
                   autoComplete="email"
@@ -153,31 +171,37 @@ export function SignInDialog({
                   value={email}
                   onChange={(e) => setEmail(e.target.value)}
                 />
-                <Button type="submit" disabled={busy}>
+                <button type="submit" className={SUBMIT} disabled={busy}>
                   {busy ? "Sending…" : "Email me a code"}
-                </Button>
+                </button>
               </form>
             )}
           </TabsContent>
 
           <TabsContent value="guest">
             <form
-              className="flex flex-col gap-3 pt-2"
+              className="flex flex-col gap-3.5"
               onSubmit={(e) => {
                 e.preventDefault();
                 void guest();
               }}
             >
-              <Label htmlFor="guest-name">Name</Label>
-              <Input
+              <label htmlFor="guest-name" className={LABEL}>
+                Name
+              </label>
+              <input
+                className={INPUT}
                 id="guest-name"
                 autoComplete="name"
                 required
                 value={name}
                 onChange={(e) => setName(e.target.value)}
               />
-              <Label htmlFor="guest-email">Email</Label>
-              <Input
+              <label htmlFor="guest-email" className={LABEL}>
+                Email
+              </label>
+              <input
+                className={INPUT}
                 id="guest-email"
                 type="email"
                 autoComplete="email"
@@ -185,9 +209,9 @@ export function SignInDialog({
                 value={email}
                 onChange={(e) => setEmail(e.target.value)}
               />
-              <Button type="submit" disabled={busy}>
+              <button type="submit" className={SUBMIT} disabled={busy}>
                 {busy ? "Signing in…" : "Continue as guest"}
-              </Button>
+              </button>
             </form>
           </TabsContent>
         </Tabs>
@@ -195,3 +219,12 @@ export function SignInDialog({
     </Dialog>
   );
 }
+
+const TAB =
+  "h-[34px] flex-1 rounded-full text-[13.5px] font-medium text-muted-foreground shadow-[inset_0_0_0_1px_var(--rule2)] data-[state=active]:bg-foreground data-[state=active]:text-background data-[state=active]:shadow-none dark:data-[state=active]:border-transparent dark:data-[state=active]:bg-foreground dark:data-[state=active]:text-background";
+const LABEL =
+  "-mb-2 font-t-mono text-[11px] font-bold tracking-[0.12em] text-ink3 uppercase";
+const INPUT =
+  "min-h-[46px] w-full rounded-xl bg-paper px-3.5 py-3 text-base outline-none placeholder:text-ink3 focus:bg-sheet focus:shadow-[inset_0_0_0_2px_var(--primary)]";
+const SUBMIT =
+  "h-[50px] rounded-[14px] bg-foreground font-t-display text-[15px] font-bold text-background disabled:opacity-60";

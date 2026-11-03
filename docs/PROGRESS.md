@@ -33,6 +33,7 @@
 - Phase 7 plan (public REST API + webhooks; approved + built 2026-11-01): `docs/27-phase-7-plan.md`
 - Phase 8 plan (platform admin: invite customers, set plans, suspend; approved + built 2026-11-01): `docs/28-phase-8-plan.md`
 - Two plans, Free + Pro (Pro = custom domain, uploads, no "Powered by"); files on R2 only; email on SES only; admin redesign (built 2026-11-01): `docs/29-two-plans.md`
+- **Deploying to production (EC2 + Caddy + pm2, step by step): `docs/34-deploy-guide.md`**
 - Team email alerts: vote milestones, votes in digests, review reminder, weekly digest + summary, replies to you (approved + built 2026-11-03): `docs/33-email-alerts-plan.md`
 - Public site "Transit" (approved + built 2026-11-03; preview `docs/design/public-transit-preview.html`; replaces the look of docs 22 and 31): `docs/32-public-transit-plan.md`
 - Public site on mobile (approved + built 2026-11-03; preview `docs/design/public-mobile-preview.html`): `docs/31-public-mobile-plan.md`

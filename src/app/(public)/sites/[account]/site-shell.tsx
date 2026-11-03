@@ -24,7 +24,7 @@ const MODULES: { key: SiteModule; label: string }[] = [
   { key: "roadmap", label: "Roadmap" },
   { key: "ideas", label: "Ideas" },
   { key: "updates", label: "Updates" },
-  { key: "articles", label: "Articles" },
+  { key: "articles", label: "Help" },
 ];
 
 export async function SiteShell({

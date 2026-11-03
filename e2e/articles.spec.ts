@@ -58,7 +58,7 @@ test("write a help article: category, publish, public index, category, search, r
   const home = articleUrl.replace(/\/invite-your-team$/, "");
   await page.goto(home);
   const site = page.getByRole("navigation", { name: "Site" });
-  await expect(site.getByRole("link", { name: "Articles" })).toHaveAttribute(
+  await expect(site.getByRole("link", { name: "Help" })).toHaveAttribute(
     "aria-current",
     "page",
   );

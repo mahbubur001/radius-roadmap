@@ -105,8 +105,8 @@ export function PublicSiteForm({
             <TextField
               control={form.control}
               name="articlesLabel"
-              label="Articles tab"
-              placeholder="Articles"
+              label="Help tab (articles)"
+              placeholder="Help"
             />
             <FieldSeparator>Comments and follows</FieldSeparator>
             <SwitchField

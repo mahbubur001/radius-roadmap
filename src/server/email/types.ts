@@ -125,6 +125,15 @@ export type EmailTemplateProps = {
     url: string;
     settingsUrl: string;
   };
+  /** Team alert: a card or idea reached a vote milestone (doc 33). */
+  "vote-milestone": {
+    workspaceName: string;
+    kind: "card" | "idea";
+    title: string;
+    milestone: number;
+    url: string;
+    settingsUrl: string;
+  };
   /** To account owners: Stripe couldn't charge the card (doc 26 6A). */
   "billing-payment-failed": {
     accountName: string;

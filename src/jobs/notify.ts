@@ -17,6 +17,7 @@ import {
   newCommentEmails,
   newFeedbackEmails,
   newSubscriberEmails,
+  voteMilestoneEmails,
 } from "@/server/services/notifications";
 import {
   markReminder,
@@ -179,6 +180,18 @@ export async function notifyJob(job: Job<NotifyJob>) {
         email,
       }),
     );
+  } else if (data.type === "vote-milestone") {
+    const id = data.cardId ?? data.feedbackId;
+    emails = (
+      await voteMilestoneEmails(
+        db,
+        { cardId: data.cardId, feedbackId: data.feedbackId },
+        data.milestone,
+      )
+    ).map(({ userId, ...email }) => ({
+      id: `vm-${id}-${data.milestone}-${userId}`,
+      email,
+    }));
   } else {
     // The last 24 hours; one digest per member, workspace and day.
     const day = new Date().toISOString().slice(0, 10);

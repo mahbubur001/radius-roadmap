@@ -10,7 +10,15 @@ export type NotifyJob =
   | { type: "new-feedback"; feedbackId: string }
   | { type: "new-comment"; commentId: string }
   | { type: "new-subscriber"; subscriberId: string }
-  | { type: "digest" }
+  /** A card or idea reached a vote milestone (doc 33). */
+  | {
+      type: "vote-milestone";
+      cardId?: string;
+      feedbackId?: string;
+      milestone: number;
+    }
+  /** Daily (default) or weekly digests (doc 33). */
+  | { type: "digest"; period?: "daily" | "weekly" }
   /** A scheduled post goes live (doc 23 U3). */
   | { type: "publish-update"; updateId: string; at: string }
   /** Email a published post to its subscribers (doc 23 step 5). */
@@ -69,9 +77,11 @@ export async function notify(
         ? `new-comment-${job.commentId}`
         : job.type === "new-subscriber"
           ? `new-subscriber-${job.subscriberId}`
-          : job.type === "idea-shipped"
-            ? `idea-shipped-${job.updateId}`
-            : `send-update-${job.updateId}`;
+          : job.type === "vote-milestone"
+            ? `vote-milestone-${job.cardId ?? job.feedbackId}-${job.milestone}`
+            : job.type === "idea-shipped"
+              ? `idea-shipped-${job.updateId}`
+              : `send-update-${job.updateId}`;
   try {
     await notifyQueue.add(job.type, job, { jobId });
   } catch (error) {

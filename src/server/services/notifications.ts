@@ -27,6 +27,7 @@ import {
   trackedUsers,
   updateSubscribers,
   user,
+  voteMilestones,
   workspaceMembers,
   workspaces,
 } from "@/server/db/schema";
@@ -501,6 +502,97 @@ export async function newSubscriberEmails(
       email: sub.email,
       total: total?.n ?? 1,
       url: `${l.base}/updates/subscribers`,
+      settingsUrl: l.settings,
+    },
+  }));
+}
+
+/**
+ * Milestone alerts (doc 33): a card or idea reached `milestone` votes. The
+ * milestone is recorded first; it's only announced when this job recorded
+ * it (or recorded it within the hour, i.e. this is a retry), so voting,
+ * unvoting and voting again at 25 never emails twice.
+ */
+export async function voteMilestoneEmails(
+  db: Db,
+  target: { cardId?: string; feedbackId?: string },
+  milestone: number,
+): Promise<(EmailJob & { userId: string })[]> {
+  const [item] = target.cardId
+    ? await db
+        .select({
+          id: roadmapCards.id,
+          accountId: roadmapCards.accountId,
+          workspaceId: roadmapCards.workspaceId,
+          title: sql<string>`coalesce(${roadmapCards.publicTitle}, ${roadmapCards.title})`,
+          roadmapSlug: roadmaps.slug,
+          wsName: workspaces.name,
+          wsSlug: workspaces.slug,
+        })
+        .from(roadmapCards)
+        .innerJoin(roadmaps, eq(roadmaps.id, roadmapCards.roadmapId))
+        .innerJoin(workspaces, eq(workspaces.id, roadmapCards.workspaceId))
+        .where(eq(roadmapCards.id, target.cardId))
+        .limit(1)
+    : await db
+        .select({
+          id: feedbackItems.id,
+          accountId: feedbackItems.accountId,
+          workspaceId: feedbackItems.workspaceId,
+          title: feedbackItems.title,
+          roadmapSlug: sql<string | null>`null`,
+          wsName: workspaces.name,
+          wsSlug: workspaces.slug,
+        })
+        .from(feedbackItems)
+        .innerJoin(workspaces, eq(workspaces.id, feedbackItems.workspaceId))
+        .where(eq(feedbackItems.id, target.feedbackId ?? ""))
+        .limit(1);
+  if (!item) return [];
+
+  const subject = target.cardId ? { cardId: item.id } : { feedbackId: item.id };
+  const [recorded] = await db
+    .insert(voteMilestones)
+    .values({
+      accountId: item.accountId,
+      workspaceId: item.workspaceId,
+      ...subject,
+      milestone,
+    })
+    .onConflictDoNothing()
+    .returning({ id: voteMilestones.id });
+  if (!recorded) {
+    const [earlier] = await db
+      .select({ createdAt: voteMilestones.createdAt })
+      .from(voteMilestones)
+      .where(
+        and(
+          target.cardId
+            ? eq(voteMilestones.cardId, item.id)
+            : eq(voteMilestones.feedbackId, item.id),
+          eq(voteMilestones.milestone, milestone),
+        ),
+      )
+      .limit(1);
+    const retry =
+      earlier && Date.now() - earlier.createdAt.getTime() < 3600 * 1000;
+    if (!retry) return [];
+  }
+
+  const to = await recipients(db, item, "votes", "instant");
+  const l = links(item.wsSlug);
+  return to.map((r) => ({
+    userId: r.userId,
+    template: "vote-milestone",
+    to: r.email,
+    props: {
+      workspaceName: item.wsName,
+      kind: target.cardId ? "card" : "idea",
+      title: item.title,
+      milestone,
+      url: target.cardId
+        ? l.card(item.roadmapSlug ?? "", item.id)
+        : l.idea(item.id, false),
       settingsUrl: l.settings,
     },
   }));

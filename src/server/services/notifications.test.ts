@@ -1,5 +1,7 @@
+import { eq } from "drizzle-orm";
 import { afterAll, beforeAll, describe, expect, it } from "vitest";
 import { db } from "@/server/db/client";
+import { voteMilestones } from "@/server/db/schema";
 import {
   addTestMember,
   cleanup,
@@ -17,6 +19,7 @@ import {
   newFeedbackEmails,
   recipients,
   setMyPrefs,
+  voteMilestoneEmails,
 } from "./notifications";
 import { submitIdea } from "./public-ideas";
 import { guestSignIn } from "./voter-auth";
@@ -168,6 +171,39 @@ describe("instant alerts", () => {
       template: "new-comment",
       props: { author: "Nia", pending: true, targetTitle: "Talk" },
     });
+  });
+});
+
+describe("vote milestones (doc 33)", () => {
+  it("emails owners and admins once per milestone, never another account", async () => {
+    const idea = await visitorIdea("Milestone idea");
+    const first = await voteMilestoneEmails(db, { feedbackId: idea.id }, 10);
+    expect(first.map((e) => e.userId).sort()).toEqual(
+      [owner.userId, admin.userId].sort(),
+    );
+    expect(first.map((e) => e.userId)).not.toContain(otherOwner);
+    expect(first[0]?.props).toMatchObject({
+      kind: "idea",
+      title: "Milestone idea",
+      milestone: 10,
+    });
+    // A retry within the hour may send again (email job ids dedupe it)…
+    expect(
+      await voteMilestoneEmails(db, { feedbackId: idea.id }, 10),
+    ).toHaveLength(2);
+    // …but the same milestone reached again later never emails.
+    await db
+      .update(voteMilestones)
+      .set({ createdAt: new Date(Date.now() - 2 * 3600 * 1000) })
+      .where(eq(voteMilestones.feedbackId, idea.id));
+    expect(await voteMilestoneEmails(db, { feedbackId: idea.id }, 10)).toEqual(
+      [],
+    );
+    // Off means off.
+    await setMyPrefs(db, admin, { ...defaultPrefs("admin"), votes: "off" });
+    const next = await voteMilestoneEmails(db, { feedbackId: idea.id }, 25);
+    expect(next.map((e) => e.userId)).toEqual([owner.userId]);
+    await setMyPrefs(db, admin, defaultPrefs("admin"));
   });
 });
 

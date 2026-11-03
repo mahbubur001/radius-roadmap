@@ -379,6 +379,26 @@ export const templates: { [T in EmailTemplate]: TemplateDef<T> } = {
       </EmailLayout>
     ),
   },
+  "vote-milestone": {
+    subject: ({ title, milestone }) => `“${title}” reached ${milestone} votes`,
+    render: ({ workspaceName, kind, title, milestone, url, settingsUrl }) => (
+      <EmailLayout
+        preview={`${milestone} people want this`}
+        heading={`${milestone} votes`}
+        action={{
+          label: kind === "card" ? "Open the card" : "Open the idea",
+          url,
+        }}
+      >
+        <Text>
+          The {kind === "card" ? "roadmap card" : "idea"}{" "}
+          <strong>{title}</strong> in {workspaceName} just reached{" "}
+          <strong>{milestone} votes</strong>.
+        </Text>
+        <Unsubscribe url={settingsUrl} />
+      </EmailLayout>
+    ),
+  },
   "billing-payment-failed": {
     subject: ({ accountName }) =>
       `${accountName}: your payment didn't go through`,

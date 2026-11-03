@@ -9,6 +9,7 @@ import {
   type SQL,
   sql,
 } from "drizzle-orm";
+import { VOTE_MILESTONES } from "@/lib/schemas/notifications";
 import type { Db, DbOrTx } from "@/server/db/client";
 import {
   feedbackItems,
@@ -18,6 +19,7 @@ import {
   type VoteSource,
   votes,
 } from "@/server/db/schema";
+import { notify } from "@/server/queue/notifications";
 import { emitEvent } from "@/server/queue/webhooks";
 import { getCard } from "./cards";
 import {
@@ -76,6 +78,11 @@ async function bumpFeedback(tx: DbOrTx, feedbackId: string, by: number) {
   return (row?.voteCount ?? 0) + (row?.importedVotes ?? 0);
 }
 
+/** A visitor's vote just brought the total to a milestone (doc 33). */
+function isMilestone(total: number) {
+  return (VOTE_MILESTONES as readonly number[]).includes(total);
+}
+
 /**
  * Vote, or remove the vote when this voter already voted. The caller has
  * already checked the card is public and votable for `ctx` (public-site.ts).
@@ -118,6 +125,13 @@ export async function toggleVote(
     result.voted ? "roadmap_card.vote_added" : "roadmap_card.vote_removed",
     card.id,
   );
+  if (result.voted && isMilestone(result.total)) {
+    await notify({
+      type: "vote-milestone",
+      cardId: card.id,
+      milestone: result.total,
+    });
+  }
   return result;
 }
 
@@ -167,6 +181,13 @@ export async function toggleFeedbackVote(
     result.voted ? "feedback.vote_added" : "feedback.vote_removed",
     item.id,
   );
+  if (result.voted && isMilestone(result.total)) {
+    await notify({
+      type: "vote-milestone",
+      feedbackId: item.id,
+      milestone: result.total,
+    });
+  }
   return result;
 }
 

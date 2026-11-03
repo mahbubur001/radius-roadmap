@@ -25,6 +25,7 @@ export function PublicDock({
   }[];
   shareHref: string | null;
 }) {
+  // The "+" sits in the middle; with an odd count the extra section goes left.
   const mid = Math.ceil(items.length / 2);
   const link = (i: (typeof items)[number]) => {
     const Icon = ICONS[i.key];
@@ -34,7 +35,7 @@ export function PublicDock({
         href={i.href}
         aria-current={i.active ? "page" : undefined}
         className={cn(
-          "flex w-[58px] flex-col items-center gap-[3px] font-t-mono text-[10px] font-semibold tracking-[0.06em] uppercase",
+          "flex min-w-0 flex-col items-center gap-[3px] font-t-mono text-[10px] font-semibold tracking-[0.06em] uppercase",
           i.active ? "opacity-100" : "opacity-55",
         )}
       >
@@ -46,7 +47,12 @@ export function PublicDock({
   return (
     <nav
       aria-label="Site sections"
-      className="fixed inset-x-3 bottom-[max(0.75rem,env(safe-area-inset-bottom))] z-30 flex h-[66px] items-center justify-around rounded-[22px] bg-foreground px-1.5 text-background shadow-[0_18px_40px_-18px_rgb(0_0_0/0.6)] md:hidden"
+      className="fixed inset-x-3 bottom-[max(0.75rem,env(safe-area-inset-bottom))] z-30 grid h-[66px] items-center justify-items-center rounded-[22px] bg-foreground px-1.5 text-background shadow-[0_18px_40px_-18px_rgb(0_0_0/0.6)] md:hidden"
+      // Every slot (each section and the "+") gets the same width, so the
+      // spacing stays even with 2, 3 or 4 sections.
+      style={{
+        gridTemplateColumns: `repeat(${items.length + (shareHref ? 1 : 0)}, minmax(0, 1fr))`,
+      }}
     >
       {items.slice(0, mid).map(link)}
       {shareHref ? (

@@ -4,7 +4,7 @@ import Link from "next/link";
 import { notFound } from "next/navigation";
 import { Suspense } from "react";
 import { PageView } from "@/components/public/page-view";
-import { UpdateDetail } from "@/components/public/update-detail";
+import { UpdateEntry } from "@/components/public/update-detail";
 import { Skeleton } from "@/components/ui/skeleton";
 import { wsPath } from "@/lib/public-path";
 import { loadSiteForRequest, loadUpdate, loadWorkspace } from "../../../data";
@@ -72,23 +72,22 @@ async function Post(props: Props) {
       embed={embed}
     >
       <PageView postId={post.id} />
-      <div className="mx-auto flex max-w-3xl flex-col gap-6">
+      <div className="mx-auto max-w-[980px] pt-6 pb-10 md:pt-12 md:pb-16">
         <Link
           href={`${site.prefix}${wsPath(ws)}/updates${suffix}`}
-          className="flex items-center gap-1 text-sm text-muted-foreground hover:text-foreground"
+          className="mb-5 flex w-fit items-center gap-1.5 font-t-mono text-xs font-semibold tracking-[0.12em] text-ink3 uppercase hover:text-foreground"
         >
-          <ArrowLeft className="size-4" />
+          <ArrowLeft strokeWidth={1.8} className="size-4" />
           All updates
         </Link>
-        <div className="overflow-hidden rounded-lg border bg-card">
-          <UpdateDetail
-            post={post}
-            reactions={ws.features.reactions}
-            roadmapBase={
-              ws.modules.roadmap ? `${site.prefix}${wsPath(ws)}/roadmap` : null
-            }
-          />
-        </div>
+        <UpdateEntry
+          post={post}
+          href={null}
+          reactions={ws.features.reactions}
+          roadmapBase={
+            ws.modules.roadmap ? `${site.prefix}${wsPath(ws)}/roadmap` : null
+          }
+        />
       </div>
     </SiteShell>
   );

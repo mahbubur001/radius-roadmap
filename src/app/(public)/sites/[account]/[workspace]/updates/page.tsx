@@ -80,24 +80,19 @@ async function Updates(props: Props) {
       embed={embed}
     >
       <PageView />
-      <div className="flex flex-col gap-6">
-        {embed ? null : (
-          <h1 className="text-3xl font-semibold tracking-tight">Updates</h1>
-        )}
-        <PublicUpdates
-          base={`${site.prefix}${wsPath(ws)}/updates`}
-          posts={data.data.posts}
-          categories={data.data.categories}
-          query={q ?? ""}
-          category={category ?? ""}
-          embed={embed}
-          roadmapBase={
-            ws.modules.roadmap ? `${site.prefix}${wsPath(ws)}/roadmap` : null
-          }
-          justSubscribed={subscribed}
-          reactions={ws.features.reactions}
-        />
-      </div>
+      <PublicUpdates
+        base={`${site.prefix}${wsPath(ws)}/updates`}
+        posts={data.data.posts}
+        categories={data.data.categories}
+        query={q ?? ""}
+        category={category ?? ""}
+        embed={embed}
+        roadmapBase={
+          ws.modules.roadmap ? `${site.prefix}${wsPath(ws)}/roadmap` : null
+        }
+        justSubscribed={subscribed}
+        reactions={ws.features.reactions}
+      />
     </SiteShell>
   );
 }

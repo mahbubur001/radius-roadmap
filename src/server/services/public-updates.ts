@@ -1,4 +1,4 @@
-import { and, desc, eq, ilike, or, type SQL, sql } from "drizzle-orm";
+import { and, desc, eq, ilike, inArray, or, type SQL, sql } from "drizzle-orm";
 import type { ReactionCounts } from "@/lib/reactions";
 import { renderRichText } from "@/lib/rich-text";
 import type { Db } from "@/server/db/client";
@@ -146,15 +146,65 @@ export async function listPublicUpdates(
       .orderBy(byPosition(updateCategories.position)),
   ]);
   const posts = rows.map(toPost);
-  const counts = await reactionCounts(
-    db,
-    ctx,
-    posts.map((p) => p.id),
-  );
+  const ids = posts.map((p) => p.id);
+  const [counts, cards] = await Promise.all([
+    reactionCounts(db, ctx, ids),
+    shippedCards(db, ids),
+  ]);
   return {
-    posts: posts.map((p) => ({ ...p, reactions: counts[p.id] ?? {} })),
+    posts: posts.map((p) => ({
+      ...p,
+      reactions: counts[p.id] ?? {},
+      cards: cards[p.id] ?? [],
+    })),
     categories,
   };
+}
+
+export type ShippedCard = {
+  slug: string;
+  title: string;
+  /** null when that roadmap hides vote counts. */
+  votes: number | null;
+};
+
+/** The public roadmap cards each post shipped (doc 32 journal). */
+async function shippedCards(db: Db, updateIds: string[]) {
+  const byPost: Record<string, ShippedCard[]> = {};
+  if (!updateIds.length) return byPost;
+  const rows = await db
+    .select({
+      updateId: updateCards.updateId,
+      slug: roadmapCards.slug,
+      title: sql<string>`coalesce(${roadmapCards.publicTitle}, ${roadmapCards.title})`,
+      votes: sql<number>`${roadmapCards.voteCount} + ${roadmapCards.importedVotes}`,
+      showVotes: sql<boolean>`coalesce((${roadmaps.display}->>'showVotes')::boolean, true)`,
+    })
+    .from(updateCards)
+    .innerJoin(roadmapCards, eq(roadmapCards.id, updateCards.cardId))
+    .innerJoin(roadmaps, eq(roadmaps.id, roadmapCards.roadmapId))
+    .innerJoin(roadmapColumns, eq(roadmapColumns.id, roadmapCards.columnId))
+    .innerJoin(workspaces, eq(workspaces.id, roadmaps.workspaceId))
+    .where(
+      and(
+        inArray(updateCards.updateId, updateIds),
+        eq(roadmapCards.isPublic, true),
+        sql`${roadmapCards.archivedAt} is null`,
+        eq(roadmaps.isPublic, true),
+        eq(roadmapColumns.isPublic, true),
+        sql`coalesce(${workspaces.settings}->>'showRoadmap', 'true') <> 'false'`,
+      ),
+    );
+  for (const r of rows) {
+    const list = byPost[r.updateId] ?? [];
+    list.push({
+      slug: r.slug,
+      title: r.title,
+      votes: r.showVotes ? r.votes : null,
+    });
+    byPost[r.updateId] = list;
+  }
+  return byPost;
 }
 
 /** One post with its body and the public roadmap cards it shipped. */
@@ -178,26 +228,7 @@ export async function getPublicUpdate(
     )
     .limit(1);
   if (!row) return null;
-  const cards = await db
-    .select({
-      slug: roadmapCards.slug,
-      title: sql<string>`coalesce(${roadmapCards.publicTitle}, ${roadmapCards.title})`,
-    })
-    .from(updateCards)
-    .innerJoin(roadmapCards, eq(roadmapCards.id, updateCards.cardId))
-    .innerJoin(roadmaps, eq(roadmaps.id, roadmapCards.roadmapId))
-    .innerJoin(roadmapColumns, eq(roadmapColumns.id, roadmapCards.columnId))
-    .innerJoin(workspaces, eq(workspaces.id, roadmaps.workspaceId))
-    .where(
-      and(
-        eq(updateCards.updateId, row.id),
-        eq(roadmapCards.isPublic, true),
-        sql`${roadmapCards.archivedAt} is null`,
-        eq(roadmaps.isPublic, true),
-        eq(roadmapColumns.isPublic, true),
-        sql`coalesce(${workspaces.settings}->>'showRoadmap', 'true') <> 'false'`,
-      ),
-    );
+  const cards = (await shippedCards(db, [row.id]))[row.id] ?? [];
   const counts = await reactionCounts(db, ctx, [row.id]);
   return {
     ...toPost(row),

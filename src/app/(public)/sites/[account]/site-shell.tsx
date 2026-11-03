@@ -143,14 +143,6 @@ export async function SiteShell({
               </nav>
               <span className="flex-1" />
               <VoterMenu />
-              {ideasHref ? (
-                <Link
-                  href={`${ideasHref}${ideasHref.includes("?") ? "&" : "?"}share=1`}
-                  className="hidden h-9 items-center rounded-full bg-foreground px-4 font-semibold text-background md:flex"
-                >
-                  Share an idea
-                </Link>
-              ) : null}
             </div>
           </header>
         )}

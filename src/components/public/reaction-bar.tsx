@@ -36,14 +36,14 @@ export function ReactionBar({
               void toggleReaction(postId, r.key);
             }}
             className={cn(
-              "flex h-8 items-center gap-1.5 rounded-full border px-3 text-sm transition-colors",
+              "inline-flex h-9 items-center gap-1.5 rounded-full px-3 font-t-mono text-[13px] font-semibold transition-colors",
               mine
-                ? "border-primary bg-primary/10"
-                : "bg-background hover:bg-muted",
+                ? "bg-tint shadow-[inset_0_0_0_1.5px_var(--primary)]"
+                : "shadow-[inset_0_0_0_1px_var(--rule2)] hover:bg-sheet",
             )}
           >
             <span aria-hidden>{r.emoji}</span>
-            {total ? <span className="tabular-nums">{total}</span> : null}
+            {total ? <span>{total}</span> : null}
           </button>
         );
       })}

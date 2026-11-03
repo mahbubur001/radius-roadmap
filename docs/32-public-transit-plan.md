@@ -35,6 +35,8 @@ Scope: every public page and embed (roadmap, ideas, updates, help, and their det
 | 12 | A customer font from Branding replaces display and text; numbers keep JetBrains Mono. |
 | 13 | Pages not drawn in the preview (idea ticket, card/idea/post/article pages, help category page, sign-in dialog, embeds) reuse the same parts. |
 | 14 | The ticket's reply box only when comments are on. |
+| 15 | (Owner, during the build) No "Share an idea" button in the desktop header: the Ideas page has the form ticket; phones keep the dock's "+". |
+| 16 | Updates are read in the journal itself, so a post title goes straight to its page (no drawer). |
 
 ## 3. Steps (each: build, side-by-side check at both sizes, lint, typecheck, tests, commit)
 

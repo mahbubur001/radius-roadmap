@@ -1,29 +1,14 @@
-"use client";
-
-import { Pin, Rss, Search } from "lucide-react";
-import { useEffect, useState } from "react";
-import { Input } from "@/components/ui/input";
-import {
-  Sheet,
-  SheetContent,
-  SheetDescription,
-  SheetHeader,
-  SheetTitle,
-} from "@/components/ui/sheet";
+import { Rss, Search } from "lucide-react";
+import { cn } from "@/lib/utils";
 import type { PublicPost } from "@/server/services/public-updates";
-import { ReactionBar } from "./reaction-bar";
+import { Chip } from "./public-board";
 import { SubscribeBox } from "./subscribe-box";
-import {
-  CategoryChip,
-  type PublicPostView,
-  postDate,
-  UpdateDetail,
-} from "./update-detail";
+import { type PublicPostView, UpdateEntry } from "./update-detail";
 
 /**
- * Public Updates (doc 22 §2.4, doc 23 step 3): search + Categories filter,
- * posts newest first (pinned on top). Titles are real links (crawlable post
- * pages); a plain click opens the post in a drawer.
+ * Public Updates as a journal (doc 32): eyebrow and title, the subscribe
+ * pill, search and category chips, then entries newest first (pinned on
+ * top). Titles link to the crawlable post pages.
  */
 export function PublicUpdates({
   base,
@@ -38,7 +23,7 @@ export function PublicUpdates({
 }: {
   /** e.g. "/acme/product/updates" */
   base: string;
-  posts: PublicPost[];
+  posts: (PublicPost & Pick<PublicPostView, "cards">)[];
   categories: { id: string; name: string; color: string }[];
   query: string;
   category: string;
@@ -49,196 +34,99 @@ export function PublicUpdates({
   /** Emoji reactions are in the account's plan (doc 26 P7). */
   reactions: boolean;
 }) {
-  const [open, setOpen] = useState<PublicPostView | null>(null);
-
-  useEffect(() => {
-    const onPop = () => setOpen(null);
-    window.addEventListener("popstate", onPop);
-    return () => window.removeEventListener("popstate", onPop);
-  }, []);
-
-  function href(post: PublicPost) {
-    return `${base}/${post.slug}${embed ? "?embed=1" : ""}`;
-  }
-
-  async function openPost(post: PublicPost) {
-    setOpen(post);
-    window.history.pushState({ post: post.id }, "", href(post));
-  }
-
-  function close() {
-    setOpen(null);
-    if (window.history.state?.post) window.history.back();
+  const suffix = embed ? "?embed=1" : "";
+  function categoryHref(id: string) {
+    const params = new URLSearchParams();
+    if (query) params.set("q", query);
+    if (id) params.set("category", id);
+    if (embed) params.set("embed", "1");
+    const qs = params.toString();
+    return qs ? `${base}?${qs}` : base;
   }
 
   return (
-    <div className="flex flex-col gap-6">
-      <search className="flex flex-wrap items-center justify-end gap-2 border-b pb-6">
-        <form
-          action={base}
-          className="flex w-full flex-wrap items-center gap-2 sm:w-auto"
-          aria-label="Filter updates"
-        >
-          {embed ? <input type="hidden" name="embed" value="1" /> : null}
-          <div className="relative min-w-56 flex-1 sm:w-72 sm:flex-none">
-            <Search className="pointer-events-none absolute top-1/2 left-3 size-4 -translate-y-1/2 text-muted-foreground" />
-            <Input
+    <div
+      className={cn(
+        "mx-auto max-w-[980px] pb-10 md:pb-16",
+        embed ? "pt-1" : "pt-[26px] md:pt-12",
+      )}
+    >
+      {embed ? null : (
+        <>
+          <div className="font-t-mono text-xs font-semibold tracking-[0.12em] text-ink3 uppercase">
+            Updates
+          </div>
+          <h1 className="mt-2.5 mb-4 font-t-display text-[34px] leading-none font-bold tracking-[-0.03em] md:mb-6 md:text-[44px]">
+            What we shipped
+          </h1>
+        </>
+      )}
+      <SubscribeBox justConfirmed={justSubscribed} />
+
+      <div className="mb-6 flex flex-wrap items-center gap-2.5">
+        <search className="w-full md:w-[280px]">
+          <form
+            action={base}
+            aria-label="Filter updates"
+            className="flex h-10 items-center gap-2 rounded-full bg-sheet px-3.5 text-ink3 ring-1 ring-border focus-within:ring-2 focus-within:ring-ring"
+          >
+            <Search strokeWidth={1.8} className="size-4 shrink-0" />
+            {category ? (
+              <input type="hidden" name="category" value={category} />
+            ) : null}
+            {embed ? <input type="hidden" name="embed" value="1" /> : null}
+            <input
               type="search"
               name="q"
               defaultValue={query}
               aria-label="Search updates"
-              placeholder="Search…"
-              className="h-10 pl-9"
+              placeholder="Search updates"
+              className="h-full min-w-0 flex-1 bg-transparent text-foreground outline-none placeholder:text-ink3"
             />
-          </div>
-          <select
-            name="category"
-            defaultValue={category}
+          </form>
+        </search>
+        {categories.length ? (
+          <nav
             aria-label="Categories"
-            onChange={(e) => e.currentTarget.form?.requestSubmit()}
-            className="h-10 cursor-pointer rounded-md border bg-transparent px-3 text-sm"
+            className="-mx-[18px] flex gap-2.5 overflow-x-auto px-[18px] [scrollbar-width:none] md:mx-0 md:flex-wrap md:px-0"
           >
-            <option value="">Categories</option>
+            <Chip on={!category} href={categoryHref("")}>
+              All
+            </Chip>
             {categories.map((c) => (
-              <option key={c.id} value={c.id}>
+              <Chip key={c.id} on={c.id === category} href={categoryHref(c.id)}>
                 {c.name}
-              </option>
+              </Chip>
             ))}
-          </select>
-        </form>
+          </nav>
+        ) : null}
         {embed ? null : (
           <a
             href={`${base}/feed.xml`}
-            className="flex items-center gap-1 text-sm text-muted-foreground hover:text-foreground"
             title="RSS feed"
+            className="ml-auto hidden items-center gap-1.5 font-t-mono text-xs font-semibold tracking-[0.12em] text-ink3 uppercase hover:text-foreground md:flex"
           >
-            <Rss className="size-4" />
+            <Rss strokeWidth={1.8} className="size-4" />
             RSS
           </a>
         )}
-      </search>
-
-      <div className="mx-auto w-full max-w-3xl">
-        <SubscribeBox justConfirmed={justSubscribed} />
       </div>
 
       {posts.length ? (
-        <div className="mx-auto flex w-full max-w-3xl flex-col gap-6">
-          {posts.map((post) => (
-            <article
-              key={post.id}
-              className="relative overflow-hidden rounded-lg border bg-card text-card-foreground shadow-xs transition-colors hover:border-ring/50"
-            >
-              {post.cover ? (
-                // biome-ignore lint/performance/noImgElement: user upload, any size
-                <img
-                  src={post.cover}
-                  alt=""
-                  className="aspect-[16/9] w-full border-b object-cover"
-                />
-              ) : null}
-              <div className="flex flex-col gap-2 px-6 py-5">
-                <div className="flex flex-wrap items-center gap-3 text-sm text-muted-foreground">
-                  {post.category ? (
-                    <CategoryChip category={post.category} />
-                  ) : null}
-                  <time dateTime={post.publishedAt}>
-                    {postDate(post.publishedAt)}
-                  </time>
-                  {post.pinned ? (
-                    <span className="flex items-center gap-1">
-                      <Pin className="size-3.5" />
-                      Pinned
-                    </span>
-                  ) : null}
-                </div>
-                <h2 className="text-xl font-semibold">
-                  <a
-                    href={href(post)}
-                    onClick={(e) => {
-                      if (
-                        e.metaKey ||
-                        e.ctrlKey ||
-                        e.shiftKey ||
-                        e.button !== 0
-                      ) {
-                        return;
-                      }
-                      e.preventDefault();
-                      void openPost(post);
-                    }}
-                    className="outline-none after:absolute after:inset-0 focus-visible:after:ring-2 focus-visible:after:ring-ring focus-visible:after:ring-inset"
-                  >
-                    {post.title}
-                  </a>
-                </h2>
-                {post.excerpt ? (
-                  <p className="line-clamp-3 text-muted-foreground">
-                    {post.excerpt}
-                  </p>
-                ) : null}
-                {reactions ? (
-                  <ReactionBar
-                    postId={post.id}
-                    counts={post.reactions}
-                    className="mt-2"
-                  />
-                ) : null}
-              </div>
-            </article>
-          ))}
-        </div>
+        posts.map((post) => (
+          <UpdateEntry
+            key={post.id}
+            post={post}
+            href={`${base}/${post.slug}${suffix}`}
+            roadmapBase={roadmapBase}
+            reactions={reactions}
+          />
+        ))
       ) : (
-        <p className="py-16 text-center text-sm text-muted-foreground">
+        <p className="border-t py-16 text-center text-ink3">
           {query || category ? "No updates match." : "No updates yet."}
         </p>
       )}
-
-      <Sheet open={!!open} onOpenChange={(next) => !next && close()}>
-        <SheetContent className="gap-0 overflow-y-auto p-0 data-[side=right]:w-full data-[side=right]:sm:max-w-2xl">
-          <SheetHeader className="sr-only">
-            <SheetTitle>{open?.title}</SheetTitle>
-            <SheetDescription>Update</SheetDescription>
-          </SheetHeader>
-          {open ? (
-            <PostDrawerBody
-              post={open}
-              base={base}
-              roadmapBase={roadmapBase}
-              reactions={reactions}
-            />
-          ) : null}
-        </SheetContent>
-      </Sheet>
-    </div>
-  );
-}
-
-/** The list only has excerpts; the drawer loads the full post page's data. */
-function PostDrawerBody({
-  post,
-  base,
-  roadmapBase,
-  reactions,
-}: {
-  post: PublicPostView;
-  base: string;
-  roadmapBase: string | null;
-  reactions: boolean;
-}) {
-  return (
-    <div className="flex flex-col">
-      <UpdateDetail
-        post={post}
-        roadmapBase={roadmapBase}
-        reactions={reactions}
-      />
-      <a
-        href={`${base}/${post.slug}`}
-        className="mx-6 mb-6 w-fit text-sm text-primary underline"
-      >
-        Read the full post
-      </a>
     </div>
   );
 }

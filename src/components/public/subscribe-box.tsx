@@ -2,8 +2,6 @@
 
 import { Mail } from "lucide-react";
 import { useState } from "react";
-import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
 import { turnstileToken } from "./turnstile";
 import { publicApi, useVoter } from "./voter-provider";
 
@@ -44,8 +42,8 @@ export function SubscribeBox({ justConfirmed }: { justConfirmed: boolean }) {
 
   if (state === "active" || state === "pending") {
     return (
-      <output className="flex items-center gap-3 rounded-lg border bg-card px-5 py-4 text-sm">
-        <Mail className="size-5 text-primary" />
+      <output className="mb-10 flex max-w-[460px] items-center gap-3 rounded-full bg-sheet py-3 pr-5 pl-[18px] text-sm ring-1 ring-border">
+        <Mail strokeWidth={1.8} className="size-4 shrink-0 text-primary" />
         {state === "active"
           ? "You're subscribed. New updates will arrive in your inbox."
           : "Check your inbox and confirm your email to start getting updates."}
@@ -54,43 +52,43 @@ export function SubscribeBox({ justConfirmed }: { justConfirmed: boolean }) {
   }
 
   return (
-    <form
-      aria-label="Get updates by email"
-      className="flex flex-col gap-3 rounded-lg border bg-card px-5 py-4 sm:flex-row sm:items-center"
-      onSubmit={(e) => {
-        e.preventDefault();
-        void submit();
-      }}
-    >
-      <div className="flex flex-1 items-center gap-3">
-        <Mail className="size-5 shrink-0 text-primary" />
-        <div className="text-sm">
-          <p className="font-medium">Get updates by email</p>
-          <p className="text-muted-foreground">
-            {oneClick
-              ? `We'll send them to ${voter?.email}.`
-              : "One email per update. Unsubscribe any time."}
-          </p>
-        </div>
-      </div>
-      {oneClick ? null : (
-        <Input
-          type="email"
-          required
-          aria-label="Email"
-          placeholder="you@example.com"
-          autoComplete="email"
-          value={email}
-          onChange={(e) => setEmail(e.target.value)}
-          className="sm:w-64"
-        />
-      )}
-      <Button type="submit" disabled={busy}>
-        Subscribe
-      </Button>
+    <div className="mb-10 max-w-[460px]">
+      <form
+        aria-label="Get updates by email"
+        className="flex items-center gap-2.5 rounded-full bg-sheet py-2 pr-2 pl-[18px] ring-1 ring-border focus-within:ring-2 focus-within:ring-ring"
+        onSubmit={(e) => {
+          e.preventDefault();
+          void submit();
+        }}
+      >
+        {oneClick ? (
+          <span className="min-w-0 flex-1 truncate text-ink3">
+            {voter?.email}
+          </span>
+        ) : (
+          <input
+            type="email"
+            required
+            aria-label="Email"
+            placeholder="you@company.com"
+            autoComplete="email"
+            value={email}
+            onChange={(e) => setEmail(e.target.value)}
+            className="min-w-0 flex-1 bg-transparent outline-none placeholder:text-ink3"
+          />
+        )}
+        <button
+          type="submit"
+          disabled={busy}
+          aria-label="Subscribe"
+          className="h-9 shrink-0 rounded-full bg-foreground px-4 font-semibold text-background disabled:opacity-60"
+        >
+          Get updates
+        </button>
+      </form>
       {state === "error" ? (
-        <p className="text-sm text-destructive sm:basis-full">{error}</p>
+        <p className="mt-2 pl-[18px] text-sm text-destructive">{error}</p>
       ) : null}
-    </form>
+    </div>
   );
 }

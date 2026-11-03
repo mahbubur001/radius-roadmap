@@ -12,7 +12,7 @@ function label(iso: string) {
   return `updated ${new Date(iso).toLocaleDateString("en", { month: "short", day: "numeric" })}`;
 }
 
-/** " · updated today" on the scoreboard, in the visitor's own time zone. */
+/** " · updated today" on the roadmap hero, in the visitor's own time zone. */
 export function UpdatedLabel({ iso }: { iso: string | null }) {
   const [text, setText] = useState<string | null>(null);
   useEffect(() => setText(iso ? label(iso) : null), [iso]);

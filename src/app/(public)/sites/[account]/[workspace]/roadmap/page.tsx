@@ -79,7 +79,7 @@ async function PublicRoadmap(props: Props) {
     >
       <PageView />
       {embed ? null : (
-        <div className="grid items-end gap-5 pt-7 pb-[22px] md:grid-cols-[1.3fr_1fr] md:gap-12 md:pt-14 md:pb-10">
+        <div className="pt-7 pb-[22px] md:pt-14 md:pb-10">
           <div>
             <div className="font-t-mono text-xs font-semibold tracking-[0.12em] text-ink3 uppercase">
               {ws.name} · public roadmap
@@ -95,14 +95,14 @@ async function PublicRoadmap(props: Props) {
             </h1>
             {roadmap.summaryHtml ? (
               <div
-                className="rich-text max-w-[520px] text-[15.5px] text-muted-foreground md:text-[17px]"
+                className="rich-text max-w-[640px] text-[15.5px] text-muted-foreground md:text-[17px]"
                 // Rendered from Tiptap JSON by the allow-list in src/lib/rich-text.ts.
                 // biome-ignore lint/security/noDangerouslySetInnerHtml: sanitized server-side
                 dangerouslySetInnerHTML={{ __html: roadmap.summaryHtml }}
               />
             ) : null}
           </div>
-          <Scoreboard stats={roadmap.stats} />
+          <LiveLine stats={roadmap.stats} />
         </div>
       )}
       {ws.roadmaps.length > 1 ? (
@@ -153,50 +153,25 @@ function BrandLastWord({ text }: { text: string }) {
   );
 }
 
-/** The dark scoreboard (doc 32 decision 3): live counts per stage. */
-function Scoreboard({
+/**
+ * One mono line under the hero (doc 32 decision 17, replacing the
+ * scoreboard): live dot, "updated …", and what shipped this year.
+ */
+function LiveLine({
   stats,
 }: {
-  stats: {
-    now: number;
-    next: number;
-    later: number;
-    shippedThisYear: number;
-    updatedAt: string | null;
-  };
+  stats: { shippedThisYear: number; updatedAt: string | null };
 }) {
-  const rows = [
-    ["Now", stats.now, "in progress"],
-    ["Next", stats.next, "planned"],
-    ["Later", stats.later, "considering"],
-    ["Shipped", stats.shippedThisYear, "this year"],
-  ] as const;
   return (
-    <div className="grid grid-cols-4 rounded-2xl bg-foreground px-3 py-3.5 font-t-mono text-background md:block md:rounded-[18px] md:px-5 md:py-[18px]">
-      <div className="col-span-full mb-1.5 flex items-center gap-2 text-[11px] tracking-[0.14em] uppercase opacity-70">
-        <i className="size-[7px] animate-[transit-ping_2s_infinite] rounded-full bg-[#3ddc84] shadow-[0_0_0_0_#3ddc84]" />
+    <div className="mt-4 flex items-center gap-2 font-t-mono text-[10.5px] font-semibold tracking-[0.08em] text-ink3 uppercase md:mt-5 md:text-[11px] md:tracking-[0.14em]">
+      <i className="size-[7px] shrink-0 animate-[transit-ping_2s_infinite] rounded-full bg-[#3ddc84] shadow-[0_0_0_0_#3ddc84]" />
+      <span>
         Live
         <UpdatedLabel iso={stats.updatedAt} />
-      </div>
-      {rows.map(([k, v, small], i) => (
-        <div
-          key={k}
-          className={cn(
-            "flex flex-col-reverse items-start border-dashed border-background/18 px-1.5 py-1 md:grid md:grid-cols-[1fr_auto] md:items-baseline md:border-b md:px-0 md:py-[9px] md:last:border-b-0",
-            i > 0 && "border-l md:border-l-0",
-          )}
-        >
-          <span className="text-[9.5px] tracking-[0.08em] uppercase opacity-65 md:text-xs md:tracking-[0.14em]">
-            {k}
-          </span>
-          <span className="text-[22px] font-bold tracking-[-0.02em] md:text-[30px]">
-            {String(v).padStart(2, "0")}
-            <small className="ml-1.5 hidden text-xs font-medium opacity-55 md:inline">
-              {small}
-            </small>
-          </span>
-        </div>
-      ))}
+        {stats.shippedThisYear
+          ? ` · ${stats.shippedThisYear} shipped this year`
+          : ""}
+      </span>
     </div>
   );
 }

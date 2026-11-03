@@ -508,7 +508,7 @@ export async function getPublicRoadmap(
     isNull(roadmapCards.archivedAt),
     eq(roadmapColumns.isPublic, true),
   );
-  const [columns, cards, counts] = await Promise.all([
+  const [columns, cards, [live]] = await Promise.all([
     db
       .select({
         id: roadmapColumns.id,
@@ -532,29 +532,16 @@ export async function getPublicRoadmap(
       { roadmapId: roadmap.id, q: options.q },
       true,
     ),
-    // The scoreboard (doc 32): cards per stage, ignoring the search.
+    // The hero's live line (doc 32 decision 17), ignoring the search.
     db
       .select({
-        stage: roadmapColumns.stage,
-        isDone: roadmapColumns.isDone,
-        cards: sql<number>`count(*)::int`,
         shippedThisYear: sql<number>`count(*) filter (where ${roadmapCards.completedAt} >= date_trunc('year', now()))::int`,
         updatedAt: sql<string | null>`max(${roadmapCards.updatedAt})`,
       })
       .from(roadmapCards)
       .innerJoin(roadmapColumns, eq(roadmapColumns.id, roadmapCards.columnId))
-      .where(visible)
-      .groupBy(roadmapColumns.stage, roadmapColumns.isDone),
+      .where(visible),
   ]);
-  const inStage = (stage: string) =>
-    counts
-      .filter((c) => !c.isDone && c.stage === stage)
-      .reduce((n, c) => n + c.cards, 0);
-  const updated = counts
-    .map((c) => c.updatedAt)
-    .filter((d): d is string => !!d)
-    .sort()
-    .at(-1);
   return {
     id: roadmap.id,
     slug: roadmap.slug,
@@ -569,12 +556,11 @@ export async function getPublicRoadmap(
     columns,
     cards,
     stats: {
-      now: inStage("in_progress"),
-      next: inStage("planned"),
-      later: inStage("review"),
-      shippedThisYear: counts.reduce((n, c) => n + c.shippedThisYear, 0),
+      shippedThisYear: live?.shippedThisYear ?? 0,
       /** Latest change to a visible card (ISO), or null. */
-      updatedAt: updated ? new Date(updated).toISOString() : null,
+      updatedAt: live?.updatedAt
+        ? new Date(live.updatedAt).toISOString()
+        : null,
     },
   };
 }

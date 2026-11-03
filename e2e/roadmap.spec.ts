@@ -176,7 +176,8 @@ test("edit roadmap: staged columns, discard, internal and public toggles", async
   // The public side keeps its own toggles: votes still show there.
   await page.goto(site);
   await expect(page.getByText("Where we are going")).toBeVisible();
-  await expect(page.getByRole("heading", { name: /Later/ })).toBeVisible();
+  // Stations are stages; the empty "Later" column's station is hidden.
+  await expect(page.getByRole("region", { name: "Later" })).toHaveCount(0);
   await expect(
     publicCard(page, "Calendar sync").getByRole("button", { name: /vote/i }),
   ).toBeVisible();

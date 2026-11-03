@@ -123,6 +123,34 @@ describe("public display", () => {
     expect(card?.attachments).toBeNull();
   });
 
+  it("scoreboard counts cards per stage, ignores the search, stays in the account", async () => {
+    const [column] = await listColumns(db, ws, roadmapId);
+    const board = await getPublicRoadmap(db, pub, ws.workspaceId, {
+      q: "nothing-matches-this",
+    });
+    expect(board?.cards).toHaveLength(0);
+    const stage =
+      column?.stage === "in_progress"
+        ? "now"
+        : column?.stage === "planned"
+          ? "next"
+          : "later";
+    expect(board?.stats[stage]).toBe(1);
+    expect(board?.stats.updatedAt).not.toBeNull();
+    const theirs = await getPublicRoadmap(
+      db,
+      { accountId: other.accountId },
+      other.workspaceId,
+    );
+    expect(theirs?.stats).toMatchObject({
+      now: 0,
+      next: 0,
+      later: 0,
+      shippedThisYear: 0,
+      updatedAt: null,
+    });
+  });
+
   it("each public toggle only changes the public side", async () => {
     const settings = await currentSettings(db, ws, roadmapId);
     await saveRoadmapSettings(db, ws, {

@@ -500,12 +500,20 @@ export async function getPublicRoadmap(
   const roadmap = await getPublicRoadmapRow(db, ctx, workspaceId, options.slug);
   if (!roadmap) return null;
   const display = { ...defaultDisplay, ...roadmap.display };
-  const [columns, cards] = await Promise.all([
+  const visible = and(
+    eq(roadmapCards.accountId, ctx.accountId),
+    eq(roadmapCards.roadmapId, roadmap.id),
+    eq(roadmapCards.isPublic, true),
+    isNull(roadmapCards.archivedAt),
+    eq(roadmapColumns.isPublic, true),
+  );
+  const [columns, cards, counts] = await Promise.all([
     db
       .select({
         id: roadmapColumns.id,
         name: roadmapColumns.name,
         isDone: roadmapColumns.isDone,
+        stage: roadmapColumns.stage,
       })
       .from(roadmapColumns)
       .where(
@@ -523,7 +531,29 @@ export async function getPublicRoadmap(
       { roadmapId: roadmap.id, q: options.q },
       true,
     ),
+    // The scoreboard (doc 32): cards per stage, ignoring the search.
+    db
+      .select({
+        stage: roadmapColumns.stage,
+        isDone: roadmapColumns.isDone,
+        cards: sql<number>`count(*)::int`,
+        shippedThisYear: sql<number>`count(*) filter (where ${roadmapCards.completedAt} >= date_trunc('year', now()))::int`,
+        updatedAt: sql<string | null>`max(${roadmapCards.updatedAt})`,
+      })
+      .from(roadmapCards)
+      .innerJoin(roadmapColumns, eq(roadmapColumns.id, roadmapCards.columnId))
+      .where(visible)
+      .groupBy(roadmapColumns.stage, roadmapColumns.isDone),
   ]);
+  const inStage = (stage: string) =>
+    counts
+      .filter((c) => !c.isDone && c.stage === stage)
+      .reduce((n, c) => n + c.cards, 0);
+  const updated = counts
+    .map((c) => c.updatedAt)
+    .filter((d): d is string => !!d)
+    .sort()
+    .at(-1);
   return {
     id: roadmap.id,
     slug: roadmap.slug,
@@ -537,6 +567,14 @@ export async function getPublicRoadmap(
     display,
     columns,
     cards,
+    stats: {
+      now: inStage("in_progress"),
+      next: inStage("planned"),
+      later: inStage("review"),
+      shippedThisYear: counts.reduce((n, c) => n + c.shippedThisYear, 0),
+      /** Latest change to a visible card (ISO), or null. */
+      updatedAt: updated ? new Date(updated).toISOString() : null,
+    },
   };
 }
 

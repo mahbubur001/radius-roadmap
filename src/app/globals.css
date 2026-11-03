@@ -406,3 +406,23 @@
     @apply my-4;
   }
 }
+
+/* The Transit "Now" station pulses (doc 32). */
+@keyframes transit-pulse {
+  0% {
+    box-shadow:
+      inset 0 0 0 4px var(--primary),
+      0 0 0 0 color-mix(in oklab, var(--primary) 40%, transparent);
+  }
+  70% {
+    box-shadow:
+      inset 0 0 0 4px var(--primary),
+      0 0 0 12px transparent;
+  }
+}
+
+@keyframes transit-ping {
+  70% {
+    box-shadow: 0 0 0 7px transparent;
+  }
+}

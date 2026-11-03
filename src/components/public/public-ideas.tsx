@@ -1,6 +1,7 @@
 "use client";
 
 import { Lightbulb, MessagesSquare, Plus, Search } from "lucide-react";
+import { useRouter, useSearchParams } from "next/navigation";
 import { useEffect, useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -65,6 +66,25 @@ export function PublicIdeas({
   const [open, setOpen] = useState<PublicIdea | null>(null);
   const [tab, setTab] = useState<"details" | "comments">("details");
   const [formOpen, setFormOpen] = useState(false);
+  const params = useSearchParams();
+  const router = useRouter();
+  const share = params.get("share") === "1";
+
+  // "Share an idea" in the header and the dock's + link here with ?share=1
+  // (doc 32): the form opens in a sheet below desktop, else gets the focus.
+  useEffect(() => {
+    if (!share) return;
+    if (window.matchMedia("(min-width: 1024px)").matches) {
+      document
+        .querySelector<HTMLInputElement>("aside[aria-label='Add new'] input")
+        ?.focus();
+    } else {
+      setFormOpen(true);
+    }
+    const url = new URL(window.location.href);
+    url.searchParams.delete("share");
+    router.replace(`${url.pathname}${url.search}`, { scroll: false });
+  }, [share, router]);
   const mine = pendingIdeas.filter((i) => i.boardId === board.id);
   const embedParam = embed ? "embed=1" : "";
 
@@ -348,16 +368,6 @@ export function PublicIdeas({
         <h2 className="mb-4 border-b pb-4 text-lg font-medium">Add new</h2>
         {form}
       </aside>
-
-      {/* Phones: one floating button to share an idea (doc 31 M4). */}
-      <Button
-        type="button"
-        onClick={() => setFormOpen(true)}
-        className="fixed right-4 bottom-[max(1.25rem,env(safe-area-inset-bottom))] z-30 h-12 rounded-full px-5 text-[15px] shadow-lg md:hidden"
-      >
-        <Plus />
-        Share an idea
-      </Button>
 
       <DetailSheet
         open={formOpen}

@@ -1,11 +1,9 @@
-import { Search } from "lucide-react";
 import type { Metadata } from "next";
-import Link from "next/link";
 import { notFound } from "next/navigation";
 import { Suspense } from "react";
 import { PageView } from "@/components/public/page-view";
-import { PublicBoard } from "@/components/public/public-board";
-import { Input } from "@/components/ui/input";
+import { Chip, PublicBoard } from "@/components/public/public-board";
+import { UpdatedLabel } from "@/components/public/updated-label";
 import { Skeleton } from "@/components/ui/skeleton";
 import { wsPath } from "@/lib/public-path";
 import { cn } from "@/lib/utils";
@@ -35,6 +33,7 @@ async function load(props: Props) {
     ws,
     roadmap,
     q,
+    board,
     embed: first(query.embed) === "1",
   };
 }
@@ -68,7 +67,7 @@ export default function PublicRoadmapPage(props: Props) {
 async function PublicRoadmap(props: Props) {
   const data = await load(props);
   if (!data) notFound();
-  const { site, ws, roadmap, q, embed } = data;
+  const { site, ws, roadmap, q, embed, board } = data;
   const base = `${site.prefix}${wsPath(ws)}/roadmap`;
 
   return (
@@ -79,75 +78,126 @@ async function PublicRoadmap(props: Props) {
       embed={embed}
     >
       <PageView />
-      <div className="flex flex-col gap-6">
-        <div className="flex flex-wrap items-center gap-4 border-b pb-6">
-          {embed ? null : (
-            <div className="flex flex-col gap-2">
-              <h1
-                className={
-                  roadmap.display.showTitle
-                    ? "text-3xl font-semibold tracking-tight"
-                    : "sr-only"
-                }
-              >
-                {roadmap.title}
-              </h1>
-              {roadmap.summaryHtml ? (
-                <div
-                  className="rich-text max-w-2xl text-muted-foreground"
-                  // Rendered from Tiptap JSON by the allow-list in src/lib/rich-text.ts.
-                  // biome-ignore lint/security/noDangerouslySetInnerHtml: sanitized server-side
-                  dangerouslySetInnerHTML={{ __html: roadmap.summaryHtml }}
-                />
-              ) : null}
+      {embed ? null : (
+        <div className="grid items-end gap-5 pt-7 pb-[22px] md:grid-cols-[1.3fr_1fr] md:gap-12 md:pt-14 md:pb-10">
+          <div>
+            <div className="font-t-mono text-xs font-semibold tracking-[0.12em] text-ink3 uppercase">
+              {ws.name} · public roadmap
             </div>
-          )}
-          <search className="ml-auto w-full sm:w-96">
-            <form action={base} className="relative">
-              <Search className="pointer-events-none absolute top-1/2 left-3 size-4 -translate-y-1/2 text-muted-foreground" />
-              <Input
-                type="search"
-                name="q"
-                defaultValue={q ?? ""}
-                aria-label="Search the roadmap"
-                placeholder="Search…"
-                className="h-10 pl-9"
+            <h1
+              className={
+                roadmap.display.showTitle
+                  ? "mt-2.5 mb-2.5 font-t-display text-[38px] leading-none font-bold tracking-[-0.035em] md:mt-3.5 md:mb-4 md:text-[clamp(40px,5.2vw,68px)]"
+                  : "sr-only"
+              }
+            >
+              <BrandLastWord text={roadmap.title} />
+            </h1>
+            {roadmap.summaryHtml ? (
+              <div
+                className="rich-text max-w-[520px] text-[15.5px] text-muted-foreground md:text-[17px]"
+                // Rendered from Tiptap JSON by the allow-list in src/lib/rich-text.ts.
+                // biome-ignore lint/security/noDangerouslySetInnerHtml: sanitized server-side
+                dangerouslySetInnerHTML={{ __html: roadmap.summaryHtml }}
               />
-              {embed ? <input type="hidden" name="embed" value="1" /> : null}
-            </form>
-          </search>
+            ) : null}
+          </div>
+          <Scoreboard stats={roadmap.stats} />
         </div>
-        {ws.roadmaps.length > 1 ? (
-          <nav className="flex gap-1 text-sm" aria-label="Roadmaps">
-            {ws.roadmaps.map((r) => (
-              <Link
-                key={r.id}
-                href={`${base}?board=${r.slug}${embed ? "&embed=1" : ""}`}
-                className={cn(
-                  "rounded-md px-3 py-1.5",
-                  r.id === roadmap.id
-                    ? "bg-muted font-medium"
-                    : "text-muted-foreground",
-                )}
-              >
-                {r.title}
-              </Link>
-            ))}
-          </nav>
-        ) : null}
-        <PublicBoard
-          columns={roadmap.columns}
-          cards={roadmap.cards}
-          cardHref={base}
-          ideasBase={
-            ws.modules.ideas ? `${site.prefix}${wsPath(ws)}/ideas` : null
-          }
-          query={q ?? ""}
-          embed={embed}
-          commentsEnabled={!!ws.settings.commentsEnabled}
-        />
-      </div>
+      )}
+      {ws.roadmaps.length > 1 ? (
+        <nav
+          aria-label="Roadmaps"
+          className={cn(
+            "-mx-[18px] mb-3.5 flex gap-2.5 overflow-x-auto px-[18px] [scrollbar-width:none] md:mx-0 md:flex-wrap md:px-0",
+            embed && "pt-1",
+          )}
+        >
+          {ws.roadmaps.map((r) => (
+            <Chip
+              key={r.id}
+              on={r.id === roadmap.id}
+              href={`${base}?board=${r.slug}${embed ? "&embed=1" : ""}`}
+            >
+              {r.title}
+            </Chip>
+          ))}
+        </nav>
+      ) : null}
+      <PublicBoard
+        columns={roadmap.columns}
+        cards={roadmap.cards}
+        cardHref={base}
+        ideasBase={
+          ws.modules.ideas ? `${site.prefix}${wsPath(ws)}/ideas` : null
+        }
+        query={q ?? ""}
+        embed={embed}
+        commentsEnabled={!!ws.settings.commentsEnabled}
+        searchAction={base}
+        board={board}
+      />
     </SiteShell>
+  );
+}
+
+/** The hero title with its last word in the brand colour (decision 1). */
+function BrandLastWord({ text }: { text: string }) {
+  const at = text.trimEnd().lastIndexOf(" ");
+  if (at < 0) return <span className="text-primary">{text}</span>;
+  return (
+    <>
+      {text.slice(0, at + 1)}
+      <span className="text-primary">{text.slice(at + 1)}</span>
+    </>
+  );
+}
+
+/** The dark scoreboard (doc 32 decision 3): live counts per stage. */
+function Scoreboard({
+  stats,
+}: {
+  stats: {
+    now: number;
+    next: number;
+    later: number;
+    shippedThisYear: number;
+    updatedAt: string | null;
+  };
+}) {
+  const rows = [
+    ["Now", stats.now, "in progress"],
+    ["Next", stats.next, "planned"],
+    ["Later", stats.later, "considering"],
+    ["Shipped", stats.shippedThisYear, "this year"],
+  ] as const;
+  return (
+    <div className="grid grid-cols-4 rounded-2xl bg-foreground px-3 py-3.5 font-t-mono text-background md:block md:rounded-[18px] md:px-5 md:py-[18px]">
+      <div className="col-span-full mb-1.5 flex items-center gap-2 text-[11px] tracking-[0.14em] uppercase opacity-70">
+        <i className="size-[7px] animate-[transit-ping_2s_infinite] rounded-full bg-[#3ddc84] shadow-[0_0_0_0_#3ddc84]" />
+        Live
+        <UpdatedLabel iso={stats.updatedAt} />
+      </div>
+      {rows.map(([k, v, small], i) => (
+        <div
+          key={k}
+          className={cn(
+            "flex flex-col-reverse items-start border-dashed border-background/18 px-1.5 py-1 md:grid md:grid-cols-[1fr_auto] md:items-baseline md:border-b md:px-0 md:py-[9px] md:last:border-b-0",
+            i > 0 && "border-l md:border-l-0",
+          )}
+        >
+          <span className="text-[9.5px] tracking-[0.08em] uppercase opacity-65 md:text-xs md:tracking-[0.14em]">
+            {k}
+          </span>
+          <span className="text-[22px] font-bold tracking-[-0.02em] md:text-[30px]">
+            {String(v).padStart(2, "0")}
+            <small className="ml-1.5 hidden text-xs font-medium opacity-55 md:inline">
+              {small}
+            </small>
+          </span>
+        </div>
+      ))}
+    </div>
   );
 }
 

@@ -28,6 +28,19 @@ async function publicRoadmapUrl(page: Page, slug: string) {
   return href;
 }
 
+async function addCard(page: Page, column: string, title: string) {
+  await page.getByRole("button", { name: `Add card to ${column}` }).click();
+  const input = page
+    .getByRole("region", { name: column })
+    .getByRole("textbox", { name: "New card title" });
+  await input.fill(title);
+  await input.press("Enter");
+  await expect(
+    page.getByRole("button", { name: title, exact: true }),
+  ).toBeVisible();
+  await input.press("Escape");
+}
+
 async function noSidewaysScroll(page: Page) {
   const overflow = await page.evaluate(
     () => document.documentElement.scrollWidth - window.innerWidth,
@@ -35,46 +48,39 @@ async function noSidewaysScroll(page: Page) {
   expect(overflow).toBeLessThanOrEqual(1);
 }
 
-test("on a phone: tabs, one roadmap column at a time, share an idea from the floating button", async ({
+test("on a phone: the dock, the vertical line, share an idea from the dock", async ({
   page,
   browser,
 }) => {
   const id = randomUUID().slice(0, 8);
   const { slug } = await signUpOwner(page, id);
+  await page.goto(`/dashboard/${slug}/roadmap`);
+  await addCard(page, "In progress", "Phone layout");
+  await addCard(page, "Up next", "Tablet layout");
   const roadmap = await publicRoadmapUrl(page, slug);
 
   const visitor = await phone(browser);
   await visitor.goto(roadmap);
   await noSidewaysScroll(visitor);
 
-  // Every module tab is reachable in the header.
-  const site = visitor.getByRole("navigation", { name: "Site" });
+  // Every module is reachable in the bottom dock (doc 32).
+  const site = visitor.getByRole("navigation", { name: "Site sections" });
   await expect(site.getByRole("link", { name: "Roadmap" })).toHaveAttribute(
     "aria-current",
     "page",
   );
   await expect(site.getByRole("link", { name: "Ideas" })).toBeVisible();
 
-  // One column at a time, picked with the chips.
-  const chips = visitor.getByRole("tablist", { name: "Roadmap columns" });
-  await expect(chips.getByRole("tab", { name: /In progress/ })).toHaveAttribute(
-    "aria-selected",
-    "true",
-  );
+  // The line runs down the page: every station in one scroll.
   await expect(
     visitor.getByRole("region", { name: "In progress" }),
   ).toBeVisible();
-  await expect(visitor.getByRole("region", { name: "Up next" })).toBeHidden();
-  await chips.getByRole("tab", { name: /Up next/ }).click();
   await expect(visitor.getByRole("region", { name: "Up next" })).toBeVisible();
-  await expect(
-    visitor.getByRole("region", { name: "In progress" }),
-  ).toBeHidden();
 
-  // Ideas: the floating button opens the form in a sheet.
+  // Ideas: the dock's + opens the form in a sheet.
   await site.getByRole("link", { name: "Ideas" }).click();
   await noSidewaysScroll(visitor);
-  await visitor.getByRole("button", { name: "Share an idea" }).click();
+  await site.getByRole("link", { name: "Share an idea" }).click();
   const sheet = visitor.getByRole("dialog");
   await sheet.getByLabel("Title").fill("Offline mode on phones");
   await sheet.getByLabel("Name").fill("Phone Pat");

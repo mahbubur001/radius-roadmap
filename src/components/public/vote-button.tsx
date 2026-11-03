@@ -1,6 +1,6 @@
 "use client";
 
-import { ArrowUp } from "lucide-react";
+import { ArrowUp, ChevronUp } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { Hint } from "./hint";
 import { useVoter, type VoteKind } from "./voter-provider";
@@ -20,12 +20,39 @@ export function VoteButton({
   /** The card's or idea's id. `big`: full-width phone button (doc 31). */
   cardId: string;
   votes: number | null;
-  variant?: "inline" | "pill" | "plain" | "big" | "box";
+  variant?: "inline" | "pill" | "plain" | "big" | "box" | "car";
   kind?: VoteKind;
 }) {
   const { voted, totals, toggleVote } = useVoter();
   const active = voted.has(cardId);
   const total = totals[cardId] ?? votes;
+
+  // The Transit carriage card's vote box (doc 32): big mono number, a
+  // chevron above it; brand-filled once voted.
+  if (variant === "car") {
+    return (
+      <button
+        type="button"
+        aria-pressed={active}
+        aria-label={active ? "Remove your vote" : "Vote for this"}
+        onClick={(e) => {
+          e.preventDefault();
+          e.stopPropagation();
+          void toggleVote(cardId, kind);
+        }}
+        className={cn(
+          "flex h-[58px] w-full flex-col items-center justify-center rounded-xl font-t-mono text-lg leading-[normal] font-bold tracking-[-0.03em] transition-colors focus-visible:ring-2 focus-visible:ring-ring focus-visible:outline-none md:h-[62px] md:text-xl",
+          active ? "bg-primary text-white" : "bg-paper",
+        )}
+      >
+        <ChevronUp
+          strokeWidth={1.8}
+          className={cn("mb-px size-3.5", active ? "text-white" : "text-ink3")}
+        />
+        {total !== null ? <span data-testid="vote-count">{total}</span> : null}
+      </button>
+    );
+  }
 
   const button = (
     <button

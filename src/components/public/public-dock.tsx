@@ -25,7 +25,7 @@ export function PublicDock({
   }[];
   shareHref: string | null;
 }) {
-  // The "+" sits in the middle; with an odd count the extra section goes left.
+  // With an odd count the extra section goes in the left half.
   const mid = Math.ceil(items.length / 2);
   const link = (i: (typeof items)[number]) => {
     const Icon = ICONS[i.key];
@@ -35,7 +35,7 @@ export function PublicDock({
         href={i.href}
         aria-current={i.active ? "page" : undefined}
         className={cn(
-          "flex min-w-0 flex-col items-center gap-[3px] font-t-mono text-[10px] font-semibold tracking-[0.06em] uppercase",
+          "flex w-[58px] min-w-0 flex-col items-center gap-[3px] font-t-mono text-[10px] font-semibold tracking-[0.06em] uppercase",
           i.active ? "opacity-100" : "opacity-55",
         )}
       >
@@ -44,27 +44,29 @@ export function PublicDock({
       </Link>
     );
   };
+  const half = "flex flex-1 items-center justify-around";
   return (
     <nav
       aria-label="Site sections"
-      className="fixed inset-x-3 bottom-[max(0.75rem,env(safe-area-inset-bottom))] z-30 grid h-[66px] items-center justify-items-center rounded-[22px] bg-foreground px-1.5 text-background shadow-[0_18px_40px_-18px_rgb(0_0_0/0.6)] md:hidden"
-      // Every slot (each section and the "+") gets the same width, so the
-      // spacing stays even with 2, 3 or 4 sections.
-      style={{
-        gridTemplateColumns: `repeat(${items.length + (shareHref ? 1 : 0)}, minmax(0, 1fr))`,
-      }}
+      className="fixed inset-x-3 bottom-[max(0.75rem,env(safe-area-inset-bottom))] z-30 mx-auto flex h-[66px] max-w-[440px] items-center rounded-[22px] bg-foreground px-1.5 text-background shadow-[0_18px_40px_-18px_rgb(0_0_0/0.6)] md:hidden"
     >
-      {items.slice(0, mid).map(link)}
+      {/* The "+" stays in the centre; each half spreads its own sections
+          evenly, so 2, 3 or 4 sections all look balanced (doc 32). */}
+      <div className={half}>{items.slice(0, mid).map(link)}</div>
       {shareHref ? (
         <Link
           href={shareHref}
           aria-label="Share an idea"
-          className="-mt-[26px] grid size-[54px] place-items-center rounded-[18px] bg-primary text-primary-foreground shadow-[0_10px_20px_-8px_color-mix(in_oklab,var(--primary)_80%,transparent)]"
+          className="-mt-[26px] mx-1 grid size-[54px] shrink-0 place-items-center rounded-[18px] bg-primary text-primary-foreground shadow-[0_10px_20px_-8px_color-mix(in_oklab,var(--primary)_80%,transparent)]"
         >
           <Plus className="size-6" strokeWidth={2} />
         </Link>
       ) : null}
-      {items.slice(mid).map(link)}
+      {items.length > 1 || !shareHref ? (
+        <div className={half}>{items.slice(mid).map(link)}</div>
+      ) : (
+        <div className={half} />
+      )}
     </nav>
   );
 }

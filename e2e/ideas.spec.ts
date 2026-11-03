@@ -44,13 +44,13 @@ test("a guest submits an idea, the team approves it, a visitor votes", async ({
     "page",
   );
   const form = guest.getByRole("form", { name: "Add new idea" });
-  await form.getByRole("button", { name: "Submit idea" }).click();
+  await form.getByRole("button", { name: "Post idea" }).click();
   await expect(form.getByText("At least 3 characters")).toBeVisible();
   await form.getByLabel("Title").fill("Dark mode please");
-  await form.getByLabel("More details").fill("Easier on the eyes.");
+  await form.getByLabel("Details · optional").fill("Easier on the eyes.");
   await form.getByLabel("Name").fill("Guest Gina");
   await form.getByLabel("Email address").fill(`gina-${id}@example.test`);
-  await form.getByRole("button", { name: "Submit idea" }).click();
+  await form.getByRole("button", { name: "Post idea" }).click();
   await expect(
     guest.getByText("Thanks! The team will review your idea."),
   ).toBeVisible();
@@ -193,7 +193,6 @@ test("with comments on: a visitor comments, the team approves, replies and leave
   await expect(login).toHaveCount(0);
   await guest.getByRole("button", { name: "Follow" }).click();
   await expect(guest.getByRole("button", { name: "Following" })).toBeVisible();
-  await guest.getByRole("tab", { name: /Comments/ }).click();
   await guest
     .getByRole("textbox", { name: "Write a comment" })
     .fill("Please add retries, see https://example.com/retries");
@@ -226,7 +225,7 @@ test("with comments on: a visitor comments, the team approves, replies and leave
 
   // The public page shows the comment and the team reply, not the note.
   await guest.goto(`${url}/webhooks`);
-  await guest.getByRole("tab", { name: "Comments (2)" }).click();
+  await expect(guest.getByText("2 comments")).toBeVisible();
   const thread = guest.getByRole("list", { name: "Comments" });
   await expect(
     thread.getByRole("link", { name: "https://example.com/retries" }),

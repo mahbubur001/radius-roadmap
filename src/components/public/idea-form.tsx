@@ -1,18 +1,16 @@
 "use client";
 
 import { zodResolver } from "@hookform/resolvers/zod";
-import { ChevronUp, Lightbulb } from "lucide-react";
+import { Lightbulb } from "lucide-react";
 import { useRouter } from "next/navigation";
 import { useEffect, useId, useState } from "react";
 import { useForm } from "react-hook-form";
 import { toast } from "sonner";
-import { Button } from "@/components/ui/button";
 import { Checkbox } from "@/components/ui/checkbox";
-import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { Textarea } from "@/components/ui/textarea";
 import { type IdeaFormInput, ideaFormSchema } from "@/lib/schemas/feedback";
 import { guestSignInSchema } from "@/lib/schemas/voting";
+import { cn } from "@/lib/utils";
 import { turnstileToken } from "./turnstile";
 import { publicApi, useVoter, type Voter } from "./voter-provider";
 
@@ -170,38 +168,36 @@ export function IdeaForm({
       onSubmit={form.handleSubmit(onSubmit)}
       noValidate
       aria-label="Add new idea"
-      className="flex flex-col gap-4"
+      className="flex flex-col gap-3.5"
     >
       <Field id={`${uid}-title`} label="Title" error={errors.title?.message}>
-        <Input
+        <input
           id={`${uid}-title`}
-          placeholder="Required"
+          placeholder="What do you need?"
           maxLength={200}
           aria-invalid={!!errors.title}
+          className={INPUT}
           {...form.register("title")}
         />
       </Field>
       {similar.length && ideaHref ? (
         <section
           aria-label="Similar ideas"
-          className="-mt-1 rounded-lg bg-primary/5 p-3 ring-1 ring-primary/15"
+          className="rounded-xl bg-tint px-3.5 py-3"
         >
-          <p className="mb-1.5 text-xs font-semibold text-muted-foreground">
-            Similar ideas, vote instead?
+          <p className="mb-1.5 font-t-mono text-[10.5px] font-bold tracking-[0.12em] text-primary uppercase">
+            Already on the board, vote instead?
           </p>
           <ul className="flex flex-col">
             {similar.map((i) => (
               <li key={i.id}>
                 <a
                   href={ideaHref(i.slug)}
-                  className="flex items-center gap-2 py-1.5 text-sm hover:underline"
+                  className="flex items-center gap-2.5 py-1.5 text-sm hover:text-primary"
                 >
-                  <Lightbulb className="size-3.5 shrink-0 text-muted-foreground" />
+                  <Lightbulb strokeWidth={1.8} className="size-4 shrink-0" />
                   <span className="min-w-0 flex-1 truncate">{i.title}</span>
-                  <span className="flex shrink-0 items-center gap-0.5 text-xs font-semibold text-primary">
-                    <ChevronUp className="size-3.5" />
-                    {i.votes}
-                  </span>
+                  <b className="font-t-mono text-sm font-bold">{i.votes}</b>
                 </a>
               </li>
             ))}
@@ -210,29 +206,35 @@ export function IdeaForm({
       ) : null}
       <Field
         id={`${uid}-details`}
-        label="More details"
+        label="Details · optional"
         error={errors.details?.message}
       >
-        <Textarea
+        <textarea
           id={`${uid}-details`}
-          placeholder="Optional"
-          rows={4}
+          placeholder="What problem would this solve?"
+          rows={3}
           maxLength={5000}
+          className={cn(INPUT, "min-h-24 resize-y")}
           {...form.register("details")}
         />
       </Field>
       {voter ? (
         <p className="text-sm text-muted-foreground">
-          Posting as <strong>{voter.name || voter.email}</strong>.
+          Posting as{" "}
+          <strong className="text-foreground">
+            {voter.name || voter.email}
+          </strong>
+          .
         </p>
       ) : (
         <>
           <Field id={`${uid}-name`} label="Name" error={errors.name?.message}>
-            <Input
+            <input
               id={`${uid}-name`}
-              placeholder="Required"
+              placeholder="Your name"
               autoComplete="name"
               aria-invalid={!!errors.name}
+              className={INPUT}
               {...form.register("name")}
             />
           </Field>
@@ -241,12 +243,13 @@ export function IdeaForm({
             label="Email address"
             error={errors.email?.message}
           >
-            <Input
+            <input
               id={`${uid}-email`}
               type="email"
-              placeholder="Required"
+              placeholder="you@company.com"
               autoComplete="email"
               aria-invalid={!!errors.email}
+              className={INPUT}
               {...form.register("email")}
             />
           </Field>
@@ -300,12 +303,20 @@ export function IdeaForm({
           ) : null}
         </div>
       ) : null}
-      <Button type="submit" disabled={isSubmitting}>
-        {isSubmitting ? "Sending…" : "Submit idea"}
-      </Button>
+      <button
+        type="submit"
+        disabled={isSubmitting}
+        className="h-[50px] rounded-[14px] bg-foreground font-t-display text-[15px] font-bold text-background disabled:opacity-60"
+      >
+        {isSubmitting ? "Sending…" : "Post idea"}
+      </button>
     </form>
   );
 }
+
+/** The form ticket's field (`.inp`): paper fill, brand ring when focused. */
+const INPUT =
+  "min-h-[46px] w-full rounded-xl bg-paper px-3.5 py-3 text-base text-foreground outline-none placeholder:text-ink3 focus:bg-sheet focus:shadow-[inset_0_0_0_2px_var(--primary)] aria-invalid:shadow-[inset_0_0_0_2px_var(--destructive)]";
 
 function Field({
   id,
@@ -319,10 +330,17 @@ function Field({
   children: React.ReactNode;
 }) {
   return (
-    <div className="flex flex-col gap-2">
-      <Label htmlFor={id}>{label}</Label>
+    <div>
+      <label
+        htmlFor={id}
+        className="mb-[7px] block font-t-mono text-[11px] font-bold tracking-[0.12em] text-ink3 uppercase"
+      >
+        {label}
+      </label>
       {children}
-      {error ? <p className="text-sm text-destructive">{error}</p> : null}
+      {error ? (
+        <p className="mt-1.5 text-sm text-destructive">{error}</p>
+      ) : null}
     </div>
   );
 }

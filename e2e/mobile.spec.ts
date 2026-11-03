@@ -85,7 +85,7 @@ test("on a phone: the dock, the vertical line, share an idea from the dock", asy
   await sheet.getByLabel("Title").fill("Offline mode on phones");
   await sheet.getByLabel("Name").fill("Phone Pat");
   await sheet.getByLabel("Email address").fill(`pat-${id}@example.test`);
-  await sheet.getByRole("button", { name: "Submit idea" }).click();
+  await sheet.getByRole("button", { name: "Post idea" }).click();
   await expect(
     visitor.getByText("Thanks! The team will review your idea."),
   ).toBeVisible();

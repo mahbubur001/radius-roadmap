@@ -61,27 +61,25 @@ async function Idea(props: Props) {
   return (
     <SiteShell account={site.slug} workspace={ws} active="ideas" embed={embed}>
       <PageView ideaId={idea.id} />
-      <div className="mx-auto flex max-w-2xl flex-col gap-6">
+      <div className="mx-auto flex max-w-2xl flex-col gap-5 pt-6 pb-10 md:pt-12">
         <Link
           href={`${site.prefix}${wsPath(ws)}/ideas${suffix}`}
-          className="flex items-center gap-1 text-sm text-muted-foreground hover:text-foreground"
+          className="flex w-fit items-center gap-1.5 font-t-mono text-xs font-semibold tracking-[0.12em] text-ink3 uppercase hover:text-foreground"
         >
-          <ArrowLeft className="size-4" />
+          <ArrowLeft strokeWidth={1.8} className="size-4" />
           Back to ideas
         </Link>
-        <div className="overflow-hidden rounded-lg border bg-card">
-          <IdeaDetail
-            idea={idea}
-            commentsEnabled={!!ws.settings.commentsEnabled}
-            followsEnabled={!!ws.settings.followsEnabled}
-            tags={idea.tags}
-            roadmapHref={
-              idea.roadmapCard && ws.modules.roadmap
-                ? `${site.prefix}${wsPath(ws)}/roadmap/${idea.roadmapCard}${suffix}`
-                : null
-            }
-          />
-        </div>
+        <IdeaDetail
+          idea={idea}
+          commentsEnabled={!!ws.settings.commentsEnabled}
+          followsEnabled={!!ws.settings.followsEnabled}
+          tags={idea.tags}
+          roadmapHref={
+            idea.roadmapCard && ws.modules.roadmap
+              ? `${site.prefix}${wsPath(ws)}/roadmap/${idea.roadmapCard}${suffix}`
+              : null
+          }
+        />
       </div>
     </SiteShell>
   );

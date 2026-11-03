@@ -20,7 +20,15 @@ export function VoteButton({
   /** The card's or idea's id. `big`: full-width phone button (doc 31). */
   cardId: string;
   votes: number | null;
-  variant?: "inline" | "pill" | "plain" | "big" | "box" | "car" | "ticket";
+  variant?:
+    | "inline"
+    | "pill"
+    | "plain"
+    | "big"
+    | "box"
+    | "car"
+    | "ticket"
+    | "ledger";
   kind?: VoteKind;
 }) {
   const { voted, totals, toggleVote } = useVoter();
@@ -48,6 +56,33 @@ export function VoteButton({
         <ChevronUp
           strokeWidth={1.8}
           className={cn("mb-px size-3.5", active ? "text-white" : "text-ink3")}
+        />
+        {total !== null ? <span data-testid="vote-count">{total}</span> : null}
+      </button>
+    );
+  }
+
+  // The ideas ledger's vote (doc 32): a big mono number with a chevron,
+  // brand-coloured once voted; stacked on phones.
+  if (variant === "ledger") {
+    return (
+      <button
+        type="button"
+        aria-pressed={active}
+        aria-label={active ? "Remove your vote" : "Vote for this"}
+        onClick={(e) => {
+          e.preventDefault();
+          e.stopPropagation();
+          void toggleVote(cardId, kind);
+        }}
+        className={cn(
+          "flex flex-col items-start rounded-lg font-t-mono text-[22px] leading-[normal] font-bold tracking-[-0.03em] focus-visible:ring-2 focus-visible:ring-ring focus-visible:outline-none md:flex-row md:items-center md:gap-2 md:text-[26px]",
+          active && "text-primary",
+        )}
+      >
+        <ChevronUp
+          strokeWidth={1.8}
+          className={cn("size-4", active ? "text-primary" : "text-ink3")}
         />
         {total !== null ? <span data-testid="vote-count">{total}</span> : null}
       </button>

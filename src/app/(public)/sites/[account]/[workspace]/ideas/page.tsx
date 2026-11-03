@@ -73,33 +73,22 @@ async function Ideas(props: Props) {
   return (
     <SiteShell account={site.slug} workspace={ws} active="ideas" embed={embed}>
       <PageView />
-      <div className="flex flex-col gap-6">
-        {embed ? null : (
-          <div className="flex flex-col gap-2 border-b pb-6">
-            <h1 className="text-3xl font-semibold tracking-tight">Ideas</h1>
-            {ideas.board.description ? (
-              <p className="max-w-2xl text-muted-foreground">
-                {ideas.board.description}
-              </p>
-            ) : null}
-          </div>
-        )}
-        <PublicIdeas
-          base={`${site.prefix}${wsPath(ws)}/ideas`}
-          board={ideas.board}
-          boards={ideas.boards}
-          statuses={ideas.statuses}
-          items={ideas.items}
-          sort={ideas.sort}
-          status={status ?? ""}
-          query={q ?? ""}
-          embed={embed}
-          commentsEnabled={!!ws.settings.commentsEnabled}
-          followsEnabled={!!ws.settings.followsEnabled}
-          termsUrl={ws.settings.termsUrl ?? null}
-          privacyUrl={ws.settings.privacyUrl ?? null}
-        />
-      </div>
+      <PublicIdeas
+        base={`${site.prefix}${wsPath(ws)}/ideas`}
+        board={ideas.board}
+        boards={ideas.boards}
+        statuses={ideas.statuses}
+        items={ideas.items}
+        sort={ideas.sort}
+        status={status ?? ""}
+        query={q ?? ""}
+        embed={embed}
+        commentsEnabled={!!ws.settings.commentsEnabled}
+        followsEnabled={!!ws.settings.followsEnabled}
+        termsUrl={ws.settings.termsUrl ?? null}
+        privacyUrl={ws.settings.privacyUrl ?? null}
+        workspaceName={ws.name}
+      />
     </SiteShell>
   );
 }

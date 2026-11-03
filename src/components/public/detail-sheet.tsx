@@ -59,7 +59,12 @@ export function DetailSheet({
             ? cn(
                 "flex flex-col overflow-hidden border-0 bg-sheet text-[15px] text-foreground shadow-none",
                 phone
-                  ? "rounded-t-[26px] data-[side=bottom]:h-[92svh]"
+                  ? cn(
+                      "rounded-t-[26px]",
+                      fit
+                        ? "data-[side=bottom]:max-h-[calc(100svh-48px)]"
+                        : "data-[side=bottom]:h-[92svh]",
+                    )
                   : "rounded-[22px] data-[side=right]:inset-y-4 data-[side=right]:right-4 data-[side=right]:h-auto data-[side=right]:w-[min(520px,calc(100%-32px))] data-[side=right]:sm:max-w-none",
               )
             : cn(

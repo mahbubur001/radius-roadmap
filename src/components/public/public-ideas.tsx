@@ -1,16 +1,14 @@
 "use client";
 
-import { Lightbulb, MessagesSquare, Plus, Search } from "lucide-react";
+import { Lightbulb, MessageSquare, Search } from "lucide-react";
 import { useRouter, useSearchParams } from "next/navigation";
 import { useEffect, useState } from "react";
-import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
 import { cn } from "@/lib/utils";
 import type { IdeaSort, PublicIdea } from "@/server/services/public-ideas";
 import { DetailSheet } from "./detail-sheet";
-import { Hint } from "./hint";
 import { IdeaDetail, StatusChip } from "./idea-detail";
 import { IdeaForm } from "./idea-form";
+import { Chip } from "./public-board";
 import { VoteButton } from "./vote-button";
 import { useVoter } from "./voter-provider";
 
@@ -46,7 +44,9 @@ export function PublicIdeas({
   followsEnabled,
   termsUrl,
   privacyUrl,
+  workspaceName,
 }: {
+  workspaceName: string;
   /** e.g. "/acme/product/ideas" */
   base: string;
   board: Board;
@@ -64,7 +64,6 @@ export function PublicIdeas({
 }) {
   const { pendingIdeas } = useVoter();
   const [open, setOpen] = useState<PublicIdea | null>(null);
-  const [tab, setTab] = useState<"details" | "comments">("details");
   const [formOpen, setFormOpen] = useState(false);
   const params = useSearchParams();
   const router = useRouter();
@@ -86,9 +85,8 @@ export function PublicIdeas({
     router.replace(`${url.pathname}${url.search}`, { scroll: false });
   }, [share, router]);
   const mine = pendingIdeas.filter((i) => i.boardId === board.id);
-  const embedParam = embed ? "embed=1" : "";
 
-  /** This page with one filter changed (phone chips). */
+  /** This page with one filter changed (chips). */
   function filterHref(change: { sort?: IdeaSort; status?: string }) {
     const params = new URLSearchParams({ board: board.slug });
     if (query) params.set("q", query);
@@ -99,13 +97,6 @@ export function PublicIdeas({
     if (embed) params.set("embed", "1");
     return `${base}?${params}`;
   }
-  const chip = (on: boolean) =>
-    cn(
-      "flex h-8 shrink-0 items-center gap-1.5 rounded-full px-3 text-[13px] font-medium",
-      on
-        ? "bg-foreground text-background"
-        : "text-muted-foreground ring-1 ring-border ring-inset",
-    );
 
   useEffect(() => {
     const onPop = () => setOpen(null);
@@ -117,9 +108,8 @@ export function PublicIdeas({
     return `${base}/${idea.slug}${embed ? "?embed=1" : ""}`;
   }
 
-  function openIdea(idea: PublicIdea, on: "details" | "comments" = "details") {
+  function openIdea(idea: PublicIdea) {
     setOpen(idea);
-    setTab(on);
     window.history.pushState({ idea: idea.id }, "", href(idea));
   }
 
@@ -137,134 +127,130 @@ export function PublicIdeas({
       ideaHref={(slug) => `${base}/${slug}${embed ? "?embed=1" : ""}`}
     />
   );
+  const sortChips = (Object.entries(SORTS) as [IdeaSort, string][]).map(
+    ([key, label]) => (
+      <Chip
+        key={key}
+        on={key === sort && !status}
+        href={filterHref({ sort: key })}
+      >
+        {label}
+      </Chip>
+    ),
+  );
+  const open_ = items.filter((i) => !i.completed).length;
 
   return (
-    <div className="grid gap-8 lg:grid-cols-[minmax(0,1fr)_22rem]">
-      <div className="flex min-w-0 flex-col gap-4">
+    <div
+      className={cn(
+        "grid gap-0 pb-10 lg:grid-cols-[minmax(0,1fr)_360px] lg:gap-9 lg:pb-16",
+        embed ? "pt-1" : "pt-[26px] md:pt-12",
+      )}
+    >
+      <div className="min-w-0">
+        {embed ? null : (
+          <>
+            <div className="font-t-mono text-xs font-semibold tracking-[0.12em] text-ink3 uppercase">
+              Ideas · {open_} open
+            </div>
+            <h1 className="mt-2.5 mb-4 font-t-display text-[34px] leading-none font-bold tracking-[-0.03em] md:mb-6 md:text-[44px]">
+              What should {workspaceName} build next?
+            </h1>
+            {board.description ? (
+              <p className="-mt-2 mb-5 max-w-2xl text-muted-foreground md:-mt-3">
+                {board.description}
+              </p>
+            ) : null}
+          </>
+        )}
+
         {boards.length > 1 ? (
-          <nav className="flex flex-wrap gap-1 text-sm" aria-label="Boards">
+          <nav
+            aria-label="Boards"
+            className="-mx-[18px] mb-3.5 flex gap-2.5 overflow-x-auto px-[18px] [scrollbar-width:none] md:mx-0 md:flex-wrap md:px-0"
+          >
             {boards.map((b) => (
-              <a
+              <Chip
                 key={b.id}
+                on={b.id === board.id}
                 href={`${base}?board=${b.slug}${embed ? "&embed=1" : ""}`}
-                aria-current={b.id === board.id ? "page" : undefined}
-                className={cn(
-                  "rounded-md px-3 py-1.5",
-                  b.id === board.id
-                    ? "bg-muted font-medium"
-                    : "text-muted-foreground hover:bg-muted",
-                )}
               >
                 {b.name}
-              </a>
+              </Chip>
             ))}
           </nav>
         ) : null}
 
-        <search>
-          <form
-            action={base}
-            className="flex flex-wrap items-center gap-2"
-            aria-label="Filter ideas"
-          >
-            <input type="hidden" name="board" value={board.slug} />
-            {embedParam ? <input type="hidden" name="embed" value="1" /> : null}
-            <div className="relative w-full min-w-48 flex-1 sm:w-auto">
-              <Search className="pointer-events-none absolute top-1/2 left-3 size-4 -translate-y-1/2 text-muted-foreground" />
-              <Input
+        <div className="mb-[22px] flex items-center gap-2.5">
+          <search className="flex-1">
+            <form
+              action={base}
+              aria-label="Filter ideas"
+              className="flex h-10 items-center gap-2 rounded-full bg-sheet px-3.5 text-ink3 ring-1 ring-border focus-within:ring-2 focus-within:ring-ring"
+            >
+              <Search strokeWidth={1.8} className="size-4 shrink-0" />
+              <input type="hidden" name="board" value={board.slug} />
+              {sort !== "trending" ? (
+                <input type="hidden" name="sort" value={sort} />
+              ) : null}
+              {status ? (
+                <input type="hidden" name="status" value={status} />
+              ) : null}
+              {embed ? <input type="hidden" name="embed" value="1" /> : null}
+              <input
                 type="search"
                 name="q"
                 defaultValue={query}
                 aria-label="Search ideas"
-                placeholder="Search…"
-                className="h-10 pl-9 sm:h-9"
+                placeholder="Search ideas"
+                className="h-full min-w-0 flex-1 bg-transparent text-foreground outline-none placeholder:text-ink3"
               />
-            </div>
-            <select
-              name="sort"
-              defaultValue={sort}
-              aria-label="Sort"
-              onChange={(e) => e.currentTarget.form?.requestSubmit()}
-              className="hidden h-9 cursor-pointer rounded-md border bg-transparent px-2 text-sm md:block"
-            >
-              {Object.entries(SORTS).map(([key, label]) => (
-                <option key={key} value={key}>
-                  {label}
-                </option>
-              ))}
-            </select>
-            <select
-              name="status"
-              defaultValue={status}
-              aria-label="Status"
-              onChange={(e) => e.currentTarget.form?.requestSubmit()}
-              className="hidden h-9 cursor-pointer rounded-md border bg-transparent px-2 text-sm md:block"
-            >
-              <option value="">All statuses</option>
-              {statuses.map((s) => (
-                <option key={s.id} value={s.id}>
-                  {s.name}
-                </option>
-              ))}
-            </select>
-            <Button
-              type="button"
-              className="hidden md:inline-flex lg:hidden"
-              onClick={() => setFormOpen(true)}
-            >
-              <Plus />
-              Suggest an idea
-            </Button>
-          </form>
-        </search>
+            </form>
+          </search>
+          <div className="hidden gap-2.5 md:flex">{sortChips}</div>
+        </div>
 
-        {/* Phones: sort and status as chips instead of dropdowns (doc 31). */}
         <nav
           aria-label="Sort and filter"
-          className="-mx-4 -mt-2 flex gap-1.5 overflow-x-auto px-4 [scrollbar-width:none] md:hidden [&::-webkit-scrollbar]:hidden"
-        >
-          {(Object.entries(SORTS) as [IdeaSort, string][]).map(
-            ([key, label]) => (
-              <a
-                key={key}
-                href={filterHref({ sort: key })}
-                aria-current={key === sort && !status ? "page" : undefined}
-                className={chip(key === sort && !status)}
-              >
-                {label}
-              </a>
-            ),
+          className={cn(
+            "-mx-[18px] -mt-2 mb-[18px] flex gap-2.5 overflow-x-auto px-[18px] [scrollbar-width:none] md:mx-0 md:flex-wrap md:px-0 [&::-webkit-scrollbar]:hidden",
+            !statuses.length && "md:hidden",
           )}
+        >
+          <div className="contents md:hidden">{sortChips}</div>
           {statuses.length ? (
-            <span aria-hidden className="mx-1 my-1.5 w-px shrink-0 bg-border" />
-          ) : null}
-          {statuses.map((st) => (
-            <a
-              key={st.id}
-              href={filterHref({ status: st.id === status ? "" : st.id })}
-              aria-current={st.id === status ? "page" : undefined}
-              className={chip(st.id === status)}
-            >
+            <>
               <span
-                className="size-1.5 rounded-full"
-                style={{ backgroundColor: st.color }}
+                aria-hidden
+                className="my-2 w-px shrink-0 bg-rule2 md:hidden"
               />
-              {st.name}
-            </a>
-          ))}
+              {statuses.map((st) => (
+                <Chip
+                  key={st.id}
+                  on={st.id === status}
+                  href={filterHref({ status: st.id === status ? "" : st.id })}
+                >
+                  <i
+                    aria-hidden
+                    className="size-2 rounded-[2px]"
+                    style={{ backgroundColor: st.color }}
+                  />
+                  {st.name}
+                </Chip>
+              ))}
+            </>
+          ) : null}
         </nav>
 
         {mine.length ? (
-          <ul className="flex flex-col gap-2" aria-label="Your ideas">
+          <ul
+            aria-label="Your ideas"
+            className="mb-[18px] flex flex-col gap-2 rounded-[14px] border-[1.5px] border-dashed border-rule2 px-4 py-3.5"
+          >
             {mine.map((i) => (
-              <li
-                key={i.id}
-                className="flex items-center gap-3 rounded-md border border-dashed bg-muted/40 px-4 py-3 text-sm"
-              >
-                <span className="min-w-0 flex-1 truncate font-medium">
-                  {i.title}
-                </span>
-                <span className="shrink-0 rounded-full bg-muted px-2 py-0.5 text-xs text-muted-foreground">
+              <li key={i.id} className="flex items-center gap-2.5 font-medium">
+                <span className="min-w-0 flex-1 truncate">{i.title}</span>
+                <span className="shrink-0 font-t-mono text-[10.5px] font-bold tracking-[0.1em] text-ink3 uppercase">
                   Waiting for review
                 </span>
               </li>
@@ -273,22 +259,33 @@ export function PublicIdeas({
         ) : null}
 
         {items.length ? (
-          <div className="flex flex-col divide-y overflow-hidden rounded-md border bg-card text-card-foreground shadow-xs">
+          <div className="border-t-2 border-foreground">
+            <div
+              aria-hidden
+              className="hidden grid-cols-[76px_minmax(0,1fr)_150px_64px] gap-[18px] px-1 py-2.5 font-t-mono text-[11px] font-bold tracking-[0.14em] text-ink3 uppercase md:grid"
+            >
+              <span>Votes</span>
+              <span>Idea</span>
+              <span>Status</span>
+              <span className="text-right">
+                {commentsEnabled ? "Talk" : ""}
+              </span>
+            </div>
             {items.map((idea) => (
               <article
                 key={idea.id}
-                className="relative flex gap-4 px-5 py-4 transition-colors hover:bg-muted/40"
+                className="relative grid grid-cols-[62px_minmax(0,1fr)] items-center gap-3 border-b px-1 py-4 transition-colors hover:bg-sheet/70 md:grid-cols-[76px_minmax(0,1fr)_150px_64px] md:gap-[18px] md:py-[18px]"
               >
-                <div className="relative z-10 pt-0.5">
+                <div className="relative z-10">
                   <VoteButton
                     cardId={idea.id}
                     votes={idea.votes}
-                    variant="pill"
+                    variant="ledger"
                     kind="idea"
                   />
                 </div>
-                <div className="flex min-w-0 flex-1 flex-col gap-1.5">
-                  <h2 className="font-medium leading-snug">
+                <div className="min-w-0">
+                  <h2 className="font-t-display text-[17px] leading-[1.3] font-semibold tracking-[-0.01em]">
                     <a
                       href={href(idea)}
                       onClick={(e) => {
@@ -309,47 +306,28 @@ export function PublicIdeas({
                     </a>
                   </h2>
                   {idea.preview ? (
-                    <p className="line-clamp-2 text-sm text-muted-foreground">
+                    <p className="mt-[3px] line-clamp-2 text-[13.5px] text-muted-foreground">
                       {idea.preview}
                     </p>
                   ) : null}
-                  <div className="flex flex-wrap items-center gap-3 text-xs text-muted-foreground">
+                  <div className="mt-1.5 flex gap-3 md:hidden">
                     <StatusChip status={idea.status} />
-                    {idea.objective ? (
-                      <span className="flex items-center gap-1.5">
-                        <span
-                          className="size-2 rounded-full"
-                          style={{ backgroundColor: idea.objective.color }}
-                        />
-                        {idea.objective.name}
-                      </span>
-                    ) : null}
-                    {commentsEnabled ? (
-                      <Hint label="Comments">
-                        <button
-                          type="button"
-                          aria-label={`Comments (${idea.comments})`}
-                          onClick={(e) => {
-                            e.preventDefault();
-                            e.stopPropagation();
-                            openIdea(idea, "comments");
-                          }}
-                          className="relative z-10 -mx-1 flex items-center gap-1 rounded-md px-1 transition-colors hover:bg-muted hover:text-foreground focus-visible:ring-2 focus-visible:ring-ring focus-visible:outline-none"
-                        >
-                          <MessagesSquare className="size-3.5" />
-                          {idea.comments}
-                        </button>
-                      </Hint>
-                    ) : null}
+                    {commentsEnabled ? <Talk count={idea.comments} /> : null}
                   </div>
+                </div>
+                <div className="hidden md:block">
+                  <StatusChip status={idea.status} />
+                </div>
+                <div className="hidden justify-end md:flex">
+                  {commentsEnabled ? <Talk count={idea.comments} /> : null}
                 </div>
               </article>
             ))}
           </div>
         ) : mine.length && !query && !status ? null : (
-          <div className="flex flex-col items-center gap-2 rounded-md border border-dashed px-6 py-12 text-center">
-            <Lightbulb className="size-6 text-muted-foreground" />
-            <p className="font-medium">
+          <div className="flex flex-col items-center gap-2 rounded-[14px] border-[1.5px] border-dashed border-rule2 px-6 py-12 text-center">
+            <Lightbulb strokeWidth={1.8} className="size-6 text-ink3" />
+            <p className="font-t-display text-lg font-semibold">
               {query || status ? "No ideas match." : "No ideas yet."}
             </p>
             <p className="text-sm text-muted-foreground">
@@ -363,26 +341,26 @@ export function PublicIdeas({
 
       <aside
         aria-label="Add new"
-        className="hidden self-start rounded-xl border bg-card p-6 text-card-foreground shadow-xs lg:sticky lg:top-6 lg:block"
+        className="sticky top-[88px] hidden self-start overflow-hidden rounded-[20px] bg-sheet ring-1 ring-border lg:block"
       >
-        <h2 className="mb-4 border-b pb-4 text-lg font-medium">Add new</h2>
-        {form}
+        <FormHead />
+        <div className="px-[22px] pt-[18px] pb-[22px]">{form}</div>
       </aside>
 
       <DetailSheet
         open={formOpen}
         onClose={() => setFormOpen(false)}
-        title="Suggest an idea"
+        title="Share an idea"
         description="The team reads every idea."
-        wide="md"
+        ticket
         fit
-        className="p-6 pt-2 lg:hidden"
       >
-        <h2 className="mb-1 text-lg font-semibold">Share an idea</h2>
-        <p className="mb-4 text-sm text-muted-foreground">
-          The team reads every idea.
-        </p>
-        {formOpen ? form : null}
+        <div className="min-h-0 flex-1 overflow-y-auto">
+          <FormHead />
+          <div className="px-5 pt-[18px] pb-[max(22px,env(safe-area-inset-bottom))]">
+            {formOpen ? form : null}
+          </div>
+        </div>
       </DetailSheet>
 
       <DetailSheet
@@ -390,17 +368,44 @@ export function PublicIdeas({
         onClose={close}
         title={open?.title ?? ""}
         description="Idea"
+        ticket
       >
         {open ? (
           <IdeaDetail
-            key={`${open.id}-${tab}`}
-            initialTab={tab}
+            key={open.id}
             idea={open}
             commentsEnabled={commentsEnabled}
             followsEnabled={followsEnabled}
+            inSheet
           />
         ) : null}
       </DetailSheet>
     </div>
+  );
+}
+
+/** The form ticket's head, above its dashed edge. */
+function FormHead() {
+  return (
+    <div className="border-b-2 border-dashed border-rule2 px-5 pt-5 pb-4 lg:px-[22px]">
+      <div className="font-t-mono text-xs font-semibold tracking-[0.12em] text-ink3 uppercase">
+        New idea
+      </div>
+      <h2 className="mt-1.5 pr-10 font-t-display text-[22px] font-bold tracking-[-0.02em]">
+        Tell us what you need
+      </h2>
+    </div>
+  );
+}
+
+function Talk({ count }: { count: number }) {
+  return (
+    <span
+      title="Comments"
+      className="inline-flex items-center gap-1.5 font-t-mono text-[13px] font-semibold text-ink3"
+    >
+      <MessageSquare strokeWidth={1.8} className="size-4" />
+      {count}
+    </span>
   );
 }

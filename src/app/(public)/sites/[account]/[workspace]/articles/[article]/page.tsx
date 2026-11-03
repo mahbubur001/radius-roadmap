@@ -1,11 +1,13 @@
-import { ChevronRight } from "lucide-react";
 import type { Metadata } from "next";
-import Link from "next/link";
 import { notFound } from "next/navigation";
 import { Suspense } from "react";
 import { ArticleRating } from "@/components/public/article-rating";
 import { PageView } from "@/components/public/page-view";
-import { ArticleList, articleDate } from "@/components/public/public-articles";
+import {
+  ArticleList,
+  articleDate,
+  BackLink,
+} from "@/components/public/public-articles";
 import { Skeleton } from "@/components/ui/skeleton";
 import { wsPath } from "@/lib/public-path";
 import { loadArticle, loadSiteForRequest, loadWorkspace } from "../../../data";
@@ -76,31 +78,21 @@ async function Article(props: Props) {
       embed={embed}
     >
       <PageView articleId={article.id} />
-      <div className="mx-auto flex w-full max-w-3xl flex-col gap-6">
-        <nav
-          aria-label="Breadcrumb"
-          className="flex flex-wrap items-center gap-1 text-sm text-muted-foreground"
+      <div className="mx-auto max-w-3xl pt-6 pb-16 md:pt-12">
+        <BackLink
+          href={
+            article.category
+              ? `${base}/category/${article.category.slug}${suffix}`
+              : `${base}${suffix}`
+          }
         >
-          <Link href={`${base}${suffix}`} className="hover:text-foreground">
-            Articles
-          </Link>
-          {article.category ? (
-            <>
-              <ChevronRight className="size-3.5" />
-              <Link
-                href={`${base}/category/${article.category.slug}${suffix}`}
-                className="hover:text-foreground"
-              >
-                {article.category.name}
-              </Link>
-            </>
-          ) : null}
-        </nav>
-        <article className="flex flex-col gap-4 rounded-lg border bg-card px-6 pt-6 pb-8 sm:px-10">
-          <h1 className="text-3xl font-semibold tracking-tight">
+          {article.category?.name ?? "Help centre"}
+        </BackLink>
+        <article className="mt-5 overflow-hidden rounded-[22px] bg-sheet px-5 pt-[26px] pb-6 ring-1 ring-border md:px-10 md:pt-10 md:pb-8">
+          <h1 className="font-t-display text-[30px] leading-[1.1] font-bold tracking-[-0.03em] md:text-[40px]">
             {article.title}
           </h1>
-          <p className="text-sm text-muted-foreground">
+          <p className="mt-3 mb-6 font-t-mono text-[12.5px] font-medium text-ink3">
             Updated{" "}
             <time dateTime={article.updatedAt}>
               {articleDate(article.updatedAt)}
@@ -108,7 +100,7 @@ async function Article(props: Props) {
           </p>
           {article.html ? (
             <div
-              className="rich-text"
+              className="rich-text text-base leading-[1.7]"
               // Rendered from Tiptap JSON by the allow-list in src/lib/rich-text.ts.
               // biome-ignore lint/security/noDangerouslySetInnerHtml: sanitized server-side
               dangerouslySetInnerHTML={{ __html: article.html }}
@@ -117,8 +109,8 @@ async function Article(props: Props) {
           <ArticleRating articleId={article.id} />
         </article>
         {article.related.length ? (
-          <section className="flex flex-col gap-3">
-            <h2 className="text-lg font-semibold">
+          <section className="mt-10">
+            <h2 className="mb-2.5 font-t-mono text-[11px] font-bold tracking-[0.14em] text-ink3 uppercase">
               More in {article.category?.name ?? "this category"}
             </h2>
             <ArticleList

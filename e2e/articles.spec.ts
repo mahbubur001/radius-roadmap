@@ -64,7 +64,7 @@ test("write a help article: category, publish, public index, category, search, r
   );
   await expect(
     page
-      .getByRole("list", { name: "Recent articles" })
+      .getByRole("list", { name: "Most read" })
       .getByRole("link", { name: /Invite your team/ }),
   ).toBeVisible();
   await page

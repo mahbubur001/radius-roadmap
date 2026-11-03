@@ -6,6 +6,7 @@ import {
   ArticleList,
   ArticleSearch,
   CategoryGrid,
+  MostRead,
 } from "@/components/public/public-articles";
 import { Skeleton } from "@/components/ui/skeleton";
 import { wsPath } from "@/lib/public-path";
@@ -83,67 +84,57 @@ async function Articles(props: Props) {
       embed={embed}
     >
       <PageView />
-      <div className="mx-auto flex w-full max-w-4xl flex-col gap-10">
-        <div className="flex flex-col items-center gap-5 pt-4 text-center">
-          {embed ? null : (
-            <h1 className="text-3xl font-semibold tracking-tight">
+      <div className={embed ? "pt-1" : "pt-[30px] pb-[22px] md:pt-16 md:pb-10"}>
+        {embed ? null : (
+          <>
+            <div className="font-t-mono text-xs font-semibold tracking-[0.12em] text-ink3 uppercase">
+              Help centre
+              {kb
+                ? ` · ${kb.total} ${kb.total === 1 ? "article" : "articles"}`
+                : ""}
+            </div>
+            <h1 className="mt-2.5 font-t-display text-[38px] leading-none font-bold tracking-[-0.035em] md:mt-3.5 md:text-[clamp(36px,4.6vw,58px)]">
               How can we help?
             </h1>
-          )}
-          <ArticleSearch base={base} query={q ?? ""} embed={embed} />
-        </div>
-
-        {results ? (
-          <section className="flex flex-col gap-3">
-            <h2 className="text-lg font-semibold">
-              {results.length
-                ? `${results.length} ${results.length === 1 ? "result" : "results"} for “${q}”`
-                : `No articles match “${q}”.`}
-            </h2>
-            {results.length ? (
-              <ArticleList
-                articles={results}
-                base={base}
-                suffix={suffix}
-                label="Search results"
-              />
-            ) : null}
-          </section>
-        ) : kb ? (
-          <>
-            {kb.featured.length ? (
-              <section className="flex flex-col gap-3">
-                <h2 className="text-lg font-semibold">Featured</h2>
-                <ArticleList
-                  articles={kb.featured}
-                  base={base}
-                  suffix={suffix}
-                  label="Featured articles"
-                />
-              </section>
-            ) : null}
-            <section className="flex flex-col gap-3">
-              <h2 className="text-lg font-semibold">Recent articles</h2>
-              <ArticleList
-                articles={kb.recent}
-                base={base}
-                suffix={suffix}
-                label="Recent articles"
-              />
-            </section>
-            {kb.categories.length ? (
-              <section className="flex flex-col gap-3">
-                <h2 className="text-lg font-semibold">Categories</h2>
-                <CategoryGrid
-                  categories={kb.categories}
-                  base={base}
-                  suffix={suffix}
-                />
-              </section>
-            ) : null}
           </>
-        ) : null}
+        )}
+        <ArticleSearch
+          base={base}
+          query={q ?? ""}
+          embed={embed}
+          className={embed ? "" : "mt-4 md:mt-6"}
+        />
       </div>
+      {results ? (
+        <section className="pb-16">
+          <h2 className="mb-2.5 font-t-mono text-[11px] font-bold tracking-[0.14em] text-ink3 uppercase">
+            {results.length
+              ? `${results.length} ${results.length === 1 ? "result" : "results"} for “${q}”`
+              : `No articles match “${q}”.`}
+          </h2>
+          {results.length ? (
+            <ArticleList
+              articles={results}
+              base={base}
+              suffix={suffix}
+              label="Search results"
+            />
+          ) : null}
+        </section>
+      ) : kb ? (
+        <>
+          {kb.categories.length ? (
+            <CategoryGrid
+              categories={kb.categories}
+              base={base}
+              suffix={suffix}
+            />
+          ) : null}
+          {kb.mostRead.length ? (
+            <MostRead articles={kb.mostRead} base={base} suffix={suffix} />
+          ) : null}
+        </>
+      ) : null}
     </SiteShell>
   );
 }

@@ -18,9 +18,12 @@ export function ArticleRating({ articleId }: { articleId: string }) {
   const [busy, setBusy] = useState(false);
   const [thanked, setThanked] = useState(false);
   return (
-    <fieldset className="mt-6 flex flex-col items-center gap-3 border-t pt-6">
+    <fieldset className="mt-8 flex flex-col items-center gap-3.5 border-t-2 border-dashed border-rule2 pt-7">
       <legend className="sr-only">Was this helpful?</legend>
-      <p aria-hidden className="font-medium">
+      <p
+        aria-hidden
+        className="font-t-mono text-[11px] font-bold tracking-[0.14em] text-ink3 uppercase"
+      >
         Was this helpful?
       </p>
       <div className="flex gap-3">
@@ -39,10 +42,10 @@ export function ArticleRating({ articleId }: { articleId: string }) {
               setThanked(ok && !!next);
             }}
             className={cn(
-              "flex size-12 items-center justify-center rounded-full border text-2xl transition-transform hover:scale-110",
+              "flex size-12 items-center justify-center rounded-full text-2xl transition-transform hover:scale-110",
               mine === f.value
-                ? "border-primary bg-primary/10"
-                : "bg-background",
+                ? "bg-tint shadow-[inset_0_0_0_1.5px_var(--primary)]"
+                : "bg-paper shadow-[inset_0_0_0_1px_var(--rule2)]",
               mine && mine !== f.value && "opacity-50",
             )}
           >

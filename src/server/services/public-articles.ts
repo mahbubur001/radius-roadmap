@@ -11,7 +11,12 @@ import {
 } from "drizzle-orm";
 import { renderRichText } from "@/lib/rich-text";
 import type { Db } from "@/server/db/client";
-import { articleCategories, articles, workspaces } from "@/server/db/schema";
+import {
+  articleCategories,
+  articles,
+  events,
+  workspaces,
+} from "@/server/db/schema";
 import { likePattern } from "./cards";
 import type { PublicContext } from "./context";
 import { byPosition } from "./positions";
@@ -146,7 +151,9 @@ export async function getPublicKnowledgeBase(
   ctx: PublicContext,
   workspaceId: string,
 ) {
-  const [featured, recent, categories] = await Promise.all([
+  // "Most read" (doc 32 decision 10): views in the last 90 days.
+  const views = sql<number>`(select count(*) from ${events} where ${events.accountId} = ${ctx.accountId} and ${events.type} = 'article_view' and ${events.subjectId} = ${articles.id} and ${events.createdAt} > now() - interval '90 days')`;
+  const [featured, recent, categories, read, [all]] = await Promise.all([
     summaries(
       db,
       and(scope(ctx, workspaceId), eq(articles.featured, true)) as SQL,
@@ -160,11 +167,20 @@ export async function getPublicKnowledgeBase(
       .orderBy(desc(articles.publishedAt))
       .limit(6),
     publicCategories(db, ctx, workspaceId),
+    summaries(db, and(scope(ctx, workspaceId), sql`${views} > 0`) as SQL)
+      .orderBy(desc(views), desc(articles.publishedAt))
+      .limit(4),
+    db.select({ n: count() }).from(articles).where(scope(ctx, workspaceId)),
   ]);
   return {
     featured: featured.map(toSummary),
     recent: recent.map(toSummary),
     categories,
+    /** Most viewed, else the featured ones, else the newest. */
+    mostRead: (read.length ? read : featured.length ? featured : recent)
+      .slice(0, 4)
+      .map(toSummary),
+    total: all?.n ?? 0,
   };
 }
 

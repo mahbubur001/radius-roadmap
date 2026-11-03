@@ -1,13 +1,13 @@
-import { ChevronRight } from "lucide-react";
 import type { Metadata } from "next";
-import Link from "next/link";
 import { notFound } from "next/navigation";
 import { Suspense } from "react";
 import { PageView } from "@/components/public/page-view";
 import {
   ArticleList,
   ArticleSearch,
+  BackLink,
 } from "@/components/public/public-articles";
+import { Chip } from "@/components/public/public-board";
 import { Skeleton } from "@/components/ui/skeleton";
 import { wsPath } from "@/lib/public-path";
 import {
@@ -80,59 +80,51 @@ async function Category(props: Props) {
       embed={embed}
     >
       <PageView />
-      <div className="mx-auto flex w-full max-w-5xl flex-col gap-8">
-        <ArticleSearch base={base} query="" embed={embed} />
-        <div className="flex flex-col gap-8 md:flex-row md:items-start">
-          <nav
-            aria-label="Categories"
-            className="flex shrink-0 flex-col gap-0.5 text-sm md:w-56"
-          >
-            {categories.map((c) => (
-              <Link
-                key={c.id}
-                href={`${base}/category/${c.slug}${suffix}`}
-                aria-current={c.id === category.id ? "page" : undefined}
-                className={
-                  c.id === category.id
-                    ? "flex items-center gap-2 rounded-md bg-muted px-3 py-2 font-medium"
-                    : "flex items-center gap-2 rounded-md px-3 py-2 text-muted-foreground hover:bg-muted/60 hover:text-foreground"
-                }
-              >
-                <span aria-hidden>{c.icon}</span>
-                <span className="min-w-0 flex-1 truncate">{c.name}</span>
-                <span className="text-xs">{c.articles}</span>
-              </Link>
-            ))}
-          </nav>
-          <div className="flex min-w-0 flex-1 flex-col gap-4">
-            <nav
-              aria-label="Breadcrumb"
-              className="flex items-center gap-1 text-sm text-muted-foreground"
-            >
-              <Link href={`${base}${suffix}`} className="hover:text-foreground">
-                Articles
-              </Link>
-              <ChevronRight className="size-3.5" />
-              <span className="text-foreground">{category.name}</span>
-            </nav>
-            <div className="flex flex-col gap-1">
-              <h1 className="flex items-center gap-2 text-2xl font-semibold tracking-tight">
-                <span aria-hidden>{category.icon}</span>
-                {category.name}
-              </h1>
-              {category.description ? (
-                <p className="text-muted-foreground">{category.description}</p>
-              ) : null}
-            </div>
-            <ArticleList
-              articles={articles}
-              base={base}
-              suffix={suffix}
-              showCategory={false}
-              label={`${category.name} articles`}
-            />
-          </div>
+      <div className="pt-6 pb-16 md:pt-12">
+        <BackLink href={`${base}${suffix}`}>Help centre</BackLink>
+        <div className="mt-6 font-t-mono text-xs font-semibold tracking-[0.12em] text-ink3 uppercase">
+          {articles.length} {articles.length === 1 ? "article" : "articles"}
         </div>
+        <h1 className="mt-2.5 font-t-display text-[34px] leading-none font-bold tracking-[-0.03em] md:text-[44px]">
+          {category.name}
+        </h1>
+        {category.description ? (
+          <p className="mt-3 max-w-2xl text-[15.5px] text-muted-foreground md:text-[17px]">
+            {category.description}
+          </p>
+        ) : null}
+        <div className="my-6 flex flex-col gap-3.5 md:flex-row md:items-center">
+          <ArticleSearch
+            base={base}
+            query=""
+            embed={embed}
+            className="flex-1"
+          />
+        </div>
+        <nav
+          aria-label="Categories"
+          className="-mx-[18px] mb-6 flex gap-2.5 overflow-x-auto px-[18px] [scrollbar-width:none] md:mx-0 md:flex-wrap md:px-0"
+        >
+          {categories.map((c) => (
+            <Chip
+              key={c.id}
+              on={c.id === category.id}
+              href={`${base}/category/${c.slug}${suffix}`}
+            >
+              {c.name}
+              <span className="font-t-mono text-xs opacity-60">
+                {c.articles}
+              </span>
+            </Chip>
+          ))}
+        </nav>
+        <ArticleList
+          articles={articles}
+          base={base}
+          suffix={suffix}
+          showCategory={false}
+          label={`${category.name} articles`}
+        />
       </div>
     </SiteShell>
   );

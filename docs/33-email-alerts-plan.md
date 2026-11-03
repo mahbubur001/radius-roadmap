@@ -1,6 +1,6 @@
 # 33 — More team email alerts (votes, review reminder, weekly, replies)
 
-Status: **APPROVED 2026-11-03** (owner: "go for all point one by one", after the five recommendations below). Being built.
+Status: **APPROVED + BUILT 2026-11-03** (owner: "go for all point one by one", after the five recommendations below).
 
 Scope: the team's own alerts in **Settings → Notifications** (per member, per workspace). Voter / subscriber emails don't change.
 
@@ -36,3 +36,13 @@ Per member and workspace: New ideas, New comments, New subscribers, each Right a
 3. Digest rework: daily + weekly periods, votes section, review reminder section, weekly summary section; weekly scheduler.
 4. Replies to you (instant + digest sections), de-duplicated with new-comment emails.
 5. Docs (this file "As built", PROGRESS), e2e check of the settings page.
+
+## 5. As built
+
+| Step | Commit | Notes |
+|------|--------|-------|
+| 1 Settings | e6e7704 | Migration `0019_email_alerts`. `ALERT_OPTIONS` in `src/lib/schemas/notifications.ts` lists each alert's options; `withDefaults()` fills null columns with the role default. |
+| 2 Vote milestones | 5aa099e | `toggleVote` / `toggleFeedbackVote` queue `vote-milestone` when a vote brings the total to a milestone; `voteMilestoneEmails()` records it in `vote_milestones` first. |
+| 3 Digests | 6f077bf | `src/server/services/digests.ts` (`digestEmails(db, since, period)`), template `feedback-digest` with all sections, scheduler `weekly-digest` in `worker.ts`. Iterates every workspace, because owners and admins get the reminder and summary without saved settings. |
+| 4 Replies | 66e1a3a | `newCommentEmails()` marks members who commented before as `reply` (when Replies = Right away); the email says "replied". |
+| 5 Docs + e2e | this commit | `e2e/notifications.spec.ts`. |

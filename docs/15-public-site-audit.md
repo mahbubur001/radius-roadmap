@@ -93,7 +93,7 @@ Header: tab nav on the left; **Sign Up** and **Log in** on the right. Footer: "P
 1. **Public pages:** server-rendered with clean URLs and SEO metadata (instead of a hash SPA). Card detail at both `?card=` (drawer) and `/roadmap/<slug>` (shareable, indexable).
 2. **Embed:**
    - an auto-resizing iframe script (`embed.js`)
-   - **phase 2:** a **WordPress plugin** (shortcode + Gutenberg block) so radiustheme.com and customers' WordPress sites can embed the roadmap with real, indexable HTML
+   - **phase 2:** a **WordPress plugin** (shortcode + Gutenberg block) so radiustheme.com and customers' WordPress sites can embed the roadmap with real, indexable HTML **Dropped by the owner (2026-11-03): no WordPress plugin.**
 3. **End-user sign-in:** add **magic link (email code)** next to guest, Google and customer SSO. No password for voters. Remember for 30 days.
 4. **Spam protection:** add **Cloudflare Turnstile** (or reCAPTCHA) to public idea submission and guest votes.
 5. **Data model additions:**

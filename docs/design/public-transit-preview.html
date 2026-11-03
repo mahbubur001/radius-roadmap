@@ -1,0 +1,585 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>Radius Roadmap · Public site "Transit" (desktop + mobile preview)</title>
+<style>
+  /* Preview chrome only. The site itself lives in a hidden text box (#site) and is
+     rendered into iframes at desktop and phone widths, so its CSS is truly
+     responsive: the same page, two screen sizes. */
+  :root { --brand: #2f5bff; }
+  * { box-sizing: border-box; }
+  body { margin: 0; font: 14px/1.45 ui-sans-serif, system-ui, sans-serif; background: #d9dce2; color: #111; }
+  .bar { position: sticky; top: 0; z-index: 5; display: flex; flex-wrap: wrap; gap: 14px; align-items: center; padding: 12px 24px; background: rgba(240,241,244,.92); backdrop-filter: blur(8px); border-bottom: 1px solid #c9cdd5; }
+  .bar h1 { margin: 0; font-size: 15px; }
+  .bar p { margin: 0; color: #555; font-size: 12.5px; }
+  .grow { flex: 1; }
+  .seg { display: inline-flex; background: #fff; border-radius: 10px; padding: 3px; box-shadow: inset 0 0 0 1px #c9cdd5; }
+  .seg button { border: 0; background: none; padding: 6px 12px; border-radius: 7px; font: inherit; font-size: 13px; cursor: pointer; color: #444; }
+  .seg button.on { background: #111; color: #fff; }
+  .sw { width: 22px; height: 22px; border-radius: 50%; border: 0; cursor: pointer; background: var(--c); box-shadow: inset 0 0 0 1px rgba(0,0,0,.15); }
+  .sw.on { box-shadow: 0 0 0 2px #f0f1f4, 0 0 0 4px var(--c); }
+  .stage { padding: 24px; display: flex; flex-direction: column; gap: 28px; align-items: center; }
+  .browser { width: min(1360px, 100%); border-radius: 14px; overflow: hidden; background: #fff; box-shadow: 0 30px 70px -30px rgba(0,0,0,.45); }
+  .chrome { height: 38px; background: #eceef2; display: flex; align-items: center; gap: 7px; padding: 0 14px; border-bottom: 1px solid #dfe2e7; }
+  .chrome i { width: 11px; height: 11px; border-radius: 50%; background: #c9cdd5; }
+  .chrome span { margin-left: 14px; flex: 1; max-width: 520px; height: 24px; border-radius: 6px; background: #fff; font: 12px ui-monospace, monospace; color: #666; display: flex; align-items: center; padding: 0 10px; }
+  .browser iframe { display: block; width: 100%; height: 860px; border: 0; }
+  .phones { display: flex; gap: 32px; overflow-x: auto; width: 100%; padding: 4px 4px 24px; justify-content: safe center; }
+  .phone { flex: none; display: flex; flex-direction: column; gap: 10px; align-items: center; }
+  .phone b { font-size: 12.5px; }
+  .frame { width: 414px; height: 868px; border-radius: 56px; background: #0a0a0a; padding: 12px; box-shadow: 0 30px 60px -30px rgba(0,0,0,.6); position: relative; }
+  .frame::after { content: ""; position: absolute; top: 23px; left: 50%; transform: translateX(-50%); width: 118px; height: 33px; border-radius: 20px; background: #000; }
+  .frame iframe { width: 390px; height: 844px; border: 0; border-radius: 44px; display: block; background: #fff; }
+  .notes { max-width: 1100px; background: #fff; border-radius: 14px; padding: 18px 22px; box-shadow: 0 1px 0 #c9cdd5; }
+  .notes h2 { margin: 0 0 8px; font-size: 15px; }
+  .notes ul { margin: 0; padding-left: 18px; columns: 2; column-gap: 36px; color: #333; line-height: 1.6; font-size: 13px; }
+  .notes li { break-inside: avoid; margin-bottom: 6px; }
+  [hidden] { display: none !important; }
+</style>
+</head>
+<body>
+
+<div class="bar">
+  <div><h1>Public site · “Transit”</h1><p>The same page at desktop width and on phones. Click around inside the frames.</p></div>
+  <span class="grow"></span>
+  <div class="seg" id="view"><button class="on" data-v="both">Desktop + phones</button><button data-v="desk">Desktop</button><button data-v="phone">Phones</button></div>
+  <div class="seg" id="page"><button class="on" data-p="roadmap">Roadmap</button><button data-p="ideas">Ideas</button><button data-p="updates">Updates</button><button data-p="help">Help</button></div>
+  <div id="brands" style="display:flex;gap:8px"></div>
+  <div class="seg" id="theme"><button class="on" data-t="light">Light</button><button data-t="dark">Dark</button></div>
+</div>
+
+<div class="stage">
+  <div class="browser" id="deskWrap"><div class="chrome"><i></i><i></i><i></i><span id="url">feedback.acme.com/roadmap</span></div><iframe id="desk" title="Desktop"></iframe></div>
+  <div class="phones" id="phoneWrap">
+    <div class="phone"><b>Roadmap</b><div class="frame"><iframe data-start="roadmap" title="Phone roadmap"></iframe></div></div>
+    <div class="phone"><b>Card ticket</b><div class="frame"><iframe data-start="roadmap" data-open="sso" title="Phone card"></iframe></div></div>
+    <div class="phone"><b>Ideas</b><div class="frame"><iframe data-start="ideas" title="Phone ideas"></iframe></div></div>
+    <div class="phone"><b>Share an idea</b><div class="frame"><iframe data-start="ideas" data-form="1" title="Phone form"></iframe></div></div>
+    <div class="phone"><b>Updates</b><div class="frame"><iframe data-start="updates" title="Phone updates"></iframe></div></div>
+    <div class="phone"><b>Help</b><div class="frame"><iframe data-start="help" title="Phone help"></iframe></div></div>
+  </div>
+  <div class="notes">
+    <h2>What makes “Transit” different</h2>
+    <ul>
+      <li><b>The roadmap is a line, not columns.</b> Features travel Now → Next → Later → Shipped along one line drawn in the customer's brand colour. Desktop: left to right. Phone: top to bottom, so there is nothing to switch, you just scroll the journey.</li>
+      <li><b>Numbers are the hero.</b> Votes, counts and dates are set big in a monospace face, like a departure board. People see demand at a glance.</li>
+      <li><b>Details open as a ticket</b>: perforated edge, a status stamp, a big vote button, the ideas it came from, and the conversation.</li>
+      <li><b>Ideas are a board, not cards</b>: one clean ledger with a vote column, status in small caps and look-alikes while you type.</li>
+      <li><b>Updates read like a journal</b>: large dates in the margin, and every post shows what it shipped from the roadmap and how many people asked for it.</li>
+      <li><b>Help is a numbered index</b>, like a field guide, with search first.</li>
+      <li><b>Phones get a bottom dock</b> with a centre “Share an idea” button, reachable with one thumb.</li>
+      <li><b>White-label by design</b>: only the line, the vote button and focus states take the brand colour; everything else is ink and paper, so any brand colour looks right. Light and dark.</li>
+    </ul>
+  </div>
+</div>
+
+<textarea id="site" hidden>
+<!doctype html>
+<html><head><meta charset="utf-8" /><meta name="viewport" content="width=device-width, initial-scale=1" />
+<link rel="preconnect" href="https://fonts.googleapis.com" />
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+<link href="https://fonts.googleapis.com/css2?family=Familjen+Grotesk:wght@500;600;700&family=Hanken+Grotesk:wght@400;500;600&family=JetBrains+Mono:wght@500;600;700&display=swap" rel="stylesheet" />
+<style>
+:root { --brand: #2f5bff; --display: "Familjen Grotesk", system-ui, sans-serif; --body: "Hanken Grotesk", system-ui, sans-serif; --mono: "JetBrains Mono", ui-monospace, monospace; }
+html[data-theme="light"] { --paper: #f4f5f7; --sheet: #ffffff; --ink: #0d1014; --ink2: #4a515c; --ink3: #8a919c; --rule: #e1e4e9; --rule2: #cfd3da; --tint: color-mix(in oklab, var(--brand) 8%, #fff); }
+html[data-theme="dark"] { --paper: #0b0d10; --sheet: #13161b; --ink: #eef0f3; --ink2: #a7aeb9; --ink3: #6b7280; --rule: #22262d; --rule2: #313640; --tint: color-mix(in oklab, var(--brand) 16%, #13161b); }
+* { box-sizing: border-box; }
+html, body { margin: 0; }
+body { font: 15px/1.5 var(--body); background: var(--paper); color: var(--ink); -webkit-font-smoothing: antialiased; }
+button { font: inherit; color: inherit; background: none; border: 0; padding: 0; cursor: pointer; }
+a { color: inherit; text-decoration: none; cursor: pointer; }
+.mono { font-family: var(--mono); }
+svg.i { width: 16px; height: 16px; stroke: currentColor; fill: none; stroke-width: 1.8; stroke-linecap: round; stroke-linejoin: round; flex: none; }
+.page { display: none; } .page.on { display: block; animation: in .3s ease; }
+@keyframes in { from { opacity: 0; transform: translateY(6px); } }
+
+/* ── Header ───────────────────────────────── */
+.top { position: sticky; top: 0; z-index: 20; background: color-mix(in oklab, var(--paper) 88%, transparent); backdrop-filter: blur(12px); border-bottom: 1px solid var(--rule); }
+.top-in { max-width: 1240px; margin: 0 auto; display: flex; align-items: center; gap: 28px; height: 64px; padding: 0 28px; }
+.mark { display: flex; align-items: center; gap: 10px; font: 700 18px var(--display); letter-spacing: -.02em; }
+.mark i { width: 30px; height: 30px; border-radius: 9px; background: var(--ink); color: var(--paper); display: grid; place-items: center; font-style: normal; font-size: 15px; }
+.nav { display: flex; gap: 2px; }
+.nav button { height: 36px; padding: 0 14px; border-radius: 99px; font-weight: 500; color: var(--ink2); }
+.nav button.on { color: var(--ink); background: var(--sheet); box-shadow: 0 0 0 1px var(--rule); }
+.top .grow { flex: 1; }
+.ghost { height: 36px; padding: 0 14px; border-radius: 99px; font-weight: 500; box-shadow: inset 0 0 0 1px var(--rule2); }
+.solid { height: 36px; padding: 0 16px; border-radius: 99px; font-weight: 600; background: var(--ink); color: var(--paper); }
+.wrap { max-width: 1240px; margin: 0 auto; padding: 0 28px; }
+
+/* ── Roadmap hero ──────────────────────────── */
+.hero { display: grid; grid-template-columns: 1.3fr 1fr; gap: 48px; align-items: end; padding: 56px 0 40px; }
+.eyebrow { font: 600 12px var(--mono); letter-spacing: .12em; text-transform: uppercase; color: var(--ink3); }
+.h1 { font: 700 clamp(40px, 5.2vw, 68px)/1 var(--display); letter-spacing: -.035em; margin: 14px 0 16px; }
+.h1 em { font-style: normal; color: var(--brand); }
+.lede { font-size: 17px; color: var(--ink2); max-width: 520px; margin: 0; }
+.board { background: var(--ink); color: var(--paper); border-radius: 18px; padding: 18px 20px; font-family: var(--mono); }
+.board .row { display: grid; grid-template-columns: 1fr auto; align-items: baseline; padding: 9px 0; border-bottom: 1px dashed color-mix(in oklab, var(--paper) 18%, transparent); }
+.board .row:last-child { border: 0; }
+.board .k { font-size: 12px; letter-spacing: .14em; text-transform: uppercase; opacity: .65; }
+.board .v { font-size: 30px; font-weight: 700; letter-spacing: -.02em; }
+.board .v small { font-size: 12px; opacity: .55; margin-left: 6px; font-weight: 500; }
+.board .live { display: flex; align-items: center; gap: 8px; font-size: 11px; letter-spacing: .14em; text-transform: uppercase; opacity: .7; margin-bottom: 6px; }
+.board .live i { width: 7px; height: 7px; border-radius: 50%; background: #3ddc84; box-shadow: 0 0 0 0 #3ddc84; animation: ping 2s infinite; }
+@keyframes ping { 70% { box-shadow: 0 0 0 7px transparent; } }
+
+/* ── The line (desktop: horizontal) ────────── */
+.tools { display: flex; align-items: center; gap: 10px; margin: 0 0 22px; }
+.tools .grow { flex: 1; }
+.search { display: flex; align-items: center; gap: 8px; height: 40px; padding: 0 14px; width: 280px; border-radius: 99px; background: var(--sheet); box-shadow: 0 0 0 1px var(--rule); color: var(--ink3); }
+.chip { height: 34px; padding: 0 14px; border-radius: 99px; font-size: 13.5px; font-weight: 500; box-shadow: inset 0 0 0 1px var(--rule2); color: var(--ink2); display: inline-flex; align-items: center; gap: 6px; }
+.chip.on { background: var(--ink); color: var(--paper); box-shadow: none; }
+.line { position: relative; display: grid; grid-template-columns: repeat(4, 1fr); gap: 22px; padding-bottom: 64px; }
+.line::before { content: ""; position: absolute; left: 0; right: 0; top: 13px; height: 4px; border-radius: 2px; background: linear-gradient(90deg, var(--brand) 0 50%, color-mix(in oklab, var(--brand) 30%, transparent) 50%); }
+.station { position: relative; }
+.stop { display: flex; flex-direction: column; align-items: flex-start; gap: 10px; margin-bottom: 18px; }
+.stop > div { display: flex; align-items: baseline; gap: 10px; }
+.node { position: relative; width: 30px; height: 30px; border-radius: 50%; background: var(--paper); box-shadow: inset 0 0 0 4px var(--brand); flex: none; }
+.node.now::after { content: ""; position: absolute; inset: 8px; border-radius: 50%; background: var(--brand); }
+.node.now { animation: pulse 2.4s infinite; }
+@keyframes pulse { 0% { box-shadow: inset 0 0 0 4px var(--brand), 0 0 0 0 color-mix(in oklab, var(--brand) 40%, transparent); } 70% { box-shadow: inset 0 0 0 4px var(--brand), 0 0 0 12px transparent; } }
+.node.later { box-shadow: inset 0 0 0 4px color-mix(in oklab, var(--brand) 35%, transparent); }
+.node.done { background: var(--brand); box-shadow: none; display: grid; place-items: center; color: #fff; }
+.stop .t { font: 700 13px var(--mono); letter-spacing: .12em; text-transform: uppercase; }
+.stop .s { font-size: 13px; color: var(--ink3); }
+.stop .n { font: 700 12px var(--mono); color: var(--ink3); padding: 1px 7px; border-radius: 99px; box-shadow: inset 0 0 0 1px var(--rule2); }
+.cars { display: flex; flex-direction: column; gap: 12px; }
+.car { display: grid; grid-template-columns: 56px 1fr; gap: 14px; text-align: left; width: 100%; padding: 16px; border-radius: 16px; background: var(--sheet); box-shadow: 0 0 0 1px var(--rule); transition: transform .18s, box-shadow .18s; }
+.car:hover { transform: translateY(-2px); box-shadow: 0 0 0 1px var(--rule2), 0 18px 30px -20px rgba(0,0,0,.35); }
+.vote { display: flex; flex-direction: column; align-items: center; justify-content: center; height: 62px; border-radius: 12px; background: var(--paper); font: 700 20px var(--mono); letter-spacing: -.03em; }
+.vote svg { width: 14px; height: 14px; color: var(--ink3); margin-bottom: 1px; }
+.vote.on { background: var(--brand); color: #fff; }
+.vote.on svg { color: #fff; }
+.car .tag { font: 600 10.5px var(--mono); letter-spacing: .12em; text-transform: uppercase; color: var(--ink3); }
+.car .tt { font: 600 16.5px/1.25 var(--display); letter-spacing: -.01em; margin: 5px 0 6px; }
+.car .ds { font-size: 13.5px; color: var(--ink2); display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; }
+.car .ft { display: flex; gap: 14px; margin-top: 10px; font: 500 12px var(--mono); color: var(--ink3); }
+.car .ft span { display: inline-flex; gap: 5px; align-items: center; }
+.car .ft svg { width: 13px; height: 13px; }
+.car.shipped .tt { color: var(--ink2); }
+.more { font: 600 12px var(--mono); letter-spacing: .1em; text-transform: uppercase; color: var(--ink3); padding: 6px 4px; text-align: left; }
+
+/* ── Ticket (card detail) ─────────────────── */
+.scrim { position: fixed; inset: 0; z-index: 40; background: rgba(8,10,14,.45); opacity: 0; pointer-events: none; transition: opacity .25s; }
+.ticket { position: fixed; z-index: 41; top: 16px; right: 16px; bottom: 16px; width: min(520px, calc(100% - 32px)); background: var(--sheet); border-radius: 22px; display: flex; flex-direction: column; transform: translateX(110%); transition: transform .35s cubic-bezier(.2,.8,.2,1); overflow: hidden; }
+body.open .scrim { opacity: 1; pointer-events: auto; }
+body.open .ticket { transform: none; }
+.tk-head { position: relative; padding: 26px 28px 22px; border-bottom: 2px dashed var(--rule2); }
+.tk-head::before, .tk-head::after { content: ""; position: absolute; bottom: -13px; width: 24px; height: 24px; border-radius: 50%; background: rgba(8,10,14,.45); }
+.tk-head::before { left: -12px; } .tk-head::after { right: -12px; }
+.stamp { display: inline-flex; align-items: center; gap: 7px; height: 26px; padding: 0 10px; border-radius: 6px; font: 700 11px var(--mono); letter-spacing: .14em; text-transform: uppercase; color: var(--brand); box-shadow: inset 0 0 0 1.5px var(--brand); transform: rotate(-2deg); }
+.tk-head h2 { font: 700 28px/1.1 var(--display); letter-spacing: -.025em; margin: 16px 0 10px; }
+.meta { display: flex; flex-wrap: wrap; gap: 16px; font: 500 12.5px var(--mono); color: var(--ink3); }
+.meta span { display: inline-flex; gap: 6px; align-items: center; }
+.bigvote { margin-top: 18px; width: 100%; height: 56px; border-radius: 14px; background: var(--brand); color: #fff; display: flex; align-items: center; justify-content: center; gap: 10px; font: 700 16px var(--display); }
+.bigvote b { font-family: var(--mono); font-size: 18px; }
+.close { position: absolute; top: 18px; right: 18px; width: 34px; height: 34px; border-radius: 50%; display: grid; place-items: center; background: var(--paper); }
+.tk-body { flex: 1; overflow-y: auto; padding: 24px 28px; }
+.tk-body p { margin: 0 0 18px; color: var(--ink2); font-size: 15.5px; line-height: 1.65; }
+.label { font: 700 11px var(--mono); letter-spacing: .14em; text-transform: uppercase; color: var(--ink3); margin: 22px 0 10px; }
+.from { display: flex; align-items: center; gap: 12px; padding: 12px 14px; border-radius: 12px; background: var(--paper); font-size: 14.5px; }
+.from + .from { margin-top: 8px; }
+.from b { margin-left: auto; font: 700 14px var(--mono); }
+.msg { display: flex; gap: 12px; margin-top: 16px; }
+.av { width: 32px; height: 32px; border-radius: 50%; display: grid; place-items: center; font: 600 11px var(--mono); background: var(--paper); flex: none; }
+.msg .who { font-size: 13.5px; font-weight: 600; }
+.msg .who span { font: 500 11.5px var(--mono); color: var(--ink3); margin-left: 8px; }
+.msg .tx { font-size: 14.5px; margin-top: 2px; }
+.team { font: 700 9.5px var(--mono); letter-spacing: .1em; padding: 2px 5px; border-radius: 4px; background: var(--brand); color: #fff; margin-left: 6px; }
+.compose { display: flex; gap: 10px; padding: 14px 20px 18px; border-top: 1px solid var(--rule); }
+.compose .in { flex: 1; height: 44px; border-radius: 99px; background: var(--paper); display: flex; align-items: center; padding: 0 16px; color: var(--ink3); }
+.compose button { width: 44px; height: 44px; border-radius: 50%; background: var(--ink); color: var(--paper); display: grid; place-items: center; }
+
+/* ── Ideas board ───────────────────────────── */
+.ideas { display: grid; grid-template-columns: minmax(0, 1fr) 360px; gap: 36px; padding-top: 48px; padding-bottom: 64px; }
+.title2 { font: 700 44px/1 var(--display); letter-spacing: -.03em; margin: 10px 0 24px; }
+.ledger { border-top: 2px solid var(--ink); }
+.lrow { display: grid; grid-template-columns: 76px minmax(0, 1fr) 150px 64px; gap: 18px; align-items: center; padding: 18px 4px; border-bottom: 1px solid var(--rule); text-align: left; width: 100%; }
+.lrow:hover { background: color-mix(in oklab, var(--sheet) 70%, transparent); }
+.lhead { font: 700 11px var(--mono); letter-spacing: .14em; text-transform: uppercase; color: var(--ink3); padding: 10px 4px; }
+.lvote { display: flex; align-items: center; gap: 8px; font: 700 26px var(--mono); letter-spacing: -.03em; }
+.lvote svg { width: 16px; height: 16px; color: var(--ink3); }
+.lvote.on { color: var(--brand); } .lvote.on svg { color: var(--brand); }
+.lrow .tt { font: 600 17px/1.3 var(--display); letter-spacing: -.01em; }
+.lrow .ds { font-size: 13.5px; color: var(--ink2); margin-top: 3px; }
+.st { font: 700 11px var(--mono); letter-spacing: .12em; text-transform: uppercase; display: inline-flex; align-items: center; gap: 8px; }
+.st i { width: 8px; height: 8px; border-radius: 2px; background: var(--c); }
+.cm { font: 600 13px var(--mono); color: var(--ink3); display: inline-flex; gap: 6px; align-items: center; justify-content: flex-end; }
+.mine { padding: 14px 16px; border-radius: 14px; border: 1.5px dashed var(--rule2); margin-bottom: 18px; display: flex; flex-direction: column; gap: 8px; }
+.mine div { display: flex; gap: 10px; align-items: center; font-weight: 500; }
+.mine span { margin-left: auto; font: 700 10.5px var(--mono); letter-spacing: .1em; text-transform: uppercase; color: var(--ink3); }
+.form-ticket { position: sticky; top: 88px; align-self: start; background: var(--sheet); border-radius: 20px; box-shadow: 0 0 0 1px var(--rule); overflow: hidden; }
+.form-ticket .fh { padding: 20px 22px 16px; border-bottom: 2px dashed var(--rule2); }
+.form-ticket h3 { margin: 6px 0 0; font: 700 22px var(--display); letter-spacing: -.02em; }
+.form-ticket .fb { padding: 18px 22px 22px; display: flex; flex-direction: column; gap: 14px; }
+.fld label { display: block; font: 700 11px var(--mono); letter-spacing: .12em; text-transform: uppercase; color: var(--ink3); margin-bottom: 7px; }
+.inp { min-height: 46px; border-radius: 12px; background: var(--paper); padding: 12px 14px; font-size: 16px; color: var(--ink3); }
+.inp.typed { color: var(--ink); box-shadow: inset 0 0 0 2px var(--brand); background: var(--sheet); }
+.inp.area { min-height: 96px; }
+.alike { border-radius: 12px; background: var(--tint); padding: 12px 14px; }
+.alike p { margin: 0 0 6px; font: 700 10.5px var(--mono); letter-spacing: .12em; text-transform: uppercase; color: var(--brand); }
+.alike a { display: flex; gap: 10px; align-items: center; padding: 6px 0; font-size: 14px; }
+.alike a b { margin-left: auto; font: 700 13px var(--mono); }
+.submit { height: 50px; border-radius: 14px; background: var(--ink); color: var(--paper); font: 700 15px var(--display); }
+
+/* ── Updates journal ───────────────────────── */
+.journal { padding-top: 48px; padding-bottom: 64px; max-width: 980px; }
+.sub { display: flex; align-items: center; gap: 10px; padding: 8px 8px 8px 18px; border-radius: 99px; background: var(--sheet); box-shadow: 0 0 0 1px var(--rule); max-width: 460px; margin-bottom: 40px; }
+.sub span { flex: 1; color: var(--ink3); }
+.entry { display: grid; grid-template-columns: 120px minmax(0, 1fr); gap: 32px; padding: 32px 0; border-top: 1px solid var(--rule); }
+.date { position: sticky; top: 92px; align-self: start; font-family: var(--mono); }
+.date b { display: block; font-size: 52px; line-height: .9; letter-spacing: -.05em; }
+.date span { font-size: 13px; letter-spacing: .14em; text-transform: uppercase; color: var(--ink3); }
+.kind { font: 700 11px var(--mono); letter-spacing: .14em; text-transform: uppercase; color: var(--brand); }
+.entry h3 { font: 700 32px/1.1 var(--display); letter-spacing: -.025em; margin: 10px 0 14px; }
+.cover { height: 260px; border-radius: 18px; margin-bottom: 18px; background: radial-gradient(90% 120% at 0% 0%, color-mix(in oklab, var(--brand) 60%, transparent), transparent 60%), radial-gradient(80% 100% at 100% 100%, color-mix(in oklab, var(--brand) 25%, #f59e0b), transparent 55%), var(--ink); position: relative; overflow: hidden; }
+.cover::after { content: ""; position: absolute; inset: 0; background: repeating-linear-gradient(90deg, rgba(255,255,255,.06) 0 1px, transparent 1px 40px); }
+.entry p { color: var(--ink2); font-size: 16px; line-height: 1.65; margin: 0 0 16px; }
+.shipped { border-radius: 14px; box-shadow: 0 0 0 1px var(--rule); overflow: hidden; }
+.shipped .hd { display: flex; justify-content: space-between; padding: 10px 14px; background: var(--paper); font: 700 11px var(--mono); letter-spacing: .12em; text-transform: uppercase; color: var(--ink3); }
+.shipped .it { display: flex; align-items: center; gap: 12px; padding: 12px 14px; border-top: 1px solid var(--rule); font-weight: 500; }
+.shipped .it b { margin-left: auto; font: 700 13px var(--mono); }
+.dot { width: 9px; height: 9px; border-radius: 50%; background: var(--brand); flex: none; }
+.reacts { display: flex; gap: 8px; margin-top: 16px; }
+.react { height: 36px; padding: 0 12px; border-radius: 99px; box-shadow: inset 0 0 0 1px var(--rule2); font: 600 13px var(--mono); display: inline-flex; gap: 6px; align-items: center; }
+.react.on { box-shadow: inset 0 0 0 1.5px var(--brand); background: var(--tint); }
+
+/* ── Help index ────────────────────────────── */
+.help-hero { padding: 64px 0 40px; text-align: left; }
+.bigsearch { display: flex; align-items: center; gap: 14px; height: 64px; padding: 0 22px; border-radius: 18px; background: var(--sheet); box-shadow: 0 0 0 1px var(--rule), 0 20px 40px -30px rgba(0,0,0,.3); font-size: 18px; color: var(--ink3); max-width: 720px; margin-top: 24px; }
+.index { display: grid; grid-template-columns: repeat(3, 1fr); gap: 0 36px; border-top: 2px solid var(--ink); margin-bottom: 48px; }
+.ix { display: grid; grid-template-columns: 44px 1fr auto; gap: 10px; align-items: baseline; padding: 20px 0; border-bottom: 1px solid var(--rule); text-align: left; }
+.ix .no { font: 700 13px var(--mono); color: var(--ink3); }
+.ix .t { font: 600 19px var(--display); letter-spacing: -.01em; }
+.ix .d { grid-column: 2; font-size: 13.5px; color: var(--ink2); }
+.ix .c { font: 600 12px var(--mono); color: var(--ink3); }
+.pop { display: grid; grid-template-columns: repeat(2, 1fr); gap: 12px; padding-bottom: 64px; }
+.pop a { display: flex; align-items: center; gap: 12px; padding: 16px 18px; border-radius: 14px; background: var(--sheet); box-shadow: 0 0 0 1px var(--rule); font-weight: 500; }
+.pop a svg { margin-left: auto; color: var(--ink3); }
+.foot { text-align: center; padding: 24px 0 120px; font: 600 11px var(--mono); letter-spacing: .12em; text-transform: uppercase; color: var(--ink3); }
+
+/* ── Dock (phones) ─────────────────────────── */
+.dock { display: none; }
+
+/* ════════ Phone layout ════════ */
+@media (max-width: 760px) {
+  body { font-size: 15px; }
+  .top-in { height: 56px; padding: 0 18px; gap: 12px; }
+  .nav, .top .solid { display: none; }
+  .wrap { padding: 0 18px; }
+  .hero { grid-template-columns: 1fr; gap: 20px; padding: 28px 0 22px; }
+  .h1 { font-size: 38px; margin: 10px 0 10px; }
+  .lede { font-size: 15.5px; }
+  .board { display: grid; grid-template-columns: repeat(4, 1fr); padding: 14px 12px; border-radius: 16px; }
+  .board .live { grid-column: 1 / -1; }
+  .board .row { display: flex; flex-direction: column-reverse; align-items: flex-start; border: 0; padding: 4px 6px; border-left: 1px dashed color-mix(in oklab, var(--paper) 18%, transparent); }
+  .board .row:first-of-type { border-left: 0; }
+  .board .v { font-size: 22px; } .board .v small { display: none; }
+  .board .k { font-size: 9.5px; letter-spacing: .08em; }
+  .tools .search { width: auto; flex: 1; }
+  .tools .chip, .tools .grow { display: none; }
+  /* The line turns vertical: one scroll, no column switching. */
+  .line { grid-template-columns: 1fr; gap: 0; padding-left: 44px; padding-bottom: 24px; }
+  .line::before { left: 13px; right: auto; top: 6px; bottom: 30px; width: 4px; height: auto; background: linear-gradient(180deg, var(--brand) 0 40%, color-mix(in oklab, var(--brand) 30%, transparent) 40%); }
+  .stop { flex-direction: row; align-items: center; gap: 12px; position: sticky; top: 56px; z-index: 3; margin: 0 -18px 12px -44px; padding: 10px 18px 10px 0; background: color-mix(in oklab, var(--paper) 92%, transparent); backdrop-filter: blur(8px); }
+  .station { padding-bottom: 22px; }
+  .car { grid-template-columns: 52px 1fr; padding: 14px; }
+  .vote { height: 58px; font-size: 18px; }
+  .ticket { top: auto; left: 0; right: 0; bottom: 0; width: 100%; height: 92%; border-radius: 26px 26px 0 0; transform: translateY(105%); }
+  body.open .ticket { transform: none; }
+  .ticket::before { content: ""; position: absolute; top: 8px; left: 50%; transform: translateX(-50%); width: 40px; height: 5px; border-radius: 3px; background: var(--rule2); z-index: 2; }
+  .tk-head { padding: 26px 20px 20px; } .tk-head h2 { font-size: 25px; }
+  .tk-body { padding: 18px 20px; }
+  .compose { padding-bottom: 30px; }
+  .ideas { grid-template-columns: 1fr; padding-top: 26px; padding-bottom: 40px; gap: 0; }
+  .title2 { font-size: 34px; margin-bottom: 16px; }
+  .lrow { grid-template-columns: 62px minmax(0, 1fr); gap: 12px; padding: 16px 0; }
+  .lrow .st, .lrow .cm, .lhead { display: none; }
+  .lrow .mob { display: flex; gap: 12px; margin-top: 6px; }
+  .lvote { flex-direction: column; gap: 0; font-size: 22px; align-items: flex-start; }
+  .form-ticket { display: none; }
+  body.form .form-ticket { display: block; position: fixed; inset: auto 0 0 0; top: 48px; z-index: 41; border-radius: 26px 26px 0 0; overflow-y: auto; }
+  body.form .scrim { opacity: 1; pointer-events: auto; }
+  .journal { padding-top: 26px; padding-bottom: 40px; }
+  .entry { grid-template-columns: 1fr; gap: 10px; padding: 24px 0; }
+  .date { position: static; display: flex; align-items: baseline; gap: 8px; }
+  .date b { display: inline; font-size: 30px; }
+  .entry h3 { font-size: 25px; }
+  .cover { height: 170px; }
+  .help-hero { padding: 30px 0 22px; }
+  .bigsearch { height: 54px; font-size: 16px; margin-top: 16px; }
+  .index { grid-template-columns: 1fr; }
+  .pop { grid-template-columns: 1fr; }
+  .dock { display: flex; position: fixed; z-index: 30; left: 12px; right: 12px; bottom: 12px; height: 66px; border-radius: 22px; background: var(--ink); color: var(--paper); align-items: center; justify-content: space-around; padding: 0 6px; box-shadow: 0 18px 40px -18px rgba(0,0,0,.6); }
+  .dock button { display: flex; flex-direction: column; align-items: center; gap: 3px; font: 600 10px var(--mono); letter-spacing: .06em; text-transform: uppercase; opacity: .55; width: 58px; }
+  .dock button.on { opacity: 1; }
+  .dock button svg { width: 20px; height: 20px; }
+  .dock .share { opacity: 1; width: 54px; height: 54px; margin-top: -26px; border-radius: 18px; background: var(--brand); color: #fff; justify-content: center; box-shadow: 0 10px 20px -8px color-mix(in oklab, var(--brand) 80%, transparent); }
+  .dock .share svg { width: 24px; height: 24px; }
+}
+</style></head>
+<body>
+<svg width="0" height="0" style="position:absolute">
+  <symbol id="up" viewBox="0 0 24 24"><path d="m6 15 6-6 6 6"/></symbol>
+  <symbol id="msg" viewBox="0 0 24 24"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/></symbol>
+  <symbol id="bulb" viewBox="0 0 24 24"><path d="M9 18h6M10 22h4M12 2a7 7 0 0 0-4 12.7c.6.5 1 1.3 1 2.1V17h6v-.2c0-.8.4-1.6 1-2.1A7 7 0 0 0 12 2z"/></symbol>
+  <symbol id="search" viewBox="0 0 24 24"><circle cx="11" cy="11" r="7"/><path d="m20 20-3.5-3.5"/></symbol>
+  <symbol id="x" viewBox="0 0 24 24"><path d="M18 6 6 18M6 6l12 12"/></symbol>
+  <symbol id="plus" viewBox="0 0 24 24"><path d="M12 5v14M5 12h14"/></symbol>
+  <symbol id="send" viewBox="0 0 24 24"><path d="m22 2-7 20-4-9-9-4 20-7z"/></symbol>
+  <symbol id="right" viewBox="0 0 24 24"><path d="M5 12h14M13 6l6 6-6 6"/></symbol>
+  <symbol id="cal" viewBox="0 0 24 24"><rect x="3" y="4" width="18" height="18" rx="2"/><path d="M16 2v4M8 2v4M3 10h18"/></symbol>
+  <symbol id="check" viewBox="0 0 24 24"><path d="M20 6 9 17l-5-5"/></symbol>
+  <symbol id="route" viewBox="0 0 24 24"><circle cx="6" cy="19" r="3"/><circle cx="18" cy="5" r="3"/><path d="M12 19h4.5a3.5 3.5 0 0 0 0-7h-9a3.5 3.5 0 0 1 0-7H12"/></symbol>
+  <symbol id="list" viewBox="0 0 24 24"><path d="M8 6h13M8 12h13M8 18h13M3 6h.01M3 12h.01M3 18h.01"/></symbol>
+  <symbol id="news" viewBox="0 0 24 24"><path d="M4 22h16a2 2 0 0 0 2-2V4a2 2 0 0 0-2-2H8a2 2 0 0 0-2 2v16a2 2 0 0 1-2 2Zm0 0a2 2 0 0 1-2-2v-9c0-1.1.9-2 2-2h2M18 14h-8M15 18h-5M10 6h8v4h-8z"/></symbol>
+  <symbol id="help" viewBox="0 0 24 24"><circle cx="12" cy="12" r="10"/><path d="M9.1 9a3 3 0 0 1 5.8 1c0 2-3 3-3 3M12 17h.01"/></symbol>
+</svg>
+
+<header class="top"><div class="top-in">
+  <span class="mark"><i>A</i>Acme</span>
+  <nav class="nav"><button data-go="roadmap">Roadmap</button><button data-go="ideas">Ideas</button><button data-go="updates">Updates</button><button data-go="help">Help</button></nav>
+  <span class="grow"></span>
+  <button class="ghost">Sign in</button>
+  <button class="solid" data-form>Share an idea</button>
+</div></header>
+
+<!-- ROADMAP -->
+<section class="page" data-page="roadmap"><div class="wrap">
+  <div class="hero">
+    <div>
+      <div class="eyebrow">Acme · public roadmap</div>
+      <div class="h1">Where Acme is <em>headed.</em></div>
+      <p class="lede">Every feature travels the same line: from your idea, to the plan, to shipped. Vote for the ones you need.</p>
+    </div>
+    <div class="board">
+      <div class="live"><i></i>Live · updated today</div>
+      <div class="row"><span class="k">Now</span><span class="v">03<small>in progress</small></span></div>
+      <div class="row"><span class="k">Next</span><span class="v">05<small>planned</small></span></div>
+      <div class="row"><span class="k">Later</span><span class="v">08<small>considering</small></span></div>
+      <div class="row"><span class="k">Shipped</span><span class="v">24<small>this year</small></span></div>
+    </div>
+  </div>
+  <div class="tools"><div class="search"><svg class="i"><use href="#search"/></svg>Search the roadmap</div><span class="grow"></span><span class="chip on">All</span><span class="chip">Integrations</span><span class="chip">Mobile</span><span class="chip">Security</span></div>
+  <div class="line" id="line"></div>
+  <div class="foot">Powered by Radius Roadmap</div>
+</div></section>
+
+<!-- IDEAS -->
+<section class="page" data-page="ideas"><div class="wrap ideas">
+  <div>
+    <div class="eyebrow">Ideas · 134 open</div>
+    <div class="title2">What should Acme build next?</div>
+    <div class="tools"><div class="search" style="width:auto;flex:1"><svg class="i"><use href="#search"/></svg>Search ideas</div><span class="chip on">Trending</span><span class="chip">Top</span><span class="chip">New</span></div>
+    <div class="mine"><div>Export my board to Notion<span>Waiting for review</span></div><div>Keyboard shortcuts<span>Waiting for review</span></div></div>
+    <div class="ledger">
+      <div class="lrow lhead"><span>Votes</span><span>Idea</span><span>Status</span><span style="text-align:right">Talk</span></div>
+      <div id="ledger"></div>
+    </div>
+  </div>
+  <aside class="form-ticket">
+    <div class="fh"><div class="eyebrow">New idea</div><h3>Tell us what you need</h3></div>
+    <div class="fb">
+      <div class="fld"><label>Title</label><div class="inp typed">Export to CSV</div></div>
+      <div class="alike"><p>Already on the board, vote instead?</p><a><svg class="i"><use href="#bulb"/></svg>Download board as spreadsheet<b>96</b></a><a><svg class="i"><use href="#bulb"/></svg>CSV export for votes<b>12</b></a></div>
+      <div class="fld"><label>Details · optional</label><div class="inp area">What problem would this solve?</div></div>
+      <button class="submit">Post idea</button>
+    </div>
+  </aside>
+</div></section>
+
+<!-- UPDATES -->
+<section class="page" data-page="updates"><div class="wrap journal">
+  <div class="eyebrow">Updates</div>
+  <div class="title2">What we shipped</div>
+  <div class="sub"><span>you@company.com</span><button class="solid">Get updates</button></div>
+  <article class="entry">
+    <div class="date"><b>05</b><span>Nov 2026</span></div>
+    <div>
+      <div class="kind">New · Release 4.2</div>
+      <h3>Dark mode is here</h3>
+      <div class="cover"></div>
+      <p>Dark mode is on for every board, the roadmap and the widget. It follows your system setting, and you can switch it anytime.</p>
+      <div class="shipped"><div class="hd"><span>Shipped from the roadmap</span><span>412 people asked</span></div><div class="it"><span class="dot"></span>Dark mode<b>218</b></div><div class="it"><span class="dot"></span>CSV export<b>96</b></div><div class="it"><span class="dot"></span>Slack alerts<b>98</b></div></div>
+      <div class="reacts"><span class="react on">👍 42</span><span class="react">🎉 18</span><span class="react">❤️ 9</span></div>
+    </div>
+  </article>
+  <article class="entry">
+    <div class="date"><b>28</b><span>Oct 2026</span></div>
+    <div>
+      <div class="kind">Improved</div>
+      <h3>Roadmaps open twice as fast</h3>
+      <p>Big boards load in half the time, especially on phones and slow networks.</p>
+      <div class="reacts"><span class="react">👍 12</span><span class="react">🎉 4</span></div>
+    </div>
+  </article>
+  <div class="foot">Powered by Radius Roadmap</div>
+</div></section>
+
+<!-- HELP -->
+<section class="page" data-page="help"><div class="wrap">
+  <div class="help-hero">
+    <div class="eyebrow">Help centre · 46 articles</div>
+    <div class="h1" style="font-size:clamp(36px,4.6vw,58px)">How can we help?</div>
+    <div class="bigsearch"><svg class="i" style="width:20px;height:20px"><use href="#search"/></svg>Search for answers…</div>
+  </div>
+  <div class="index">
+    <button class="ix"><span class="no">01</span><span class="t">Getting started</span><span class="c">8</span><span class="d">Your first roadmap, team and widget.</span></button>
+    <button class="ix"><span class="no">02</span><span class="t">Ideas & voting</span><span class="c">9</span><span class="d">Collect, review and merge feedback.</span></button>
+    <button class="ix"><span class="no">03</span><span class="t">Integrations</span><span class="c">14</span><span class="d">Slack, Zapier, API and webhooks.</span></button>
+    <button class="ix"><span class="no">04</span><span class="t">Billing</span><span class="c">6</span><span class="d">Plans, invoices and Pro features.</span></button>
+    <button class="ix"><span class="no">05</span><span class="t">Security</span><span class="c">5</span><span class="d">SSO, data and privacy.</span></button>
+    <button class="ix"><span class="no">06</span><span class="t">Custom domain</span><span class="c">4</span><span class="d">Serve your site on your own address.</span></button>
+  </div>
+  <div class="label" style="margin-top:0">Most read</div>
+  <div class="pop"><a>Install the widget<svg class="i"><use href="#right"/></svg></a><a>Invite your team<svg class="i"><use href="#right"/></svg></a><a>Connect a custom domain<svg class="i"><use href="#right"/></svg></a><a>Single sign-on for voters<svg class="i"><use href="#right"/></svg></a></div>
+  <div class="foot">Powered by Radius Roadmap</div>
+</div></section>
+
+<!-- Ticket (card detail) -->
+<div class="scrim" data-close></div>
+<aside class="ticket" aria-label="Card">
+  <div class="tk-head">
+    <button class="close" data-close aria-label="Close"><svg class="i"><use href="#x"/></svg></button>
+    <span class="stamp" id="tkStamp">● Now · in progress</span>
+    <h2 id="tkTitle">Single sign-on with Okta and Azure AD</h2>
+    <div class="meta"><span><svg class="i"><use href="#cal"/></svg>ETA Q1 2027</span><span><svg class="i"><use href="#msg"/></svg>4 comments</span><span>Security</span></div>
+    <button class="bigvote"><svg class="i"><use href="#up"/></svg>Vote <b id="tkVotes">148</b></button>
+  </div>
+  <div class="tk-body">
+    <p>Sign in to Acme with your company's identity provider. We're starting with Okta and Azure AD, with Google Workspace right after.</p>
+    <div class="label">Requested in</div>
+    <a class="from"><svg class="i"><use href="#bulb"/></svg>SAML login for our team<b>62</b></a>
+    <a class="from"><svg class="i"><use href="#bulb"/></svg>Azure AD support<b>31</b></a>
+    <div class="label">Conversation</div>
+    <div class="msg"><span class="av">PN</span><div><div class="who">Priya N.<span>2d</span></div><div class="tx">Our renewal is in January and SSO is the blocker. Any timeline?</div></div></div>
+    <div class="msg"><span class="av" style="background:var(--brand);color:#fff">SK</span><div><div class="who">Sara<span class="team">TEAM</span><span>1d</span></div><div class="tx">Targeting early Q1. We'll post on the Updates page the day it ships.</div></div></div>
+  </div>
+  <div class="compose"><div class="in">Add to the conversation…</div><button aria-label="Send"><svg class="i"><use href="#send"/></svg></button></div>
+</aside>
+
+<nav class="dock">
+  <button data-go="roadmap"><svg class="i"><use href="#route"/></svg>Roadmap</button>
+  <button data-go="ideas"><svg class="i"><use href="#list"/></svg>Ideas</button>
+  <button class="share" data-form aria-label="Share an idea"><svg class="i"><use href="#plus"/></svg></button>
+  <button data-go="updates"><svg class="i"><use href="#news"/></svg>Updates</button>
+  <button data-go="help"><svg class="i"><use href="#help"/></svg>Help</button>
+</nav>
+
+<script>
+const S = [
+  { k: "Now", s: "In progress", node: "now", cars: [
+    ["sso", "Single sign-on with Okta and Azure AD", "Security", 148, true, "Sign in with your company's identity provider.", "Q1", 4, 2],
+    ["mobile", "Mobile app for iOS and Android", "Mobile", 203, false, "Vote, follow and comment from your phone.", "Dec", 9, 3],
+    ["api", "Public API v2", "Integrations", 74, false, "Webhooks and write access for cards.", "Nov", 3, 1],
+  ]},
+  { k: "Next", s: "Planned", node: "", cars: [
+    ["zap", "Zapier integration", "Integrations", 61, false, "Send ideas and votes to 5,000+ apps.", "Q1", 2, 1],
+    ["timeline", "Timeline view of the roadmap", "Roadmap", 33, false, "See cards on a calendar by quarter.", "Q2", 0, 0],
+  ]},
+  { k: "Later", s: "Considering", node: "later", cars: [
+    ["fields", "Custom fields on ideas", "Ideas", 52, false, "Plan, company size or anything you track.", "", 6, 0],
+    ["ai", "Group similar ideas automatically", "Ideas", 27, false, "Fewer duplicates without manual merging.", "", 1, 0],
+  ]},
+  { k: "Shipped", s: "Done", node: "done", cars: [
+    ["dark", "Dark mode", "Design", 218, false, "Everywhere, following your system.", "Nov 5", 12, 2],
+    ["csv", "CSV export", "Data", 96, false, "Export any board as a spreadsheet.", "Nov 5", 1, 3],
+  ]},
+];
+const ic = (id) => `<svg class="i"><use href="#${id}"/></svg>`;
+document.getElementById("line").innerHTML = S.map((st) => `
+  <div class="station">
+    <div class="stop"><span class="node ${st.node}">${st.node === "done" ? ic("check") : ""}</span><div><span class="t">${st.k}</span><span class="s">${st.s}</span><span class="n">${String(st.cars.length).padStart(2, "0")}</span></div></div>
+    <div class="cars">${st.cars.map(([id, t, tag, v, on, d, eta, c, ideas]) => `
+      <button class="car ${st.node === "done" ? "shipped" : ""}" data-card="${id}" data-title="${t}" data-votes="${v}" data-stage="${st.k}">
+        <span class="vote ${on ? "on" : ""}">${ic("up")}${v}</span>
+        <span><span class="tag">${tag}</span><div class="tt">${t}</div><div class="ds">${d}</div>
+        <div class="ft">${eta ? `<span>${ic("cal")}${eta}</span>` : ""}<span>${ic("msg")}${c}</span>${ideas ? `<span>${ic("bulb")}${ideas}</span>` : ""}</div></span>
+      </button>`).join("")}
+      ${st.node === "done" ? `<button class="more">+ 22 more shipped →</button>` : ""}
+    </div>
+  </div>`).join("");
+
+const L = [
+  ["Custom fields on ideas", "Let us add plan or company size to every idea.", 52, false, "Considering", "#8a919c", 6],
+  ["Slack alerts for new feedback", "Post new ideas to a channel as they arrive.", 44, true, "Planned", "#7c5cf0", 3],
+  ["Let voters edit their own idea", "Fix typos after posting.", 19, false, "Under review", "#d4920a", 1],
+  ["Sort the roadmap by votes", "Most wanted first in every column.", 17, false, "Considering", "#8a919c", 0],
+  ["Weekly digest email", "One summary of what moved this week.", 12, false, "New", "#c9cdd5", 2],
+];
+document.getElementById("ledger").innerHTML = L.map(([t, d, v, on, st, c, cm]) => `
+  <button class="lrow"><span class="lvote ${on ? "on" : ""}">${ic("up")}${v}</span>
+  <span><div class="tt">${t}</div><div class="ds">${d}</div><div class="mob" style="display:none"><span class="st" style="--c:${c}"><i></i>${st}</span><span class="cm">${ic("msg")}${cm}</span></div></span>
+  <span class="st" style="--c:${c}"><i></i>${st}</span><span class="cm">${ic("msg")}${cm}</span></button>`).join("");
+
+function go(p) {
+  document.querySelectorAll(".page").forEach((s) => s.classList.toggle("on", s.dataset.page === p));
+  document.querySelectorAll("[data-go]").forEach((b) => b.classList.toggle("on", b.dataset.go === p));
+  document.body.classList.remove("open", "form");
+  window.scrollTo(0, 0);
+}
+function openCard(el) {
+  document.getElementById("tkTitle").textContent = el.dataset.title;
+  document.getElementById("tkVotes").textContent = el.dataset.votes;
+  document.getElementById("tkStamp").textContent = `● ${el.dataset.stage}`;
+  document.body.classList.add("open");
+}
+document.addEventListener("click", (e) => {
+  const g = e.target.closest("[data-go]"); if (g) go(g.dataset.go);
+  const c = e.target.closest("[data-card]"); if (c) openCard(c);
+  if (e.target.closest("[data-close]")) document.body.classList.remove("open", "form");
+  if (e.target.closest("[data-form]")) { if (innerWidth <= 760) { go("ideas"); document.body.classList.add("form"); } else go("ideas"); }
+});
+/* Phone list rows show status under the title. */
+if (innerWidth <= 760) document.querySelectorAll(".mob").forEach((m) => (m.style.display = "flex"));
+const P = new URLSearchParams(location.hash.slice(1));
+go(P.get("page") || "roadmap");
+if (P.get("open")) { const el = document.querySelector(`[data-card="${P.get("open")}"]`); if (el) openCard(el); }
+if (P.get("form")) document.body.classList.add("form");
+</script>
+</body></html>
+</textarea>
+
+<script>
+const tpl = document.getElementById("site").value;
+const state = { page: "roadmap", brand: "#2f5bff", theme: "light", view: "both" };
+function doc(extra = {}) {
+  const hash = new URLSearchParams({ page: state.page, ...extra }).toString();
+  return tpl
+    .replace("<html>", `<html data-theme="${state.theme}" style="--brand:${state.brand}">`)
+    .replace("const P = new URLSearchParams(location.hash.slice(1));", `const P = new URLSearchParams(${JSON.stringify(hash)});`);
+}
+function render() {
+  document.getElementById("desk").srcdoc = doc();
+  document.getElementById("url").textContent = `feedback.acme.com/${state.page}`;
+  document.querySelectorAll("#phoneWrap iframe").forEach((f) => {
+    const extra = { page: f.dataset.start };
+    if (f.dataset.open) extra.open = f.dataset.open;
+    if (f.dataset.form) extra.form = "1";
+    const saved = state.page; state.page = f.dataset.start;
+    f.srcdoc = doc(extra);
+    state.page = saved;
+  });
+  document.getElementById("deskWrap").hidden = state.view === "phone";
+  document.getElementById("phoneWrap").hidden = state.view === "desk";
+}
+const BRANDS = ["#2f5bff", "#f2541b", "#0f9d74", "#c026d3", "#0d1014", "#e11d48"];
+document.getElementById("brands").innerHTML = BRANDS.map((c, i) => `<button class="sw ${i ? "" : "on"}" style="--c:${c}" data-b="${c}" aria-label="Brand ${c}"></button>`).join("");
+function seg(id, key, attr) {
+  document.getElementById(id).addEventListener("click", (e) => {
+    const b = e.target.closest("button"); if (!b) return;
+    document.querySelectorAll(`#${id} button`).forEach((x) => x.classList.toggle("on", x === b));
+    state[key] = b.dataset[attr]; render();
+  });
+}
+seg("view", "view", "v"); seg("page", "page", "p"); seg("theme", "theme", "t");
+document.getElementById("brands").addEventListener("click", (e) => {
+  const b = e.target.closest("[data-b]"); if (!b) return;
+  document.querySelectorAll(".sw").forEach((x) => x.classList.toggle("on", x === b));
+  state.brand = b.dataset.b; render();
+});
+render();
+</script>
+</body>
+</html>

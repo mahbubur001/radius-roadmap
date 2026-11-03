@@ -139,7 +139,7 @@ What exists today:
 
 ## 7. Not in Phase 6
 - Agency plan / sub-accounts, coupons UI (Stripe Portal handles promo codes), usage-based pricing, tax (Stripe Tax can be switched on later without code changes).
-- Public API + webhooks, SSO/SAML for team members, Jira, AI tagging, WordPress plugin (Later list).
+- Public API + webhooks, SSO/SAML for team members, Jira, AI tagging (Later list).
 - Custom SMTP per account (doc 09) — **open: Phase 6C or later?** Recommend later.
 - Translations / multi-language, password-protected public sites (Pro gate exists; feature later), custom CSS.
 

@@ -33,6 +33,7 @@
 - Phase 7 plan (public REST API + webhooks; approved + built 2026-11-01): `docs/27-phase-7-plan.md`
 - Phase 8 plan (platform admin: invite customers, set plans, suspend; approved + built 2026-11-01): `docs/28-phase-8-plan.md`
 - Two plans, Free + Pro (Pro = custom domain, uploads, no "Powered by"); files on R2 only; email on SES only; admin redesign (built 2026-11-01): `docs/29-two-plans.md`
+- Public site "Transit" (approved 2026-11-03, being built; preview `docs/design/public-transit-preview.html`): `docs/32-public-transit-plan.md`
 - Public site on mobile (approved + built 2026-11-03; preview `docs/design/public-mobile-preview.html`): `docs/31-public-mobile-plan.md`
 - Dashboard + operator redesign "Signal" (approved + built 2026-11-02; preview `docs/design/redesign-preview.html`): `docs/30-redesign-plan.md`
 - Stack versions as built: `docs/14-dev-tools.md` → "Versions as built"
@@ -78,9 +79,9 @@
 
 ## Next step
 Resume here. On a new session say: *"Read docs/PROGRESS.md and continue from Next step."*
-0. **Owner:** run `pnpm db:migrate` on the other Mac (migrations 0017 and 0018); look through the dashboard redesign and the public site on a phone; send screenshots of anything to adjust. Then: WordPress plugin plan (doc 32).
+0. **Owner:** run `pnpm db:migrate` on the other Mac (migrations 0017 and 0018); look through the dashboard redesign and the public site on a phone; send screenshots of anything to adjust.
 1. **Owner decision pending:** Comments (and Follows) on by default for new workspaces? (Recommended yes; reverses doc 20 D3.) And switch them on for existing workspaces?
-2. **R2 CORS rule added 2026-11-02** (localhost:3000, PUT/GET, headers content-type + content-disposition); preflight checked and the 3 upload e2e tests (avatar, brand colour, attachments) pass. **Add the production app origin to the rule at deploy.** Already done: `R2_*` keys + `R2_PUBLIC_URL` set; SES in Mumbai (`ap-south-1`) has production access and `radiusdirectory.com` is verified (DKIM OK); `EMAIL_FROM=noreply@radiusdirectory.com`. Still to do: add your own email to `PLATFORM_ADMIN_EMAILS`; restart `pnpm dev` (it served stale files after many changes). Next phase after that: WordPress plugin plan (doc 32).
+2. **R2 CORS rule added 2026-11-02** (localhost:3000, PUT/GET, headers content-type + content-disposition); preflight checked and the 3 upload e2e tests (avatar, brand colour, attachments) pass. **Add the production app origin to the rule at deploy.** Already done: `R2_*` keys + `R2_PUBLIC_URL` set; SES in Mumbai (`ap-south-1`) has production access and `radiusdirectory.com` is verified (DKIM OK); `EMAIL_FROM=noreply@radiusdirectory.com`. Still to do: add your own email to `PLATFORM_ADMIN_EMAILS`; restart `pnpm dev` (it served stale files after many changes). 
    - For production custom domains: A record for the `CUSTOM_DOMAIN_TARGET` hostname → server, set the env var, deploy the new `deploy/Caddyfile`.
 3. **Owner (for a real billing test):** create a Stripe test account, put the keys in `.env.local`, run `pnpm stripe:setup`, `stripe listen --forward-to localhost:3000/api/webhooks/stripe`, turn on the customer portal with plan switching. Then try Checkout → Pro → cancel (doc 26 §10 last bullet).
 4. **Owner (blocking for the imports):** export from LoopedIn and put both files in `docs/samples/`: the roadmap (Roadmap → More → Export) and the feedback (Boards → More → Export).
@@ -98,7 +99,7 @@ Resume here. On a new session say: *"Read docs/PROGRESS.md and continue from Nex
   - single app (repo option A), EC2 + pm2 (`web` + `worker`) + Caddy
   - Context7 for library docs
 - All plan changes in doc 15 §9 and doc 16 §8 (approved 2026-10-27), including:
-  - Server-rendered, indexable public pages; auto-resize embed; WordPress plugin later
+  - Server-rendered, indexable public pages; auto-resize embed
   - Voter sign-in: magic link / Google / guest / customer SSO. No SaaS account for voters
   - Cloudflare Turnstile on public submissions and guest votes
   - Anonymous voting with dedupe (visitor cookie + hashed IP) and coarse geo
@@ -122,7 +123,7 @@ Resume here. On a new session say: *"Read docs/PROGRESS.md and continue from Nex
   7. Phase 6 — Billing (Stripe) + widget + custom domains + white-label
   8. Phase 7 — Public REST API + webhooks (doc 27)
   9. Phase 8 — Platform admin (doc 28)
-  10. Later — SSO/SAML, Jira, AI tagging, WordPress plugin
+  10. Later — SSO/SAML, Jira, AI tagging
 
 ## Phase checklist
 - [x] Research LoopedIn (public docs) — docs 00–13
@@ -176,9 +177,9 @@ Resume here. On a new session say: *"Read docs/PROGRESS.md and continue from Nex
 | 2026-11-01 | radiustheme (Mac 2) | Public UI polish (theme light/dark, tabs, tooltips, clickable comments, colour strip); Phase 6B Widget built (migration 0012, widget.js 9.9 KB gz, Settings → Widget, widget API, identity tokens). 232 unit + 29 e2e | Comments default decision; 6C Branding |
 | 2026-11-01 | radiustheme (Mac 2) | Phase 6C Branding (doc 26 B1–B7 approved): account_settings (migration 0013), Settings → Branding, workspace theme, brand on public sites/embeds/widget/end-user emails, favicon; 243 unit + 30 e2e | Comments default decision; 6D Custom domain plan steps |
 | 2026-11-01 | radiustheme (Mac 2) | Phase 6D Custom domain (doc 26 D1–D9; D1 = customer-owned domains): custom_domains (migration 0014), Settings → Domain, verify job + emails, proxy custom-host routing + redirects, links on the domain, Caddy on-demand TLS; 256 unit + 31 e2e. **Phase 6 done** | Owner picks the next phase; production DNS for custom domains |
-| 2026-11-01 | radiustheme (Mac 2) | Phase 7 (doc 27, A1–A12): API keys, REST API v1 (reads + card/feedback/update writes), OpenAPI + reference page, signed webhooks (18 events, retries, SSRF guard with no socket reuse, delivery log, auto-off + email); migration 0015; 280 unit + 32 e2e. **Phase 7 done** | Owner picks the next phase (WordPress plugin / Jira / AI tagging / SSO) |
-| 2026-11-01 | radiustheme (Mac 2) | Phase 8 platform admin (doc 28, C1–C10, C1 = env email list): /admin (proxy 404 for others), accounts list/detail, plan overrides + reminder emails, invite a customer, suspend/restore everywhere, audit log; migration 0016; 287 unit + 33 e2e. **Phase 8 done** | Owner adds their email to PLATFORM_ADMIN_EMAILS; WordPress plugin plan (doc 29) |
-| 2026-11-01 | radiustheme (Mac 2) | Doc 29: two plans (Free = everything, Pro = custom domain + uploads + no Powered by), upload wall, storage R2-only (presigned PUT, magic-byte check, fake R2 in tests), email SES-only (e2e reads the queue), operator console redesign; 288 unit + e2e green | Owner: R2_PUBLIC_URL + CORS, AWS keys for SES, own email in PLATFORM_ADMIN_EMAILS; then WordPress plugin plan |
-| 2026-11-01 | radiustheme (Mac 2) | Set up SES (Mumbai, production access, domain verified) and R2 keys/public URL; checked both read-only; found the R2 bucket has no CORS rule (browser uploads 403); default AWS region → ap-south-1 | Owner adds the R2 CORS rule → run the 3 upload e2e tests; own email in PLATFORM_ADMIN_EMAILS; WordPress plugin plan (doc 32) |
-| 2026-11-02 | radiustheme (Mac 2) | R2 CORS added (uploads work); redesign "Signal" doc 30 approved + built in 10 steps (shell, ⌘K, stage ticks + migration 0017, Home signal, three-pane Feedback, Roadmap + Edit roadmap redesign + Unpublish/Delete, Updates + voters' email + migration 0018, Articles, Settings, dark operator console, auth pages); owner removed the workspace rail; fixed page scroll past the frame, lost padding after Feedback, narrow menus, idea-workflow gaps; all checks green | Owner reviews the redesign on both Macs (`pnpm db:migrate`); WordPress plugin plan (doc 32) |
-| 2026-11-03 | radiustheme (Mac 2) | Found the real cause of the dev reload loop (Turbopack dev cache reused across restarts) and turned it off; public mobile preview approved; doc 31 built: phone header, roadmap column chips, bottom sheets, floating Share an idea, look-alike ideas while typing, unique form ids, phone e2e | Owner checks the public site on a phone; WordPress plugin plan (doc 32) |
+| 2026-11-01 | radiustheme (Mac 2) | Phase 7 (doc 27, A1–A12): API keys, REST API v1 (reads + card/feedback/update writes), OpenAPI + reference page, signed webhooks (18 events, retries, SSRF guard with no socket reuse, delivery log, auto-off + email); migration 0015; 280 unit + 32 e2e. **Phase 7 done** | Owner picks the next phase (Jira / AI tagging / SSO) |
+| 2026-11-01 | radiustheme (Mac 2) | Phase 8 platform admin (doc 28, C1–C10, C1 = env email list): /admin (proxy 404 for others), accounts list/detail, plan overrides + reminder emails, invite a customer, suspend/restore everywhere, audit log; migration 0016; 287 unit + 33 e2e. **Phase 8 done** | Owner adds their email to PLATFORM_ADMIN_EMAILS |
+| 2026-11-01 | radiustheme (Mac 2) | Doc 29: two plans (Free = everything, Pro = custom domain + uploads + no Powered by), upload wall, storage R2-only (presigned PUT, magic-byte check, fake R2 in tests), email SES-only (e2e reads the queue), operator console redesign; 288 unit + e2e green | Owner: R2_PUBLIC_URL + CORS, AWS keys for SES, own email in PLATFORM_ADMIN_EMAILS |
+| 2026-11-01 | radiustheme (Mac 2) | Set up SES (Mumbai, production access, domain verified) and R2 keys/public URL; checked both read-only; found the R2 bucket has no CORS rule (browser uploads 403); default AWS region → ap-south-1 | Owner adds the R2 CORS rule → run the 3 upload e2e tests; own email in PLATFORM_ADMIN_EMAILS |
+| 2026-11-02 | radiustheme (Mac 2) | R2 CORS added (uploads work); redesign "Signal" doc 30 approved + built in 10 steps (shell, ⌘K, stage ticks + migration 0017, Home signal, three-pane Feedback, Roadmap + Edit roadmap redesign + Unpublish/Delete, Updates + voters' email + migration 0018, Articles, Settings, dark operator console, auth pages); owner removed the workspace rail; fixed page scroll past the frame, lost padding after Feedback, narrow menus, idea-workflow gaps; all checks green | Owner reviews the redesign on both Macs (`pnpm db:migrate`) |
+| 2026-11-03 | radiustheme (Mac 2) | Found the real cause of the dev reload loop (Turbopack dev cache reused across restarts) and turned it off; public mobile preview approved; doc 31 built: phone header, roadmap column chips, bottom sheets, floating Share an idea, look-alike ideas while typing, unique form ids, phone e2e | Owner checks the public site on a phone |

@@ -2,7 +2,7 @@
 
 Status: **APPROVED and BUILT 2026-11-01** (A1–A12 as recommended; see §7 "As built"). **Phase 7 done.**
 
-Why this first from the "Later" list: the WordPress plugin, Jira sync, Zapier/Make and customers' own tools all build on an API and webhooks. Doing it first means the later integrations reuse it instead of each adding a private channel.
+Why this first from the "Later" list: Jira sync, Zapier/Make and customers' own tools all build on an API and webhooks. Doing it first means the later integrations reuse it instead of each adding a private channel.
 
 Sources:
 - doc 10 (LoopedIn: REST API on Enterprise, `Authorization: Bearer <key>`, 100 req/min, resources; webhooks on Pro, `{ event, date, data }`, 33 events)
@@ -64,7 +64,7 @@ What exists today:
 
 - OAuth apps / "Sign in with Radius Roadmap" for third parties; Zapier app listing (needs the API first; later).
 - API for comments, votes, articles (write), subscribers, team; bulk endpoints.
-- Jira sync, WordPress plugin, AI tagging, SSO/SAML (their own phases).
+- Jira sync, AI tagging, SSO/SAML (their own phases).
 
 ## 6. Done when
 

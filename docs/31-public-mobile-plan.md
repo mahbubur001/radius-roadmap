@@ -1,6 +1,6 @@
 # 31 — Public site on mobile
 
-Status: **APPROVED and BUILT 2026-11-03** (owner: "go for it" on the preview `docs/design/public-mobile-preview.html`). See §4. The WordPress plugin plan moves to doc 32.
+Status: **APPROVED and BUILT 2026-11-03** (owner: "go for it" on the preview `docs/design/public-mobile-preview.html`). See §4.
 
 Scope: the public site (roadmap, ideas, updates, help centre, detail pages) and its embeds below 768 px. Desktop keeps its current layout. The dashboard is not part of this.
 

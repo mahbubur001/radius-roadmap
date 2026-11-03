@@ -50,6 +50,8 @@ export type EmailTemplateProps = {
     /** Waiting for approval. */
     pending: boolean;
     internal: boolean;
+    /** The recipient commented here before (doc 33 "Replies to you"). */
+    reply?: boolean;
     url: string;
     settingsUrl: string;
   };

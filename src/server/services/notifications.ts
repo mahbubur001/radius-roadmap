@@ -2,9 +2,9 @@ import {
   and,
   eq,
   exists,
-  gt,
   inArray,
   isNull,
+  lt,
   or,
   type SQL,
   sql,
@@ -264,6 +264,7 @@ export async function newCommentEmails(
       accountId: comments.accountId,
       workspaceId: comments.workspaceId,
       body: comments.body,
+      createdAt: comments.createdAt,
       review: comments.review,
       isInternal: comments.isInternal,
       deletedAt: comments.deletedAt,
@@ -289,9 +290,31 @@ export async function newCommentEmails(
     .where(eq(comments.id, commentId))
     .limit(1);
   if (!c || c.deletedAt) return [];
-  const to = (await recipients(db, c, "newComment", "instant")).filter(
-    (r) => r.userId !== c.authorUserId,
-  );
+  // Doc 33: members who commented here before get it as a reply (when
+  // "Replies to you" is Right away), instead of a plain new-comment email.
+  const [team, earlier] = await Promise.all([
+    teamPrefs(db, c),
+    db
+      .selectDistinct({ userId: comments.authorUserId })
+      .from(comments)
+      .where(
+        and(
+          eq(comments.accountId, c.accountId),
+          c.feedbackId
+            ? eq(comments.feedbackId, c.feedbackId)
+            : eq(comments.cardId, c.cardId ?? ""),
+          lt(comments.createdAt, c.createdAt),
+          isNull(comments.deletedAt),
+        ),
+      ),
+  ]);
+  const before = new Set(earlier.map((e) => e.userId));
+  const to = team.flatMap((r) => {
+    if (r.userId === c.authorUserId) return [];
+    const reply = before.has(r.userId) && r.prefs.replies === "instant";
+    if (!reply && r.prefs.newComment !== "instant") return [];
+    return [{ ...r, reply }];
+  });
   const l = links(c.wsSlug);
   const pending = c.review === "pending";
   const url = pending
@@ -312,6 +335,7 @@ export async function newCommentEmails(
       excerpt: excerpt(c.body, 500),
       pending,
       internal: c.isInternal,
+      reply: r.reply,
       url,
       settingsUrl: l.settings,
     },

@@ -226,6 +226,49 @@ describe("daily digest", () => {
   });
 });
 
+describe("replies to you (doc 33)", () => {
+  it("a member who commented before gets one reply email, not two", async () => {
+    await setMyPrefs(db, member, {
+      ...defaultPrefs("member"),
+      newComment: "instant",
+    });
+    const idea = await visitorIdea("Reply idea");
+    await addTeamComment(db, member, {
+      target: { feedbackId: idea.id },
+      body: "Can you say more?",
+      internal: false,
+    });
+    const answer = await addPublicComment(db, pub, {
+      target: { feedbackId: idea.id },
+      workspaceId: owner.workspaceId,
+      body: "Sure: for invoices",
+      trackedUserId: visitorId,
+      holdForApproval: false,
+    });
+    const emails = await newCommentEmails(db, answer.id);
+    const toMember = emails.filter((e) => e.userId === member.userId);
+    expect(toMember).toHaveLength(1);
+    expect(toMember[0]?.props).toMatchObject({ reply: true });
+    // The owner never commented there: a plain comment email.
+    expect(emails.find((e) => e.userId === owner.userId)?.props).toMatchObject({
+      reply: false,
+    });
+    // Replies off, comments off: nothing for the member.
+    await setMyPrefs(db, member, { ...defaultPrefs("member"), replies: "off" });
+    const again = await addPublicComment(db, pub, {
+      target: { feedbackId: idea.id },
+      workspaceId: owner.workspaceId,
+      body: "And receipts",
+      trackedUserId: visitorId,
+      holdForApproval: false,
+    });
+    expect(
+      (await newCommentEmails(db, again.id)).map((e) => e.userId),
+    ).not.toContain(member.userId);
+    await setMyPrefs(db, member, defaultPrefs("member"));
+  });
+});
+
 describe("digest sections (doc 33)", () => {
   const ours = (list: Awaited<ReturnType<typeof digestEmails>>) =>
     list.filter((d) => d.workspaceId === owner.workspaceId);

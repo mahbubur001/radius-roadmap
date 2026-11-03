@@ -132,8 +132,10 @@ export const templates: { [T in EmailTemplate]: TemplateDef<T> } = {
     ),
   },
   "new-comment": {
-    subject: ({ targetTitle, author }) =>
-      `${author} commented on “${targetTitle}”`,
+    subject: ({ targetTitle, author, reply }) =>
+      reply
+        ? `${author} replied on “${targetTitle}”`
+        : `${author} commented on “${targetTitle}”`,
     render: ({
       workspaceName,
       targetTitle,
@@ -141,17 +143,21 @@ export const templates: { [T in EmailTemplate]: TemplateDef<T> } = {
       excerpt,
       pending,
       internal,
+      reply,
       url,
       settingsUrl,
     }) => (
       <EmailLayout
         preview={excerpt}
-        heading={internal ? "New internal note" : "New comment"}
-        action={{ label: pending ? "Review the comment" : "Open", url }}
+        heading={
+          reply ? "New reply" : internal ? "New internal note" : "New comment"
+        }
+        action={{ label: pending ? "Review the comment" : "Reply", url }}
       >
         <Text>
-          <strong>{author}</strong> commented on <strong>{targetTitle}</strong>{" "}
-          in {workspaceName}:
+          <strong>{author}</strong>{" "}
+          {reply ? "replied where you commented on" : "commented on"}{" "}
+          <strong>{targetTitle}</strong> in {workspaceName}:
         </Text>
         <Text style={{ color: "#555", whiteSpace: "pre-wrap" }}>{excerpt}</Text>
         {pending ? (

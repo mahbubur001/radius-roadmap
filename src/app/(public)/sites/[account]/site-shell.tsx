@@ -1,10 +1,10 @@
 import Link from "next/link";
 import type { ReactNode } from "react";
 import { EmbedResizer } from "@/components/public/embed-resizer";
+import { PublicDock } from "@/components/public/public-dock";
 import { SiteBrand } from "@/components/public/site-brand";
 import { VoterMenu } from "@/components/public/voter-menu";
 import { VoterProvider } from "@/components/public/voter-provider";
-import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { initials } from "@/lib/initials";
 import { wsPath } from "@/lib/public-path";
 import { siteTheme } from "@/lib/schemas/workspace";
@@ -19,11 +19,11 @@ import { loadSite, sitePrefix } from "./data";
  */
 export type SiteModule = "roadmap" | "updates" | "ideas" | "articles";
 
-/** LoopedIn's tab order: Roadmap, Updates, Ideas, Articles. */
+/** Transit's tab order (doc 32): Roadmap, Ideas, Updates, Help (Articles). */
 const MODULES: { key: SiteModule; label: string }[] = [
   { key: "roadmap", label: "Roadmap" },
-  { key: "updates", label: "Updates" },
   { key: "ideas", label: "Ideas" },
+  { key: "updates", label: "Updates" },
   { key: "articles", label: "Articles" },
 ];
 
@@ -69,6 +69,12 @@ export async function SiteShell({
     sitePrefix(account),
   ]);
   const brand = site?.brand;
+  const modules = MODULES.filter((m) => workspace.modules[m.key]).map((m) => ({
+    key: m.key,
+    label: workspace.settings[`${m.key}Label`] || m.label,
+    href: `${prefix}${wsPath(workspace)}/${m.key}`,
+  }));
+  const ideasHref = modules.find((m) => m.key === "ideas")?.href ?? null;
   // Workspace logo, else the account's (both need the plan's logo feature).
   const logoUrl = workspace.features.logo
     ? (workspace.logoUrl ?? site?.logoUrl ?? null)
@@ -93,54 +99,65 @@ export async function SiteShell({
             </div>
           </>
         ) : (
-          <header className="sticky top-0 z-30 border-b bg-background/90 backdrop-blur supports-[backdrop-filter]:bg-background/80">
-            {/* Phones: logo + sign-in on one row, tabs scrolling underneath
-                (doc 31 M1). From sm up: one row, as before. */}
-            <div className="mx-auto flex max-w-7xl flex-wrap items-center gap-x-6 px-4 sm:h-16 sm:flex-nowrap">
+          <header className="sticky top-0 z-30 border-b bg-paper/88 backdrop-blur-md">
+            <div className="mx-auto flex h-14 max-w-[1240px] items-center gap-3 px-[18px] md:h-16 md:gap-7 md:px-7">
               <Link
                 href={`${prefix}${wsPath(workspace)}/${home}`}
-                className="flex h-13 min-w-0 items-center gap-2 font-semibold sm:h-auto"
+                className="flex min-w-0 items-center gap-2.5 font-t-display text-lg font-bold tracking-[-0.02em]"
               >
                 {workspace.settings.showLogo !== false ? (
-                  <Avatar className="size-7 shrink-0 rounded-md">
-                    {logoUrl ? <AvatarImage src={logoUrl} alt="" /> : null}
-                    <AvatarFallback className="rounded-md text-xs">
-                      {initials(workspace.name)}
-                    </AvatarFallback>
-                  </Avatar>
+                  logoUrl ? (
+                    // biome-ignore lint/performance/noImgElement: tenant uploads on any host
+                    <img
+                      src={logoUrl}
+                      alt=""
+                      className="size-[30px] shrink-0 rounded-[9px] object-cover"
+                    />
+                  ) : (
+                    <span className="grid size-[30px] shrink-0 place-items-center rounded-[9px] bg-foreground text-[15px] text-background">
+                      {initials(workspace.name).slice(0, 1)}
+                    </span>
+                  )
                 ) : null}
                 <span className="truncate">{workspace.name}</span>
               </Link>
               <nav
                 aria-label="Site"
-                className="order-last -mx-4 flex w-[calc(100%+2rem)] items-center gap-1 overflow-x-auto px-2 text-sm font-medium [scrollbar-width:none] sm:order-none sm:mx-0 sm:w-auto sm:overflow-visible sm:px-0 [&::-webkit-scrollbar]:hidden"
+                className="hidden items-center gap-0.5 md:flex"
               >
-                {MODULES.filter((m) => workspace.modules[m.key]).map((m) => (
+                {modules.map((m) => (
                   <Link
                     key={m.key}
-                    href={`${prefix}${wsPath(workspace)}/${m.key}`}
+                    href={m.href}
                     aria-current={m.key === active ? "page" : undefined}
                     className={cn(
-                      "relative shrink-0 rounded-md px-3 py-2.5 sm:py-1.5 sm:hover:bg-muted",
+                      "flex h-9 items-center rounded-full px-3.5 font-medium",
                       m.key === active
-                        ? "text-foreground after:absolute after:inset-x-3 after:-bottom-px after:h-0.5 after:rounded-full after:bg-primary sm:bg-muted sm:after:hidden"
-                        : "text-muted-foreground",
+                        ? "bg-sheet text-foreground ring-1 ring-border"
+                        : "text-muted-foreground hover:text-foreground",
                     )}
                   >
-                    {workspace.settings[`${m.key}Label`] || m.label}
+                    {m.label}
                   </Link>
                 ))}
               </nav>
-              <div className="ml-auto shrink-0">
-                <VoterMenu />
-              </div>
+              <span className="flex-1" />
+              <VoterMenu />
+              {ideasHref ? (
+                <Link
+                  href={`${ideasHref}${ideasHref.includes("?") ? "&" : "?"}share=1`}
+                  className="hidden h-9 items-center rounded-full bg-foreground px-4 font-semibold text-background md:flex"
+                >
+                  Share an idea
+                </Link>
+              ) : null}
             </div>
           </header>
         )}
         <main
           className={cn(
-            "mx-auto w-full max-w-7xl flex-1 px-4",
-            embed ? "py-3" : "py-5 sm:py-8",
+            "mx-auto w-full max-w-[1240px] flex-1 px-[18px] md:px-7",
+            embed && "py-3",
           )}
         >
           {embed && !workspace.features.embed ? (
@@ -160,10 +177,27 @@ export async function SiteShell({
           )}
         </main>
         {brand?.poweredBy !== false ? (
-          <footer className="py-4 pb-[max(1rem,env(safe-area-inset-bottom))] text-center text-xs text-muted-foreground">
+          <footer className="px-4 pt-6 pb-[120px] text-center font-t-mono text-[11px] font-semibold tracking-[0.12em] text-ink3 uppercase">
             Powered by Radius Roadmap
           </footer>
-        ) : null}
+        ) : (
+          <div className="h-24 md:hidden" />
+        )}
+        {embed ? null : (
+          <PublicDock
+            items={modules.map((m) => ({
+              key: m.key,
+              label: m.label,
+              href: m.href,
+              active: m.key === active,
+            }))}
+            shareHref={
+              ideasHref
+                ? `${ideasHref}${ideasHref.includes("?") ? "&" : "?"}share=1`
+                : null
+            }
+          />
+        )}
       </div>
     </VoterProvider>
   );

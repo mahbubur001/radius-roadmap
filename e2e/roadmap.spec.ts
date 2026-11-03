@@ -383,7 +383,7 @@ test("public site header tabs follow the Public site switches", async ({
     "aria-current",
     "page",
   );
-  await expect(page.getByRole("button", { name: "Log in" })).toBeVisible();
+  await expect(page.getByRole("button", { name: "Sign in" })).toBeVisible();
 
   // Switching the Roadmap off makes the public page a real 404.
   await page.goto(`/dashboard/${slug}/public-settings`);

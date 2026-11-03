@@ -18,6 +18,14 @@
   --font-mono: var(--font-geist-mono);
   --font-heading: var(--font-sans);
   --font-display: var(--font-display);
+  --font-t-display: var(--t-display);
+  --font-t-text: var(--t-text);
+  --font-t-mono: var(--t-mono);
+  --color-paper: var(--paper);
+  --color-sheet: var(--sheet);
+  --color-ink3: var(--ink3);
+  --color-rule2: var(--rule2);
+  --color-tint: var(--tint);
   --color-canvas: var(--canvas);
   --color-faint: var(--faint);
   --color-signal: var(--signal);
@@ -137,58 +145,82 @@
 }
 
 /*
- * Public sites (LoopedIn look): blue accent and slate greys. Set on :root so
- * drawers and dialogs, which portal to <body>, get it too. The site root's
- * `data-site-theme` is "system" (follows `.dark` on <html>), "light" or
- * "dark". The account's brand colour and font arrive as --brand,
- * --brand-foreground and --site-font from SiteBrand (doc 26 6C).
+ * Public sites, "Transit" (doc 32): ink on paper, the brand colour only on
+ * the line, votes and highlights. Set on :root so drawers and dialogs, which
+ * portal to <body>, get it too. The site root's `data-site-theme` is
+ * "system" (follows `.dark` on <html>), "light" or "dark". The account's
+ * brand colour and font arrive as --brand, --brand-foreground and
+ * --site-font from SiteBrand (doc 26 6C).
  */
 :root:has([data-site-theme="light"]),
 :root:not(.dark):has([data-site-theme="system"]) {
-  --background: oklch(1 0 0);
-  --card: oklch(1 0 0);
-  --popover: oklch(1 0 0);
+  --paper: #f4f5f7;
+  --sheet: #ffffff;
+  --ink3: #8a919c;
+  --rule2: #cfd3da;
+  --background: #f4f5f7;
+  --card: #ffffff;
+  --popover: #ffffff;
   --destructive: oklch(0.577 0.245 27.325);
-  --foreground: oklch(0.208 0.042 265.755);
-  --card-foreground: oklch(0.208 0.042 265.755);
-  --popover-foreground: oklch(0.208 0.042 265.755);
-  --primary: var(--brand, oklch(0.511 0.262 276.966));
-  --primary-foreground: var(--brand-foreground, oklch(0.985 0 0));
-  --secondary: oklch(0.968 0.007 247.896);
-  --secondary-foreground: oklch(0.208 0.042 265.755);
-  --muted: oklch(0.968 0.007 247.896);
-  --muted-foreground: oklch(0.554 0.046 257.417);
-  --accent: oklch(0.968 0.007 247.896);
-  --accent-foreground: oklch(0.208 0.042 265.755);
-  --border: oklch(0.929 0.013 255.508);
-  --input: oklch(0.929 0.013 255.508);
-  --ring: var(--brand, oklch(0.585 0.233 277.117));
+  --foreground: #0d1014;
+  --card-foreground: #0d1014;
+  --popover-foreground: #0d1014;
+  --primary: var(--brand, #2f5bff);
+  --primary-foreground: var(--brand-foreground, #ffffff);
+  --secondary: #f4f5f7;
+  --secondary-foreground: #0d1014;
+  --muted: #f4f5f7;
+  --muted-foreground: #4a515c;
+  --accent: #eef0f3;
+  --accent-foreground: #0d1014;
+  --border: #e1e4e9;
+  --input: #cfd3da;
+  --ring: var(--brand, #2f5bff);
+  --tint: color-mix(in oklab, var(--primary) 8%, #ffffff);
 }
 
 :root.dark:has([data-site-theme="system"]),
 :root:has([data-site-theme="dark"]) {
-  --background: oklch(0.129 0.042 264.695);
-  --foreground: oklch(0.984 0.003 247.858);
-  --card: oklch(0.208 0.042 265.755);
-  --card-foreground: oklch(0.984 0.003 247.858);
-  --popover: oklch(0.208 0.042 265.755);
-  --popover-foreground: oklch(0.984 0.003 247.858);
-  --primary: var(--brand, oklch(0.673 0.182 276.935));
-  --primary-foreground: var(--brand-foreground, oklch(0.129 0.042 264.695));
-  --secondary: oklch(0.279 0.041 260.031);
-  --secondary-foreground: oklch(0.984 0.003 247.858);
-  --muted: oklch(0.279 0.041 260.031);
-  --muted-foreground: oklch(0.704 0.04 256.788);
-  --accent: oklch(0.279 0.041 260.031);
-  --accent-foreground: oklch(0.984 0.003 247.858);
-  --border: oklch(1 0 0 / 10%);
-  --input: oklch(1 0 0 / 15%);
-  --ring: var(--brand, oklch(0.585 0.233 277.117));
+  --paper: #0b0d10;
+  --sheet: #13161b;
+  --ink3: #6b7280;
+  --rule2: #313640;
+  --background: #0b0d10;
+  --foreground: #eef0f3;
+  --card: #13161b;
+  --card-foreground: #eef0f3;
+  --popover: #13161b;
+  --popover-foreground: #eef0f3;
+  --primary: var(--brand, #2f5bff);
+  --primary-foreground: var(--brand-foreground, #ffffff);
+  --secondary: #0b0d10;
+  --secondary-foreground: #eef0f3;
+  --muted: #0b0d10;
+  --muted-foreground: #a7aeb9;
+  --accent: #1b1f26;
+  --accent-foreground: #eef0f3;
+  --border: #22262d;
+  --input: #313640;
+  --ring: var(--brand, #2f5bff);
+  --tint: color-mix(in oklab, var(--primary) 16%, #13161b);
+}
+
+/*
+ * Transit type: a customer font (Branding) replaces display and text;
+ * numbers and labels always use the mono face.
+ */
+:root:has([data-site-theme]) {
+  --t-display: var(--site-font, var(--font-transit-display));
+  --t-text: var(--site-font, var(--font-transit-text));
+  --t-mono: var(--font-transit-mono);
 }
 
 /* The account's font (doc 26 P12); on <body> so portalled dialogs get it. */
 :root:has([data-site-theme]) body {
-  font-family: var(--site-font, var(--font-sans));
+  font-family: var(--t-text);
+  font-size: 15px;
+  line-height: 1.5;
+  background: var(--paper);
 }
 
 /*

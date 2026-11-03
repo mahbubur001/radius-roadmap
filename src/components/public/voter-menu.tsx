@@ -1,6 +1,5 @@
 "use client";
 
-import { Button } from "@/components/ui/button";
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -14,17 +13,24 @@ export function VoterMenu() {
   const { voter, openSignIn, signOut } = useVoter();
   if (!voter) {
     return (
-      <Button size="sm" onClick={openSignIn}>
-        Log in
-      </Button>
+      <button
+        type="button"
+        onClick={openSignIn}
+        className="h-9 shrink-0 rounded-full px-3.5 font-medium ring-1 ring-rule2 ring-inset hover:bg-sheet"
+      >
+        Sign in
+      </button>
     );
   }
   return (
     <DropdownMenu>
       <DropdownMenuTrigger asChild>
-        <Button variant="ghost" size="sm">
+        <button
+          type="button"
+          className="h-9 max-w-40 shrink-0 truncate rounded-full px-3.5 font-medium ring-1 ring-rule2 ring-inset hover:bg-sheet"
+        >
           {voter.name || voter.email}
-        </Button>
+        </button>
       </DropdownMenuTrigger>
       <DropdownMenuContent align="end">
         <DropdownMenuLabel className="font-normal text-muted-foreground">
